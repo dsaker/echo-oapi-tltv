@@ -1,0 +1,462 @@
+openapi: "3.0.0"
+info:
+  version: 1.0.0
+  title: TalkLikeTv
+  description: TalkLikeTV is a language learning application designed to learn from the subtitles of TV shows
+  contact:
+    name: Dusty Saker
+    email: dustywayne@comcast.net
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+paths:
+  /userspermissions:
+    post:
+      description: Adds a new permission to a user. Must have global admin privilege
+      operationId: addUserPermission
+      security:
+        - BearerAuth:
+            - "global:admin"
+      requestBody:
+        description: User Permission to add
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewUserPermission'
+      responses:
+        '200':
+          description: user permission response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPermissionResponse'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /users:
+    post:
+      summary: Creates a new user
+      description: |
+        Creates a new user. Duplicate email and username are not allowed.
+        Email, name, and password are required.
+      operationId: register
+      security: []
+      requestBody:
+        description:  User to add
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewUser'
+      responses:
+        '201':
+          description: user created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Invalid Request. Name must be alphanumeric.
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /users/{id}:
+    get:
+      summary: Returns a user by ID
+      description: Returns a user based on a single ID
+      operationId: findUserByID
+      parameters:
+        - name: id
+          in: path
+          description: ID of user to fetch
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: user response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Deletes a user by ID
+      description: deletes a single user based on the ID supplied
+      operationId: deleteUser
+      parameters:
+        - name: id
+          in: path
+          description: ID of user to delete
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: user deleted
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    patch:
+      summary: Patch an existing user
+      description: Patch an existing user
+      operationId: updateUser
+      parameters:
+        - name: id
+          in: path
+          description: ID of user to delete
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: user response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NewUser'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        content:
+          application/json-patch+json:
+            schema:
+              $ref: '#/components/schemas/PatchRequest'
+  /users/login:
+    post:
+      summary: Login a user
+      description: endpoint to login. requires username and password
+      operationId: loginUser
+      security: []
+      requestBody:
+        description: username and password
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserLogin'
+      responses:
+        '200':
+          description: user login response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserLoginResponse'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /titles:
+    get:
+      summary: Returns all titles
+      description: Returns all titles from the system that the user has access to
+      operationId: findTitles
+      security:
+        - BearerAuth:
+            - "titles:r"
+      parameters:
+        - name: similarity
+          in: query
+          description: find titles similar to
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: maximum number of results to return
+          required: false
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: title response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Title'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      summary: Creates a new title
+      description: Creates a new title. Duplicates titles are not allowed
+      operationId: addTitle
+      security:
+        - BearerAuth:
+            - "titles:w"
+      requestBody:
+        description:  Title to add
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewTitle'
+      responses:
+        '200':
+          description: title response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Title'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /titles/{id}:
+    get:
+      summary: Returns a title by ID
+      description: Returns a title based on a single ID
+      operationId: findTitleByID
+      parameters:
+        - name: id
+          in: path
+          description: ID of title to fetch
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: title response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Title'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Deletes a title by ID
+      description: deletes a single title based on the ID supplied
+      operationId: deleteTitle
+      parameters:
+        - name: id
+          in: path
+          description: ID of title to delete
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: title deleted
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  schemas:
+    PatchRequest:
+      type: array
+      items:
+        oneOf:
+          - $ref: '#/components/schemas/JSONPatchRequestAddReplaceTest'
+    JSONPatchRequestAddReplaceTest:
+      type: object
+      additionalProperties: false
+      required:
+        - value
+        - op
+        - path
+      properties:
+        path:
+          description: A JSON Pointer path.
+          type: string
+          example: /email
+        value:
+          description: The value to add, replace or test.
+          example: newemail@email.com
+        op:
+          description: The operation to perform.
+          type: string
+          example: add, replace, or test
+          enum:
+            - add
+            - replace
+            - test
+    User:
+      allOf:
+        - $ref: '#/components/schemas/NewUser'
+        - required:
+            - id
+          properties:
+            id:
+              type: integer
+              format: int64
+              description: Unique id of the user
+    NewUser:
+      required:
+        - name
+        - email
+        - password
+        - titleId
+        - ogLanguageId
+        - newLanguageId
+        - flipped
+      properties:
+        name:
+          type: string
+          description: Username of user. Must be alphanumeric.
+          example: username
+          pattern: "^[a-zA-Z0-9]*$"
+          minLength: 3
+          maxLength: 20
+        email:
+          type: string
+          example: example@email.com
+          pattern: (?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])
+          description: Email of user
+        password:
+          type: string
+          example: pa55w@rd
+          format: password
+          description: Password of user
+          minLength: 8
+          maxLength: 20
+        titleId:
+          type: integer
+          format: int64
+          description: Id of title to learn
+          example: -1
+        ogLanguageId:
+          type: integer
+          format: int64
+          description: Id of native language
+          example: -1
+        newLanguageId:
+          type: integer
+          format: int64
+          description: Id of language to learn
+          example: -1
+        flipped:
+          type: boolean
+          description: switch between learning from or to native language
+          example: false
+    Title:
+      allOf:
+        - $ref: '#/components/schemas/NewTitle'
+        - required:
+            - id
+          properties:
+            id:
+              type: integer
+              format: int64
+              description: Unique id of the title
+    NewTitle:
+      required:
+        - title
+        - numSubs
+        - languageId
+      properties:
+        title:
+          type: string
+          description: Name of the title
+        numSubs:
+          type: integer
+          format: int32
+          description: Number of phrases
+        languageId:
+          type: integer
+          format: int64
+          description: Language id of title
+    UserLogin:
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+          description: Username of user
+        password:
+          type: string
+          format: password
+          description: Password of user
+    NewUserPermission:
+      required:
+        - user_id
+        - permission_id
+      properties:
+        user_id:
+          type: integer
+          format: int64
+          description: User id of user
+        permission_id:
+          type: integer
+          format: int64
+          description: Permission id of permission
+    UserPermissionResponse:
+      allOf:
+        - $ref: '#/components/schemas/NewUserPermission'
+        - required:
+            - id
+          properties:
+            id:
+              type: integer
+              format: int64
+              description: Unique id of the user permission
+    UserLoginResponse:
+      required:
+        - jwt
+      properties:
+        jwt:
+          type: string
+          description: token of user
+    Error:
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          format: int32
+          description: Error code
+        message:
+          type: string
+          description: Error message
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+security:
+  - BearerAuth: [ ]
+
