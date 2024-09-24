@@ -1,99 +1,75 @@
 package api
 
 import (
-	"context"
-	"encoding/json"
-	"fmt"
+	"github.com/labstack/echo/v4"
 	"net/http"
 	db "talkliketv.click/tltv/db/sqlc"
-	"talkliketv.click/tltv/internal/oapi"
 )
 
 // FindTitles implements all the handlers in the ServerInterface
-func (p *Api) FindTitles(w http.ResponseWriter, r *http.Request, params oapi.FindTitlesParams) {
-	ctx, cancel := context.WithTimeout(context.Background(), p.config.CtxTimeout)
-	defer cancel()
+func (p *Server) FindTitles(ctx echo.Context, params FindTitlesParams) error {
 
 	titles, err := p.queries.ListTitles(
-		ctx,
+		ctx.Request().Context(),
 		db.ListTitlesParams{
 			Similarity: *params.Similarity,
 			Limit:      *params.Limit,
 		})
 
 	if err != nil {
-		sendApiError(w, http.StatusBadRequest, fmt.Sprintf("Error finding titles: %s", err))
-		return
+		ctx.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
-	if err = json.NewEncoder(w).Encode(titles); err != nil {
-		sendApiError(w, http.StatusBadRequest, fmt.Sprintf("Error encoding titles: %s", err))
-		return
-	}
-	w.WriteHeader(http.StatusOK)
+	return ctx.JSON(http.StatusOK, titles)
 }
 
-func (p *Api) AddTitle(w http.ResponseWriter, r *http.Request) {
+func (p *Server) AddTitle(ctx echo.Context) error {
 	// We expect a NewTitle object in the request body.
-	var newTitle oapi.NewTitle
-	if err := json.NewDecoder(r.Body).Decode(&newTitle); err != nil {
-		sendApiError(w, http.StatusBadRequest, "Invalid format for NewTitle")
-		return
+	var newTitle NewTitle
+	err := ctx.Bind(&newTitle)
+	if err != nil {
+		return ctx.String(http.StatusBadRequest, err.Error())
 	}
 
 	// We're always asynchronous, so lock unsafe operations below
-	p.Lock.Lock()
-	defer p.Lock.Unlock()
-
-	ctx, cancel := context.WithTimeout(context.Background(), p.config.CtxTimeout)
-	defer cancel()
+	p.Lock()
+	defer p.Unlock()
 
 	title, err := p.queries.InsertTitle(
-		ctx, db.InsertTitleParams{
+		ctx.Request().Context(),
+		db.InsertTitleParams{
 			Title:      newTitle.Title,
 			NumSubs:    newTitle.NumSubs,
 			LanguageID: newTitle.LanguageId,
 		})
 
 	if err != nil {
-		sendApiError(w, http.StatusBadRequest, fmt.Sprintf("Error creating title: %s", err))
-		return
+		ctx.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
-	// Now, we have to return the NewTitle
-	if err = json.NewEncoder(w).Encode(title); err != nil {
-		sendApiError(w, http.StatusBadRequest, fmt.Sprintf("Error encoding title: %s", err))
-		return
-	}
+	return ctx.JSON(http.StatusOK, title)
 }
 
-func (p *Api) FindTitleByID(w http.ResponseWriter, r *http.Request, id int64) {
-	ctx, cancel := context.WithTimeout(context.Background(), p.config.CtxTimeout)
-	defer cancel()
+func (p *Server) FindTitleByID(ctx echo.Context, id int64) error {
 
-	title, err := p.queries.SelectTitleById(ctx, id)
+	title, err := p.queries.SelectTitleById(ctx.Request().Context(), id)
 
 	if err != nil {
-		sendApiError(w, http.StatusBadRequest, fmt.Sprintf("Error selecting title by id: %s", err))
-		return
+		ctx.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
-	if err = json.NewEncoder(w).Encode(title); err != nil {
-		sendApiError(w, http.StatusBadRequest, fmt.Sprintf("Error encoding title: %s", err))
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
+	return ctx.JSON(http.StatusOK, title)
 }
 
-func (p *Api) DeleteTitle(w http.ResponseWriter, r *http.Request, id int64) {
-	ctx, cancel := context.WithTimeout(context.Background(), p.config.CtxTimeout)
-	defer cancel()
+func (p *Server) DeleteTitle(ctx echo.Context, id int64) error {
 
-	w.WriteHeader(http.StatusNoContent)
-	err := p.queries.DeleteTitleById(ctx, id)
+	err := p.queries.DeleteTitleById(ctx.Request().Context(), id)
 	if err != nil {
-		sendApiError(w, http.StatusBadRequest, fmt.Sprintf("Error selecting title by id: %s", err))
-		return
+		ctx.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
+	return ctx.NoContent(http.StatusNoContent)
 }

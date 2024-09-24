@@ -16,7 +16,7 @@ import (
 
 // Config Update the config struct to hold the SMTP server settings.
 type Config struct {
-	Port        int
+	Port        string
 	Env         string
 	CtxTimeout  time.Duration
 	JWTDuration time.Duration
@@ -34,6 +34,9 @@ type Config struct {
 }
 
 func SetConfigs() (config Config) {
+	// get port and debug from commandline flags... if not present use defaults
+	flag.StringVar(&config.Port, "port", "8080", "API server port")
+
 	flag.StringVar(&config.Env, "env", "development", "Environment (development|staging|cloud)")
 	flag.DurationVar(&config.CtxTimeout, "ctx-timeout", 3*time.Second, "Context timeout for db queries in seconds")
 

@@ -4,13 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	mw "github.com/dsaker/nethttp-middleware"
 	"github.com/getkin/kin-openapi/openapi3filter"
+	"github.com/labstack/echo/v4"
 	"github.com/lestrrat-go/jwx/jwt"
+	mw "github.com/oapi-codegen/echo-middleware"
 	"net/http"
 	"strconv"
 	"strings"
 )
+
+const JWTClaimsContextKey = "jwt_claims"
 
 // JWSValidator is used to validate JWS payloads and return a JWT if they're
 // valid
@@ -79,16 +82,16 @@ func Authenticate(v JWSValidator, ctx context.Context, input *openapi3filter.Aut
 
 	// Set the property on the echo context so the handler is able to
 	// access the claims data we generate in here.
-	user, found := token.Get(jwt.SubjectKey)
+	userId, found := token.Get(jwt.SubjectKey)
 	if !found {
 		return ErrInvalidToken
 	}
 
-	requestKey := ctx.Value(NetHttpContextKey).(string)
-	err = mw.Put(requestKey, JWTUser, user)
-	if err != nil {
-		return fmt.Errorf("error Put JWTUserID: %s", err)
-	}
+	// Set the property on the echo context so the handler is able to
+	// access the claims data we generate in here.
+	eCtx := mw.GetEchoContext(ctx)
+	eCtx.Set(UserIdContextKey, userId)
+	eCtx.Set(JWTClaimsContextKey, token)
 
 	return nil
 }
@@ -143,11 +146,13 @@ func CheckTokenClaims(expectedClaims []string, t jwt.Token) error {
 	return nil
 }
 
-func CheckJWTUserIDFromRequest(ctx context.Context, id int64) error {
-	requestKey := ctx.Value(NetHttpContextKey).(string)
-	jwtUserID := mw.Get(requestKey, string(UserContextKey)).(string)
+func CheckJWTUserIDFromRequest(eCtx echo.Context, id int64) error {
+	jwtUserId := eCtx.Get("doesnt-exist")
+	if jwtUserId == nil {
+		return errors.New("CheckJWTUserIDFromRequest: user id not found in context: Please login again")
+	}
 
-	i, err := strconv.ParseInt(jwtUserID, 10, 64)
+	i, err := strconv.ParseInt(jwtUserId.(string), 10, 64)
 	if err != nil {
 		return err
 	}

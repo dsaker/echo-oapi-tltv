@@ -1,92 +1,68 @@
 package api
 
 import (
-	"bytes"
 	"flag"
-	"fmt"
+	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
-	"io"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"reflect"
 	"slices"
+	"strings"
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/config"
-	"talkliketv.click/tltv/internal/jsonlog"
-	"talkliketv.click/tltv/internal/token"
 	"testing"
-	"time"
 )
 
 var (
-	cfg    config.Config
-	logger *jsonlog.Logger
+	cfg config.Config
 )
 
 func TestMain(m *testing.M) {
 	cfg = config.SetConfigs()
-	// get port and debug from commandline flags... if not present use defaults
-	flag.IntVar(&cfg.Port, "port", 8080, "API server port")
 
 	flag.Parse()
-
-	logger = jsonlog.New(os.Stdout, jsonlog.LevelInfo)
 
 	os.Exit(m.Run())
 }
 
-func newTestServer(t *testing.T, q db.Querier) (*httptest.Server, *token.FakeAuthenticator) {
+func newTestServer(e *echo.Echo, t *testing.T, q db.Querier) *Server {
 
-	h, err := NewHandler(cfg, logger, q)
-	require.NoError(t, err)
+	server := NewServer(e, cfg, q)
 
-	ts := httptest.NewServer(h)
-
-	duration := time.Hour * 24
-	fa, err := token.NewFakeAuthenticator(&duration)
-	if err != nil {
-		log.Fatalln("error creating authenticator:", err)
-	}
-
-	return ts, fa
+	return server
 }
 
-func readBody(t *testing.T, rs *http.Response) string {
-	// Read the response body from the test server.
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
-	}(rs.Body)
+//func readBody(t *testing.T, rs *httptest.ResponseRecorder) string {
+//	// Read the response body from the test server.
+//	defer func(Body io.ReadCloser) {
+//		err := Body.Close()
+//		if err != nil {
+//			t.Fatal(err)
+//		}
+//	}(rs.Body)
+//
+//	body, err := io.ReadAll(rs.Body)
+//	if err != nil {
+//		t.Fatal(err)
+//	}
+//	bytes.TrimSpace(body)
+//
+//	return string(body)
+//}
 
-	body, err := io.ReadAll(rs.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
-	bytes.TrimSpace(body)
+func request(json string, urlPath, method, authToken string) *http.Request {
+	req := httptest.NewRequest(method, urlPath, strings.NewReader(json))
+	//req := httptest.
 
-	return string(body)
-}
-
-func request(t *testing.T, json []byte, ts *httptest.Server, urlPath, method, authToken string) *http.Response {
-	req, err := http.NewRequest(method, ts.URL+urlPath, bytes.NewBuffer(json))
-	if err != nil {
-		t.Fatal(err)
-	}
 	if authToken != "" {
 		req.Header.Set("Authorization", "Bearer "+authToken)
 	}
 
 	req.Header.Set("Content-Type", "application/json-patch+json")
-	res, err := ts.Client().Do(req)
-	if err != nil {
-		fmt.Printf("response error: %s: %s\n", err, readBody(t, res))
-	}
 
-	return res
+	return req
 }
 
 func requireMatchAnyExcept(t *testing.T, model any, response any, skip []string, except, shouldEqual string) {
