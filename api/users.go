@@ -1,17 +1,15 @@
 package api
 
 import (
-	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	jsonpatch "github.com/evanphx/json-patch/v5"
+	"github.com/labstack/echo/v4"
 	"golang.org/x/crypto/bcrypt"
 	"io"
 	"net/http"
 	db "talkliketv.click/tltv/db/sqlc"
-	oc "talkliketv.click/tltv/internal/oapi"
 	"talkliketv.click/tltv/internal/token"
 	"talkliketv.click/tltv/internal/util"
 	"time"
@@ -39,29 +37,25 @@ func newUserResponse(user db.User) userResponse {
 	}
 }
 
-func (p *Api) Register(w http.ResponseWriter, r *http.Request) {
+func (p *Server) Register(ctx echo.Context) error {
 	// We expect a NewUser object in the request body.
-	var newUser oc.NewUser
-	if err := json.NewDecoder(r.Body).Decode(&newUser); err != nil {
-		sendApiError(w, http.StatusBadRequest, "Invalid format for NewUser")
-		return
+	var newUser NewUser
+	err := ctx.Bind(&newUser)
+	if err != nil {
+		return ctx.String(http.StatusBadRequest, err.Error())
 	}
 
 	// We're always asynchronous, so lock unsafe operations below
-	p.Lock.Lock()
-	defer p.Lock.Unlock()
+	p.Lock()
+	defer p.Unlock()
 
 	password, err := bcrypt.GenerateFromPassword([]byte(newUser.Password), 14)
 	if err != nil {
-		sendApiError(w, http.StatusBadRequest, "Error generating password")
-		return
+		return ctx.String(http.StatusBadRequest, err.Error())
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), p.config.CtxTimeout)
-	defer cancel()
-
 	user, err := p.queries.InsertUser(
-		ctx,
+		ctx.Request().Context(),
 		db.InsertUserParams{
 			Name:           newUser.Name,
 			Email:          newUser.Email,
@@ -75,115 +69,89 @@ func (p *Api) Register(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if db.PqErrorCode(err) == db.UniqueViolation {
 			if db.PqErrorConstraint(err) == db.EmailConstraint {
-				sendApiError(w, http.StatusBadRequest, "a user with this email address already exists")
-				return
+				return ctx.String(http.StatusBadRequest, "a user with this email address already exists")
 			}
 			if db.PqErrorConstraint(err) == db.UsernameConstraint {
-				sendApiError(w, http.StatusBadRequest, "a user with this name already exists")
-				return
+				return ctx.String(http.StatusBadRequest, "a user with this name already exists")
 			}
-			sendApiError(w, http.StatusBadRequest, "duplicate key violation")
-			return
+			return ctx.String(http.StatusBadRequest, "duplicate key violation")
 		}
-		p.sendInternalError(w, err)
-		return
+		ctx.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
-	permission, err := p.queries.SelectPermissionByCode(ctx, db.ReadTitlesCode)
+	permission, err := p.queries.SelectPermissionByCode(ctx.Request().Context(), db.ReadTitlesCode)
 	if err != nil {
-		p.sendInternalError(w, err)
-		return
+		ctx.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 	_, err = p.queries.InsertUserPermission(
-		ctx, db.InsertUserPermissionParams{
+		ctx.Request().Context(), db.InsertUserPermissionParams{
 			UserID:       user.ID,
 			PermissionID: permission.ID,
 		})
 
 	if err != nil {
-		sendApiError(w, http.StatusBadRequest, fmt.Sprintf("Error creating user permission: %s", err))
-		return
+		ctx.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
 	rsp := newUserResponse(user)
-	if err = json.NewEncoder(w).Encode(rsp); err != nil {
-		sendApiError(w, http.StatusBadRequest, "Error encoding user")
-		return
-	}
+	return ctx.JSON(http.StatusOK, rsp)
 }
 
-func (p *Api) DeleteUser(w http.ResponseWriter, r *http.Request, id int64) {
-	err := token.CheckJWTUserIDFromRequest(r.Context(), id)
+func (p *Server) DeleteUser(ctx echo.Context, id int64) error {
+	err := token.CheckJWTUserIDFromRequest(ctx, id)
 	if err != nil {
-		sendApiError(w, http.StatusForbidden, "Invalid user ID")
-		return
+		return ctx.String(http.StatusForbidden, "Invalid user ID")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), p.config.CtxTimeout)
-	defer cancel()
-
-	err = p.queries.DeleteUserById(ctx, id)
+	err = p.queries.DeleteUserById(ctx.Request().Context(), id)
 	if err != nil {
-		sendApiError(w, http.StatusBadRequest, fmt.Sprintf("Error deleting user: %s", err))
-		return
+		return ctx.String(http.StatusBadRequest, err.Error())
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	return ctx.NoContent(http.StatusNoContent)
 }
 
-func (p *Api) FindUserByID(w http.ResponseWriter, r *http.Request, id int64) {
-	err := token.CheckJWTUserIDFromRequest(r.Context(), id)
+func (p *Server) FindUserByID(ctx echo.Context, id int64) error {
+	err := token.CheckJWTUserIDFromRequest(ctx, id)
 	if err != nil {
-		sendApiError(w, http.StatusForbidden, "Invalid user ID")
-		return
+		return ctx.String(http.StatusForbidden, err.Error())
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), p.config.CtxTimeout)
-	defer cancel()
-
-	user, err := p.queries.SelectUserById(ctx, id)
+	user, err := p.queries.SelectUserById(ctx.Request().Context(), id)
 	if err != nil {
-		sendApiError(w, http.StatusBadRequest, fmt.Sprintf("Error selecting user by id: %s", err))
-		return
+		return ctx.String(http.StatusBadRequest, err.Error())
 	}
 
 	rsp := newUserResponse(user)
-	if err = json.NewEncoder(w).Encode(rsp); err != nil {
-		sendApiError(w, http.StatusBadRequest, "Error encoding user")
-		return
-	}
+	return ctx.JSON(http.StatusOK, rsp)
 }
 
-func (p *Api) UpdateUser(w http.ResponseWriter, r *http.Request, id int64) {
+func (p *Server) UpdateUser(ctx echo.Context, id int64) error {
 
-	err := token.CheckJWTUserIDFromRequest(r.Context(), id)
+	err := token.CheckJWTUserIDFromRequest(ctx, id)
 	if err != nil {
-		sendApiError(w, http.StatusForbidden, "Invalid user ID")
-		return
+		return ctx.String(http.StatusForbidden, "Invalid user ID")
 	}
 
-	body, err := io.ReadAll(r.Body)
+	body, err := io.ReadAll(ctx.Request().Body)
 	if err != nil {
-		sendApiError(w, http.StatusBadRequest, "Invalid format for PatchUser")
-		return
+		return ctx.String(http.StatusBadRequest, err.Error())
 	}
 
 	patch, err := jsonpatch.DecodePatch(body)
 	if err != nil {
-		sendApiError(w, http.StatusBadRequest, "Invalid format for PatchUser")
-		return
+		return ctx.String(http.StatusBadRequest, err.Error())
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), p.config.CtxTimeout)
-	defer cancel()
-
-	user, err := p.queries.SelectUserById(ctx, id)
+	user, err := p.queries.SelectUserById(ctx.Request().Context(), id)
 	if err != nil {
-		sendApiError(w, http.StatusBadRequest, fmt.Sprintf("Error selecting user by id: %s", err))
-		return
+		return ctx.String(http.StatusBadRequest, err.Error())
 	}
 
-	current := oc.NewUser{
+	current := NewUser{
 		Email:         user.Email,
 		Flipped:       user.Flipped,
 		NewLanguageId: user.NewLanguageID,
@@ -194,35 +162,32 @@ func (p *Api) UpdateUser(w http.ResponseWriter, r *http.Request, id int64) {
 
 	currentBytes, err := json.Marshal(current)
 	if err != nil {
-		p.sendInternalError(w, err)
-		return
+		return ctx.String(http.StatusInternalServerError, err.Error())
 	}
 
 	modifiedBytes, err := patch.Apply(currentBytes)
 	if err != nil {
-		sendApiError(w, http.StatusBadRequest, fmt.Sprintf("Error patching user: %s", err))
-		return
+		return ctx.String(http.StatusBadRequest, err.Error())
 	}
 
-	var modified oc.NewUser
+	var modified NewUser
 	err = json.Unmarshal(modifiedBytes, &modified)
 	if err != nil {
-		sendApiError(w, http.StatusBadRequest, fmt.Sprintf("Error unmarshalling modified user: %s", err))
-		return
+		return ctx.String(http.StatusBadRequest, err.Error())
 	}
 
 	// perform business logic checks
 	if modified.Password != current.Password {
 		password, err := bcrypt.GenerateFromPassword([]byte(modified.Password), 14)
 		if err != nil {
-			p.sendInternalError(w, err)
-			return
+			ctx.Logger().Error(err)
+			return ctx.String(http.StatusInternalServerError, err.Error())
 		}
 		modified.Password = string(password)
 	}
 
 	updatedUser, err := p.queries.UpdateUserById(
-		ctx,
+		ctx.Request().Context(),
 		db.UpdateUserByIdParams{
 			TitleID:        modified.TitleId,
 			Email:          modified.Email,
@@ -234,65 +199,49 @@ func (p *Api) UpdateUser(w http.ResponseWriter, r *http.Request, id int64) {
 		})
 
 	if err != nil {
-		sendApiError(w, http.StatusBadRequest, fmt.Sprintf("Error updating user: %s", err))
-		return
+		return ctx.String(http.StatusBadRequest, err.Error())
 	}
 
 	rsp := newUserResponse(updatedUser)
-	if err = json.NewEncoder(w).Encode(rsp); err != nil {
-		sendApiError(w, http.StatusBadRequest, "Error encoding user")
-		return
-	}
+	return ctx.JSON(http.StatusOK, rsp)
 }
 
-func (p *Api) LoginUser(w http.ResponseWriter, r *http.Request) {
+func (p *Server) LoginUser(ctx echo.Context) error {
 
 	// We expect a NewUser object in the request body.
-	var userLogin oc.UserLogin
-	if err := json.NewDecoder(r.Body).Decode(&userLogin); err != nil {
-		sendApiError(w, http.StatusBadRequest, "Invalid format for UserLogin")
-		return
+	var userLogin UserLogin
+	err := ctx.Bind(&userLogin)
+	if err != nil {
+		return ctx.String(http.StatusBadRequest, err.Error())
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), p.config.CtxTimeout)
-	defer cancel()
-
-	user, err := p.queries.SelectUserByName(ctx, userLogin.Username)
+	user, err := p.queries.SelectUserByName(ctx.Request().Context(), userLogin.Username)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			sendApiError(w, http.StatusNotFound, "Invalid username or password")
-			return
+			return ctx.String(http.StatusNotFound, "username not found")
 		}
-		p.sendInternalError(w, err)
-		return
+		ctx.Logger().Error(err)
+		return ctx.String(http.StatusInternalServerError, err.Error())
 	}
 
 	err = util.CheckPassword(userLogin.Password, user.HashedPassword)
 	if err != nil {
-		sendApiError(w, http.StatusUnauthorized, "Invalid username or password")
-		return
+		return ctx.String(http.StatusUnauthorized, "invalid username or password")
 	}
 
-	permissions, err := p.queries.SelectUserPermissions(ctx, user.ID)
+	permissions, err := p.queries.SelectUserPermissions(ctx.Request().Context(), user.ID)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			sendApiError(w, http.StatusNotFound, err.Error())
-			return
+		if !errors.Is(err, sql.ErrNoRows) {
+			ctx.Logger().Error(err)
+			return ctx.String(http.StatusInternalServerError, err.Error())
 		}
-		p.logger.PrintError(err, nil)
-		sendApiError(w, http.StatusInternalServerError, "Error selecting user")
-		return
 	}
 
 	jwsToken, err := p.fa.CreateJWSWithClaims(permissions, user)
 	if err != nil {
-		p.logger.PrintError(err, nil)
-		sendApiError(w, http.StatusInternalServerError, "Error creating jwsToken")
-		return
+		ctx.Logger().Error(err)
+		return ctx.String(http.StatusInternalServerError, err.Error())
 	}
 
-	if err = json.NewEncoder(w).Encode(jwsToken); err != nil {
-		sendApiError(w, http.StatusBadRequest, "Error encoding user")
-		return
-	}
+	return ctx.JSON(http.StatusOK, jwsToken)
 }

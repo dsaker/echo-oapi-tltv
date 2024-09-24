@@ -1,43 +1,33 @@
 package api
 
 import (
-	"context"
-	"encoding/json"
-	"fmt"
+	"github.com/labstack/echo/v4"
 	"net/http"
 	db "talkliketv.click/tltv/db/sqlc"
-	"talkliketv.click/tltv/internal/oapi"
 )
 
-func (p *Api) AddUserPermission(w http.ResponseWriter, r *http.Request) {
+func (p *Server) AddUserPermission(ctx echo.Context) error {
 	// We expect a NewTitle object in the request body.
-	var newUserPermission oapi.NewUserPermission
-	if err := json.NewDecoder(r.Body).Decode(&newUserPermission); err != nil {
-		sendApiError(w, http.StatusBadRequest, "Invalid format for NewUserPermission")
-		return
+	var newUserPermission NewUserPermission
+	err := ctx.Bind(&newUserPermission)
+	if err != nil {
+		return ctx.String(http.StatusBadRequest, err.Error())
 	}
 
 	// We're always asynchronous, so lock unsafe operations below
-	p.Lock.Lock()
-	defer p.Lock.Unlock()
-
-	ctx, cancel := context.WithTimeout(context.Background(), p.config.CtxTimeout)
-	defer cancel()
+	p.Lock()
+	defer p.Unlock()
 
 	userPermission, err := p.queries.InsertUserPermission(
-		ctx, db.InsertUserPermissionParams{
+		ctx.Request().Context(),
+		db.InsertUserPermissionParams{
 			UserID:       newUserPermission.UserId,
 			PermissionID: newUserPermission.PermissionId,
 		})
 
 	if err != nil {
-		sendApiError(w, http.StatusBadRequest, fmt.Sprintf("Error creating user permission: %s", err))
-		return
+		return ctx.String(http.StatusBadRequest, err.Error())
 	}
 
-	// Now, we have to return the NewUserPermission
-	if err = json.NewEncoder(w).Encode(userPermission); err != nil {
-		sendApiError(w, http.StatusBadRequest, fmt.Sprintf("Error encoding user permission: %s", err))
-		return
-	}
+	return ctx.JSON(http.StatusCreated, userPermission)
 }

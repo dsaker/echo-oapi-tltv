@@ -3,7 +3,6 @@ package token
 import (
 	"crypto/ecdsa"
 	"fmt"
-	mw "github.com/dsaker/nethttp-middleware"
 	"github.com/lestrrat-go/jwx/jwa"
 	"github.com/lestrrat-go/jwx/jwk"
 	"github.com/lestrrat-go/jwx/jws"
@@ -31,15 +30,13 @@ s9SlG/8hjB2Hz42v4p3haKWv3uS1C6ahCQ==
 type contextKey string
 
 const (
-	KeyID             = "fake-key-id"
-	Issuer            = "tltv"
-	FakeAudience      = "example-users"
-	PermissionsClaim  = "perm"
-	Expiration        = "exp"
-	IssuedAt          = "iat"
-	JWTUser           = "userid"
-	NetHttpContextKey = mw.ContextKey
-	UserContextKey    = contextKey(JWTUser)
+	KeyID            = "fake-key-id"
+	Issuer           = "tltv"
+	FakeAudience     = "example-users"
+	PermissionsClaim = "perm"
+	Expiration       = "exp"
+	IssuedAt         = "iat"
+	UserIdContextKey = "userid"
 )
 
 type FakeAuthenticator struct {
