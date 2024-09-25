@@ -45,19 +45,32 @@ func main() {
 
 	e := echo.New()
 
-	svr := api.NewServer(e, cfg, q)
+	spec, err := api.GetSwagger()
+	if err != nil {
+		log.Fatalln("loading spec: %w", err)
+	}
 
-	api.RegisterHandlers(e, svr)
+	g := e.Group("/swagger")
+	g.GET("/doc.json", func(ctx echo.Context) error {
+		err := json.NewEncoder(ctx.Response().Writer).Encode(spec)
+		if err != nil {
+			log.Fatalf("Error encoding swagger spec\n: %s\n", err)
+		}
+		return nil
+	})
 
-	// Route
-	e.GET("/hello", hello)
+	swaggerHandler := ui.SwaggerUI(ui.SwaggerUIOpts{
+		Path:    "/swagger/",
+		SpecURL: "/swagger/doc.json",
+	}, nil)
+
+	g.GET("/", echo.WrapHandler(swaggerHandler))
+
+	svr := api.NewServer(e, cfg, q, spec)
+
+	api.RegisterHandlersWithBaseURL(e, svr, "/v1")
 
 	e.Logger.Fatal(e.Start(net.JoinHostPort("0.0.0.0", cfg.Port)))
-}
-
-// Handler
-func hello(c echo.Context) error {
-	return c.String(http.StatusOK, "Hello, World!")
 }
 
 func runSwaggerUI(spec *openapi3.T) {
@@ -82,4 +95,9 @@ func runSwaggerUI(spec *openapi3.T) {
 
 	// And we serve HTTP until the world ends.
 	log.Fatal(s.ListenAndServe())
+}
+
+// Handler
+func hello(c echo.Context) error {
+	return c.String(http.StatusOK, "Hello, World!")
 }

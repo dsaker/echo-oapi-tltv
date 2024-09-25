@@ -147,7 +147,7 @@ func CheckTokenClaims(expectedClaims []string, t jwt.Token) error {
 }
 
 func CheckJWTUserIDFromRequest(eCtx echo.Context, id int64) error {
-	jwtUserId := eCtx.Get("doesnt-exist")
+	jwtUserId := eCtx.Get(UserIdContextKey)
 	if jwtUserId == nil {
 		return errors.New("CheckJWTUserIDFromRequest: user id not found in context: Please login again")
 	}
