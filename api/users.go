@@ -149,7 +149,7 @@ func (p *Server) UpdateUser(ctx echo.Context, id int64) error {
 
 	user, err := p.queries.SelectUserById(ctx.Request().Context(), id)
 	if err != nil {
-		return ctx.String(http.StatusBadRequest, err.Error())
+		return ctx.String(http.StatusBadRequest, fmt.Sprintf("Error selecting user by id: %s", err))
 	}
 
 	current := NewUser{
@@ -219,7 +219,7 @@ func (p *Server) LoginUser(ctx echo.Context) error {
 	user, err := p.queries.SelectUserByName(ctx.Request().Context(), userLogin.Username)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return ctx.String(http.StatusNotFound, "username not found")
+			return ctx.String(http.StatusUnauthorized, "invalid username or password")
 		}
 		ctx.Logger().Error(err)
 		return ctx.String(http.StatusInternalServerError, err.Error())

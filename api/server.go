@@ -62,6 +62,7 @@ func createMiddleware(v token.JWSValidator, spec *openapi3.T) ([]echo.Middleware
 			Options: openapi3filter.Options{
 				AuthenticationFunc: token.NewAuthenticator(v),
 			},
+			SilenceServersWarning: true,
 		})
 
 	return []echo.MiddlewareFunc{validator}, nil
