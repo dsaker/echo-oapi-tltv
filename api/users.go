@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	jsonpatch "github.com/evanphx/json-patch/v5"
 	"github.com/labstack/echo/v4"
 	"golang.org/x/crypto/bcrypt"
@@ -37,7 +38,7 @@ func newUserResponse(user db.User) userResponse {
 	}
 }
 
-func (p *Server) Register(ctx echo.Context) error {
+func (p *Server) CreateUser(ctx echo.Context) error {
 	// We expect a NewUser object in the request body.
 	var newUser NewUser
 	err := ctx.Bind(&newUser)
@@ -77,13 +78,13 @@ func (p *Server) Register(ctx echo.Context) error {
 			return ctx.String(http.StatusBadRequest, "duplicate key violation")
 		}
 		ctx.Logger().Error(err)
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return ctx.String(http.StatusInternalServerError, err.Error())
 	}
 
 	permission, err := p.queries.SelectPermissionByCode(ctx.Request().Context(), db.ReadTitlesCode)
 	if err != nil {
 		ctx.Logger().Error(err)
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return ctx.String(http.StatusInternalServerError, err.Error())
 	}
 	_, err = p.queries.InsertUserPermission(
 		ctx.Request().Context(), db.InsertUserPermissionParams{
@@ -93,7 +94,7 @@ func (p *Server) Register(ctx echo.Context) error {
 
 	if err != nil {
 		ctx.Logger().Error(err)
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return ctx.String(http.StatusInternalServerError, err.Error())
 	}
 
 	rsp := newUserResponse(user)
@@ -108,7 +109,7 @@ func (p *Server) DeleteUser(ctx echo.Context, id int64) error {
 
 	err = p.queries.DeleteUserById(ctx.Request().Context(), id)
 	if err != nil {
-		return ctx.String(http.StatusBadRequest, err.Error())
+		return ctx.String(http.StatusBadRequest, fmt.Sprintf("Error deleting user: %s", err))
 	}
 
 	return ctx.NoContent(http.StatusNoContent)
@@ -122,7 +123,7 @@ func (p *Server) FindUserByID(ctx echo.Context, id int64) error {
 
 	user, err := p.queries.SelectUserById(ctx.Request().Context(), id)
 	if err != nil {
-		return ctx.String(http.StatusBadRequest, err.Error())
+		return ctx.String(http.StatusBadRequest, fmt.Sprintf("Error selecting user by id: %s", err))
 	}
 
 	rsp := newUserResponse(user)

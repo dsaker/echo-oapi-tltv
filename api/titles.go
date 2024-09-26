@@ -18,7 +18,7 @@ func (p *Server) FindTitles(ctx echo.Context, params FindTitlesParams) error {
 
 	if err != nil {
 		ctx.Logger().Error(err)
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return ctx.String(http.StatusInternalServerError, err.Error())
 	}
 
 	return ctx.JSON(http.StatusOK, titles)
@@ -46,7 +46,7 @@ func (p *Server) AddTitle(ctx echo.Context) error {
 
 	if err != nil {
 		ctx.Logger().Error(err)
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return ctx.String(http.StatusInternalServerError, err.Error())
 	}
 
 	return ctx.JSON(http.StatusOK, title)
@@ -58,7 +58,7 @@ func (p *Server) FindTitleByID(ctx echo.Context, id int64) error {
 
 	if err != nil {
 		ctx.Logger().Error(err)
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return ctx.String(http.StatusInternalServerError, err.Error())
 	}
 
 	return ctx.JSON(http.StatusOK, title)
@@ -69,7 +69,7 @@ func (p *Server) DeleteTitle(ctx echo.Context, id int64) error {
 	err := p.queries.DeleteTitleById(ctx.Request().Context(), id)
 	if err != nil {
 		ctx.Logger().Error(err)
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return ctx.String(http.StatusInternalServerError, err.Error())
 	}
 	return ctx.NoContent(http.StatusNoContent)
 }

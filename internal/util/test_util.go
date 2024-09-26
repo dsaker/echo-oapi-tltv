@@ -8,4 +8,5 @@ const (
 	ValidNewLanguageId = -1
 	ValidPermissionId  = 1
 	InvalidUserId      = int64(math.MaxInt64)
+	UserBasePath       = "/v1/users/"
 )

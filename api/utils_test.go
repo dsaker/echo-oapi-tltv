@@ -2,6 +2,7 @@ package api
 
 import (
 	"flag"
+	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
 	"net/http"
@@ -27,9 +28,10 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func newTestServer(e *echo.Echo, t *testing.T, q db.Querier) *Server {
+func newTestServer(e *echo.Echo, spec *openapi3.T, q db.Querier) *Server {
 
-	server := NewServer(e, cfg, q)
+	server := NewServer(cfg, q)
+	AddMiddleware(e, server, spec)
 
 	return server
 }

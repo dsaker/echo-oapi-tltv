@@ -46,7 +46,7 @@ paths:
       description: |
         Creates a new user. Duplicate email and username are not allowed.
         Email, name, and password are required.
-      operationId: register
+      operationId: createUser
       security: []
       requestBody:
         description:  User to add
@@ -407,10 +407,12 @@ components:
         username:
           type: string
           description: Username of user
+          example: username
         password:
           type: string
           format: password
           description: Password of user
+          example: pa55w@rd
     NewUserPermission:
       required:
         - user_id
