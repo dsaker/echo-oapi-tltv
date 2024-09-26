@@ -66,10 +66,9 @@ func main() {
 
 	g.GET("/", echo.WrapHandler(swaggerHandler))
 
-	srv := api.NewServer(cfg, q)
-	api.AddMiddleware(e, srv, spec)
+	svr := api.NewServer(e, cfg, q, spec)
 
-	//api.RegisterHandlersWithBaseURL(h, svr, "/v1")
+	api.RegisterHandlersWithBaseURL(e, svr, "/v1")
 
 	e.Logger.Fatal(e.Start(net.JoinHostPort("0.0.0.0", cfg.Port)))
 }

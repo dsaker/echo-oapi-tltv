@@ -7,6 +7,7 @@ import (
 	v4mw "github.com/labstack/echo/v4/middleware"
 	mw "github.com/oapi-codegen/echo-middleware"
 	"log"
+	"net/http"
 	"sync"
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/config"
@@ -21,7 +22,7 @@ type Server struct {
 }
 
 // NewServer creates a new HTTP server and sets up routing.
-func NewServer(cfg config.Config, q db.Querier) *Server {
+func NewServer(e *echo.Echo, cfg config.Config, q db.Querier, spec *openapi3.T) *Server {
 
 	// Create a fake authenticator. This allows us to issue tokens, and also
 	// implements a validator to check their validity.
@@ -30,25 +31,26 @@ func NewServer(cfg config.Config, q db.Querier) *Server {
 		log.Fatalln("error creating authenticator:", err)
 	}
 
+	// Create middleware for validating tokens.
+	middle, err := createMiddleware(fa, spec)
+	if err != nil {
+		log.Fatalln("error creating middleware:", err)
+	}
+	apiGrp := e.Group("/v1")
+	apiGrp.Use(v4mw.Logger())
+	apiGrp.Use(v4mw.Recover())
+	apiGrp.Use(middle...)
+	apiGrp.Use(v4mw.CORSWithConfig(v4mw.CORSConfig{
+		AllowOrigins: []string{"*"},
+		AllowMethods: []string{http.MethodOptions, http.MethodGet, http.MethodHead, http.MethodPut, http.MethodPatch, http.MethodPost, http.MethodDelete},
+	}))
+
 	return &Server{
 		fa:      *fa,
 		queries: q,
 		config:  cfg,
 	}
 
-}
-
-func AddMiddleware(e *echo.Echo, srv *Server, spec *openapi3.T) {
-	// Create middleware for validating tokens.
-	middle, err := createMiddleware(&srv.fa, spec)
-	if err != nil {
-		log.Fatalln("error creating middleware:", err)
-	}
-
-	e.Use(v4mw.Logger(), v4mw.Recover())
-	e.Use(middle...)
-
-	RegisterHandlersWithBaseURL(e, srv, "/v1")
 }
 
 // Make sure we conform to ServerInterface
@@ -60,7 +62,6 @@ func createMiddleware(v token.JWSValidator, spec *openapi3.T) ([]echo.Middleware
 			Options: openapi3filter.Options{
 				AuthenticationFunc: token.NewAuthenticator(v),
 			},
-			SilenceServersWarning: true,
 		})
 
 	return []echo.MiddlewareFunc{validator}, nil
