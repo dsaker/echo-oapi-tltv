@@ -7,7 +7,6 @@ import (
 	v4mw "github.com/labstack/echo/v4/middleware"
 	mw "github.com/oapi-codegen/echo-middleware"
 	"log"
-	"net/http"
 	"sync"
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/config"
@@ -40,10 +39,6 @@ func NewServer(e *echo.Echo, cfg config.Config, q db.Querier, spec *openapi3.T) 
 	apiGrp.Use(v4mw.Logger())
 	apiGrp.Use(v4mw.Recover())
 	apiGrp.Use(middle...)
-	apiGrp.Use(v4mw.CORSWithConfig(v4mw.CORSConfig{
-		AllowOrigins: []string{"*"},
-		AllowMethods: []string{http.MethodOptions, http.MethodGet, http.MethodHead, http.MethodPut, http.MethodPatch, http.MethodPost, http.MethodDelete},
-	}))
 
 	return &Server{
 		fa:      *fa,

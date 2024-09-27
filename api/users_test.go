@@ -1,7 +1,6 @@
 package api
 
 import (
-	"bytes"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -45,51 +44,60 @@ func EqCreateUserParams(arg db.InsertUserParams, password string) gomock.Matcher
 	return eqCreateUserParamsMatcher{arg, password}
 }
 
-type testCase struct {
+type baseCase struct {
 	name          string
-	body          map[string]any
-	stringBody    string
 	user          db.User
-	userId        int64
+	body          map[string]any
 	buildStubs    func(store *mockdb.MockQuerier)
 	checkResponse func(rec *httptest.ResponseRecorder)
+}
+
+type usersTestCase struct {
+	testCase   baseCase
+	stringBody string
+	userId     int64
 }
 
 func TestGetUser(t *testing.T) {
 	user1, _ := randomUser(t)
 	user2, _ := randomUser(t)
 
-	testCases := []testCase{
+	testCases := []usersTestCase{
 		{
-			name:   "get user1",
-			user:   user1,
+			testCase: baseCase{
+				name: "get user1",
+				user: user1,
+				buildStubs: func(store *mockdb.MockQuerier) {
+					store.EXPECT().
+						SelectUserById(gomock.Any(), user1.ID).
+						Times(1).
+						Return(user1, nil)
+				},
+				checkResponse: func(rec *httptest.ResponseRecorder) {
+					require.Equal(t, http.StatusOK, rec.Code)
+					var gotUser db.User
+					err := json.Unmarshal([]byte(rec.Body.String()), &gotUser)
+					require.NoError(t, err)
+					requireMatchAnyExcept(t, user1, gotUser, []string{"HashedPassword", "ID"}, "", "")
+				},
+			},
 			userId: user1.ID,
-			buildStubs: func(store *mockdb.MockQuerier) {
-				store.EXPECT().
-					SelectUserById(gomock.Any(), user1.ID).
-					Times(1).
-					Return(user1, nil)
-			},
-			checkResponse: func(rec *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusOK, rec.Code)
-				var gotUser db.User
-				err := json.Unmarshal([]byte(rec.Body.String()), &gotUser)
-				require.NoError(t, err)
-				requireMatchAnyExcept(t, user1, gotUser, []string{"HashedPassword", "ID"}, "", "")
-			},
 		},
 		{
-			name:   "Id's don't match",
-			user:   user1,
+			testCase: baseCase{
+				name: "Id's don't match",
+				user: user1,
+				buildStubs: func(store *mockdb.MockQuerier) {
+				},
+				checkResponse: func(rec *httptest.ResponseRecorder) {
+					require.Equal(t, http.StatusForbidden, rec.Code)
+					require.Contains(t, rec.Body.String(), "provided id does not match user id")
+				},
+			},
 			userId: user2.ID,
-			buildStubs: func(store *mockdb.MockQuerier) {
-			},
-			checkResponse: func(rec *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusForbidden, rec.Code)
-				require.Contains(t, rec.Body.String(), "provided id does not match user id")
-			},
 		},
 		{
+
 			name:   "User does not exist",
 			user:   user2,
 			userId: user2.ID,
@@ -117,7 +125,7 @@ func TestGetUser(t *testing.T) {
 			data, err := json.Marshal(tc.body)
 			require.NoError(t, err)
 
-			srv, c, rec := setupTest(t, ctrl, tc, string(data), http.MethodGet)
+			srv, c, rec := setupHandlerTest(t, ctrl, tc, string(data), http.MethodGet)
 
 			err = srv.FindUserByID(c, tc.userId)
 			require.NoError(t, err)
@@ -130,7 +138,7 @@ func TestDeleteUser(t *testing.T) {
 	user1, _ := randomUser(t)
 	user2, _ := randomUser(t)
 
-	testCases := []testCase{
+	testCases := []usersTestCase{
 		{
 			name:   "delete user1",
 			user:   user1,
@@ -182,7 +190,7 @@ func TestDeleteUser(t *testing.T) {
 			// Marshal body data to JSON
 			data, err := json.Marshal(tc.body)
 			require.NoError(t, err)
-			srv, c, rec := setupTest(t, ctrl, tc, string(data), http.MethodDelete)
+			srv, c, rec := setupHandlerTest(t, ctrl, tc, string(data), http.MethodDelete)
 
 			err = srv.DeleteUser(c, tc.userId)
 			require.NoError(t, err)
@@ -193,7 +201,7 @@ func TestDeleteUser(t *testing.T) {
 
 func TestCreateUser(t *testing.T) {
 	user, password := randomUser(t)
-	testCases := []testCase{
+	testCases := []usersTestCase{
 		{
 			name: "Create User",
 			body: map[string]any{
@@ -297,7 +305,7 @@ func TestCreateUser(t *testing.T) {
 			// Marshal body data to JSON
 			data, err := json.Marshal(tc.body)
 			require.NoError(t, err)
-			srv, c, rec := setupTest(t, ctrl, tc, string(data), http.MethodPut)
+			srv, c, rec := setupHandlerTest(t, ctrl, tc, string(data), http.MethodPut)
 
 			err = srv.CreateUser(c)
 			require.NoError(t, err)
@@ -320,7 +328,7 @@ func TestUpdateUser(t *testing.T) {
 
 	user2, _ := randomUser(t)
 
-	testCases := []testCase{
+	testCases := []usersTestCase{
 		{
 			name:   "update user1 email",
 			user:   user1,
@@ -421,7 +429,7 @@ func TestUpdateUser(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			srv, c, rec := setupTest(t, ctrl, tc, tc.stringBody, http.MethodPut)
+			srv, c, rec := setupHandlerTest(t, ctrl, tc, tc.stringBody, http.MethodPut)
 			err := srv.UpdateUser(c, tc.userId)
 			require.NoError(t, err)
 			tc.checkResponse(rec)
@@ -433,7 +441,7 @@ func TestLoginUser(t *testing.T) {
 	user, password := randomUser(t)
 	permissions := []string{db.ReadTitlesCode}
 
-	testCases := []testCase{
+	testCases := []usersTestCase{
 		{
 			name: "OK",
 			body: map[string]any{
@@ -517,7 +525,7 @@ func TestLoginUser(t *testing.T) {
 			data, err := json.Marshal(tc.body)
 			require.NoError(t, err)
 
-			srv, c, rec := setupTest(t, ctrl, tc, string(data), http.MethodGet)
+			srv, c, rec := setupHandlerTest(t, ctrl, tc, string(data), http.MethodGet)
 
 			err = srv.LoginUser(c)
 			require.NoError(t, err)
@@ -613,8 +621,12 @@ func TestCreateUserMiddleware(t *testing.T) {
 
 			ts := httptest.NewServer(e)
 			urlPath := "/v1/users"
-			res, err := ts.Client().Post(ts.URL+urlPath, "application/json", bytes.NewReader(data))
+
+			req := serverRequest(t, data, ts, urlPath, http.MethodPost, "")
+
+			res, err := ts.Client().Do(req)
 			require.NoError(t, err)
+
 			tc.checkResponse(res)
 		})
 	}

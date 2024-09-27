@@ -9,11 +9,17 @@ import (
 // FindTitles implements all the handlers in the ServerInterface
 func (p *Server) FindTitles(ctx echo.Context, params FindTitlesParams) error {
 
+	var findTitlesParams FindTitlesParams
+	err := ctx.Bind(&findTitlesParams)
+	if err != nil {
+		return ctx.String(http.StatusBadRequest, err.Error())
+	}
+
 	titles, err := p.queries.ListTitles(
 		ctx.Request().Context(),
 		db.ListTitlesParams{
-			Similarity: *params.Similarity,
-			Limit:      *params.Limit,
+			Similarity: params.Similarity,
+			Limit:      params.Limit,
 		})
 
 	if err != nil {
@@ -39,9 +45,10 @@ func (p *Server) AddTitle(ctx echo.Context) error {
 	title, err := p.queries.InsertTitle(
 		ctx.Request().Context(),
 		db.InsertTitleParams{
-			Title:      newTitle.Title,
-			NumSubs:    newTitle.NumSubs,
-			LanguageID: newTitle.LanguageId,
+			Title:        newTitle.Title,
+			NumSubs:      newTitle.NumSubs,
+			LanguageID:   newTitle.LanguageId,
+			OgLanguageID: newTitle.OgLanguageId,
 		})
 
 	if err != nil {

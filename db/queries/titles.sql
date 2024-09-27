@@ -1,6 +1,6 @@
 -- name: InsertTitle :one
-INSERT INTO titles (title, num_subs, language_id)
-VALUES ($1, $2, $3)
+INSERT INTO titles (title, num_subs, language_id, og_language_id)
+VALUES ($1, $2, $3, $4)
 RETURNING *;
 
 -- name: SelectTitleById :one
@@ -10,12 +10,14 @@ SELECT * FROM titles WHERE  id = $1;
 DELETE FROM titles WHERE  id = $1;
 
 -- name: ListTitlesByLanguage :many
-SELECT count(*) OVER(), id, title, similarity(title, $1) AS similarity, num_subs
+SELECT title, similarity(title, $1) AS similarity, num_subs, language_id, og_language_id
 FROM titles
 WHERE language_id = $2
+ORDER BY similarity
 LIMIT $3;
 
 -- name: ListTitles :many
-SELECT count(*) OVER(), id, title, similarity(title, $1) AS similarity, num_subs
+SELECT id, title, similarity(title, $1) AS similarity, num_subs, language_id, og_language_id
 FROM titles
+ORDER BY similarity
 LIMIT $2;

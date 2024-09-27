@@ -15,6 +15,7 @@ const (
 	EmailConstraint     = "users_email_key"
 	UsernameConstraint  = "users_name_key"
 	ReadTitlesCode      = "titles:r"
+	WriteTitlesCode     = "titles:w"
 )
 
 func PqErrorCode(err error) string {

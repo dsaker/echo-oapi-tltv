@@ -19,19 +19,25 @@ func (q *Queries) DeleteTitleById(ctx context.Context, id int64) error {
 }
 
 const insertTitle = `-- name: InsertTitle :one
-INSERT INTO titles (title, num_subs, language_id)
-VALUES ($1, $2, $3)
+INSERT INTO titles (title, num_subs, language_id, og_language_id)
+VALUES ($1, $2, $3, $4)
 RETURNING id, title, num_subs, language_id, og_language_id
 `
 
 type InsertTitleParams struct {
-	Title      string `json:"title"`
-	NumSubs    int32  `json:"num_subs"`
-	LanguageID int64  `json:"language_id"`
+	Title        string `json:"title"`
+	NumSubs      int32  `json:"num_subs"`
+	LanguageID   int64  `json:"language_id"`
+	OgLanguageID int64  `json:"og_language_id"`
 }
 
 func (q *Queries) InsertTitle(ctx context.Context, arg InsertTitleParams) (Title, error) {
-	row := q.db.QueryRowContext(ctx, insertTitle, arg.Title, arg.NumSubs, arg.LanguageID)
+	row := q.db.QueryRowContext(ctx, insertTitle,
+		arg.Title,
+		arg.NumSubs,
+		arg.LanguageID,
+		arg.OgLanguageID,
+	)
 	var i Title
 	err := row.Scan(
 		&i.ID,
@@ -44,8 +50,9 @@ func (q *Queries) InsertTitle(ctx context.Context, arg InsertTitleParams) (Title
 }
 
 const listTitles = `-- name: ListTitles :many
-SELECT count(*) OVER(), id, title, similarity(title, $1) AS similarity, num_subs
+SELECT id, title, similarity(title, $1) AS similarity, num_subs, language_id, og_language_id
 FROM titles
+ORDER BY similarity
 LIMIT $2
 `
 
@@ -55,11 +62,12 @@ type ListTitlesParams struct {
 }
 
 type ListTitlesRow struct {
-	Count      int64   `json:"count"`
-	ID         int64   `json:"id"`
-	Title      string  `json:"title"`
-	Similarity float32 `json:"similarity"`
-	NumSubs    int32   `json:"num_subs"`
+	ID           int64   `json:"id"`
+	Title        string  `json:"title"`
+	Similarity   float32 `json:"similarity"`
+	NumSubs      int32   `json:"num_subs"`
+	LanguageID   int64   `json:"language_id"`
+	OgLanguageID int64   `json:"og_language_id"`
 }
 
 func (q *Queries) ListTitles(ctx context.Context, arg ListTitlesParams) ([]ListTitlesRow, error) {
@@ -72,11 +80,12 @@ func (q *Queries) ListTitles(ctx context.Context, arg ListTitlesParams) ([]ListT
 	for rows.Next() {
 		var i ListTitlesRow
 		if err := rows.Scan(
-			&i.Count,
 			&i.ID,
 			&i.Title,
 			&i.Similarity,
 			&i.NumSubs,
+			&i.LanguageID,
+			&i.OgLanguageID,
 		); err != nil {
 			return nil, err
 		}
@@ -92,9 +101,10 @@ func (q *Queries) ListTitles(ctx context.Context, arg ListTitlesParams) ([]ListT
 }
 
 const listTitlesByLanguage = `-- name: ListTitlesByLanguage :many
-SELECT count(*) OVER(), id, title, similarity(title, $1) AS similarity, num_subs
+SELECT title, similarity(title, $1) AS similarity, num_subs, language_id, og_language_id
 FROM titles
 WHERE language_id = $2
+ORDER BY similarity
 LIMIT $3
 `
 
@@ -105,11 +115,11 @@ type ListTitlesByLanguageParams struct {
 }
 
 type ListTitlesByLanguageRow struct {
-	Count      int64   `json:"count"`
-	ID         int64   `json:"id"`
-	Title      string  `json:"title"`
-	Similarity float32 `json:"similarity"`
-	NumSubs    int32   `json:"num_subs"`
+	Title        string  `json:"title"`
+	Similarity   float32 `json:"similarity"`
+	NumSubs      int32   `json:"num_subs"`
+	LanguageID   int64   `json:"language_id"`
+	OgLanguageID int64   `json:"og_language_id"`
 }
 
 func (q *Queries) ListTitlesByLanguage(ctx context.Context, arg ListTitlesByLanguageParams) ([]ListTitlesByLanguageRow, error) {
@@ -122,11 +132,11 @@ func (q *Queries) ListTitlesByLanguage(ctx context.Context, arg ListTitlesByLang
 	for rows.Next() {
 		var i ListTitlesByLanguageRow
 		if err := rows.Scan(
-			&i.Count,
-			&i.ID,
 			&i.Title,
 			&i.Similarity,
 			&i.NumSubs,
+			&i.LanguageID,
+			&i.OgLanguageID,
 		); err != nil {
 			return nil, err
 		}
