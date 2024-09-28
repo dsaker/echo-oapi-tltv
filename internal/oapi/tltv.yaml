@@ -9,8 +9,6 @@ info:
   license:
     name: Apache 2.0
     url: https://www.apache.org/licenses/LICENSE-2.0.html
-servers:
-  - url: "/v1"
 paths:
   /userspermissions:
     post:
@@ -46,7 +44,7 @@ paths:
       description: |
         Creates a new user. Duplicate email and username are not allowed.
         Email, name, and password are required.
-      operationId: register
+      operationId: createUser
       security: []
       requestBody:
         description:  User to add
@@ -185,13 +183,15 @@ paths:
         - name: similarity
           in: query
           description: find titles similar to
-          required: false
+          required: true
+          example: similar
           schema:
             type: string
         - name: limit
           in: query
           description: maximum number of results to return
-          required: false
+          required: true
+          example: 10
           schema:
             type: integer
             format: int32
@@ -339,13 +339,14 @@ components:
           description: Username of user. Must be alphanumeric.
           example: username
           pattern: "^[a-zA-Z0-9]*$"
-          minLength: 3
+          minLength: 5
           maxLength: 20
         email:
           type: string
           example: example@email.com
           pattern: (?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])
           description: Email of user
+
         password:
           type: string
           example: pa55w@rd
@@ -387,6 +388,7 @@ components:
         - title
         - numSubs
         - languageId
+        - ogLanguageId
       properties:
         title:
           type: string
@@ -399,6 +401,10 @@ components:
           type: integer
           format: int64
           description: Language id of title
+        ogLanguageId:
+          type: integer
+          format: int64
+          description: Language id of title
     UserLogin:
       required:
         - username
@@ -407,10 +413,12 @@ components:
         username:
           type: string
           description: Username of user
+          example: username
         password:
           type: string
           format: password
           description: Password of user
+          example: pa55w@rd
     NewUserPermission:
       required:
         - user_id

@@ -62,6 +62,9 @@ type NewTitle struct {
 	// NumSubs Number of phrases
 	NumSubs int32 `json:"numSubs"`
 
+	// OgLanguageId Language id of title
+	OgLanguageId int64 `json:"ogLanguageId"`
+
 	// Title Name of the title
 	Title string `json:"title"`
 }
@@ -117,6 +120,9 @@ type Title struct {
 
 	// NumSubs Number of phrases
 	NumSubs int32 `json:"numSubs"`
+
+	// OgLanguageId Language id of title
+	OgLanguageId int64 `json:"ogLanguageId"`
 
 	// Title Name of the title
 	Title string `json:"title"`
@@ -179,17 +185,17 @@ type UserPermissionResponse struct {
 // FindTitlesParams defines parameters for FindTitles.
 type FindTitlesParams struct {
 	// Similarity find titles similar to
-	Similarity *string `form:"similarity,omitempty" json:"similarity,omitempty"`
+	Similarity string `form:"similarity" json:"similarity"`
 
 	// Limit maximum number of results to return
-	Limit *int32 `form:"limit,omitempty" json:"limit,omitempty"`
+	Limit int32 `form:"limit" json:"limit"`
 }
 
 // AddTitleJSONRequestBody defines body for AddTitle for application/json ContentType.
 type AddTitleJSONRequestBody = NewTitle
 
-// RegisterJSONRequestBody defines body for Register for application/json ContentType.
-type RegisterJSONRequestBody = NewUser
+// CreateUserJSONRequestBody defines body for CreateUser for application/json ContentType.
+type CreateUserJSONRequestBody = NewUser
 
 // LoginUserJSONRequestBody defines body for LoginUser for application/json ContentType.
 type LoginUserJSONRequestBody = UserLogin
@@ -252,7 +258,7 @@ type ServerInterface interface {
 	FindTitleByID(ctx echo.Context, id int64) error
 	// Creates a new user
 	// (POST /users)
-	Register(ctx echo.Context) error
+	CreateUser(ctx echo.Context) error
 	// Login a user
 	// (POST /users/login)
 	LoginUser(ctx echo.Context) error
@@ -283,16 +289,16 @@ func (w *ServerInterfaceWrapper) FindTitles(ctx echo.Context) error {
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params FindTitlesParams
-	// ------------- Optional query parameter "similarity" -------------
+	// ------------- Required query parameter "similarity" -------------
 
-	err = runtime.BindQueryParameter("form", true, false, "similarity", ctx.QueryParams(), &params.Similarity)
+	err = runtime.BindQueryParameter("form", true, true, "similarity", ctx.QueryParams(), &params.Similarity)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter similarity: %s", err))
 	}
 
-	// ------------- Optional query parameter "limit" -------------
+	// ------------- Required query parameter "limit" -------------
 
-	err = runtime.BindQueryParameter("form", true, false, "limit", ctx.QueryParams(), &params.Limit)
+	err = runtime.BindQueryParameter("form", true, true, "limit", ctx.QueryParams(), &params.Limit)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter limit: %s", err))
 	}
@@ -349,12 +355,12 @@ func (w *ServerInterfaceWrapper) FindTitleByID(ctx echo.Context) error {
 	return err
 }
 
-// Register converts echo context to params.
-func (w *ServerInterfaceWrapper) Register(ctx echo.Context) error {
+// CreateUser converts echo context to params.
+func (w *ServerInterfaceWrapper) CreateUser(ctx echo.Context) error {
 	var err error
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.Register(ctx)
+	err = w.Handler.CreateUser(ctx)
 	return err
 }
 
@@ -464,7 +470,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.POST(baseURL+"/titles", wrapper.AddTitle)
 	router.DELETE(baseURL+"/titles/:id", wrapper.DeleteTitle)
 	router.GET(baseURL+"/titles/:id", wrapper.FindTitleByID)
-	router.POST(baseURL+"/users", wrapper.Register)
+	router.POST(baseURL+"/users", wrapper.CreateUser)
 	router.POST(baseURL+"/users/login", wrapper.LoginUser)
 	router.DELETE(baseURL+"/users/:id", wrapper.DeleteUser)
 	router.GET(baseURL+"/users/:id", wrapper.FindUserByID)
@@ -476,41 +482,41 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

@@ -9,16 +9,22 @@ import (
 // FindTitles implements all the handlers in the ServerInterface
 func (p *Server) FindTitles(ctx echo.Context, params FindTitlesParams) error {
 
+	var findTitlesParams FindTitlesParams
+	err := ctx.Bind(&findTitlesParams)
+	if err != nil {
+		return ctx.String(http.StatusBadRequest, err.Error())
+	}
+
 	titles, err := p.queries.ListTitles(
 		ctx.Request().Context(),
 		db.ListTitlesParams{
-			Similarity: *params.Similarity,
-			Limit:      *params.Limit,
+			Similarity: params.Similarity,
+			Limit:      params.Limit,
 		})
 
 	if err != nil {
 		ctx.Logger().Error(err)
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return ctx.String(http.StatusInternalServerError, err.Error())
 	}
 
 	return ctx.JSON(http.StatusOK, titles)
@@ -39,14 +45,15 @@ func (p *Server) AddTitle(ctx echo.Context) error {
 	title, err := p.queries.InsertTitle(
 		ctx.Request().Context(),
 		db.InsertTitleParams{
-			Title:      newTitle.Title,
-			NumSubs:    newTitle.NumSubs,
-			LanguageID: newTitle.LanguageId,
+			Title:        newTitle.Title,
+			NumSubs:      newTitle.NumSubs,
+			LanguageID:   newTitle.LanguageId,
+			OgLanguageID: newTitle.OgLanguageId,
 		})
 
 	if err != nil {
 		ctx.Logger().Error(err)
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return ctx.String(http.StatusInternalServerError, err.Error())
 	}
 
 	return ctx.JSON(http.StatusOK, title)
@@ -58,7 +65,7 @@ func (p *Server) FindTitleByID(ctx echo.Context, id int64) error {
 
 	if err != nil {
 		ctx.Logger().Error(err)
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return ctx.String(http.StatusInternalServerError, err.Error())
 	}
 
 	return ctx.JSON(http.StatusOK, title)
@@ -69,7 +76,7 @@ func (p *Server) DeleteTitle(ctx echo.Context, id int64) error {
 	err := p.queries.DeleteTitleById(ctx.Request().Context(), id)
 	if err != nil {
 		ctx.Logger().Error(err)
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return ctx.String(http.StatusInternalServerError, err.Error())
 	}
 	return ctx.NoContent(http.StatusNoContent)
 }

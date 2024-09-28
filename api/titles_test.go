@@ -1,135 +1,244 @@
 package api
 
-//import (
-//	"encoding/json"
-//	"fmt"
-//	middleware "github.com/oapi-codegen/nethttp-middleware"
-//	"github.com/oapi-codegen/testutil"
-//	"github.com/stretchr/testify/assert"
-//	"github.com/stretchr/testify/require"
-//	"net/http"
-//	"net/http/httptest"
-//	"talkliketv.click/tltv/internal/oapi"
-//	"testing"
-//)
-//
-//func doGet(t *testing.T, mux *http.ServeMux, url string) *httptest.ResponseRecorder {
-//	response := testutil.NewRequest().Get(url).WithAcceptJson().GoWithHTTPHandler(t, mux)
-//	return response.Recorder
-//}
-//
-//func TestTlTv(t *testing.T) {
-//	var err error
-//
-//	// Get the swagger description of our API
-//	swagger, err := oapi.GetSwagger()
-//	require.NoError(t, err)
-//
-//	// Clear out the servers array in the swagger spec, that skips validating
-//	// that server names match. We don't know how this thing will be run.
-//	swagger.Servers = nil
-//
-//	// Create a new ServeMux for testing.
-//	m := http.NewServeMux()
-//
-//	// Use our validation middleware to check all requests against the
-//	// OpenAPI schema.
-//	opts := oapi.StdHTTPServerOptions{
-//		BaseRouter: m,
-//		Middlewares: []oapi.MiddlewareFunc{
-//			middleware.OapiRequestValidator(swagger),
-//		},
-//	}
-//
-//	app := newTest Application(t)
-//	oapi.HandlerWithOptions(app, opts)
-//
-//	t.Run("Add title", func(t *testing.T) {
-//		newTitle := oapi.NewTitle{
-//			LanguageId: 1,
-//			NumSubs:    1,
-//			Title:      "new title",
-//		}
-//
-//		rr := testutil.NewRequest().Post("/titles").WithJsonBody(newTitle).GoWithHTTPHandler(t, m).Recorder
-//		assert.Equal(t, http.StatusCreated, rr.Code)
-//
-//		var resultTitle oapi.Title
-//		err = json.NewDecoder(rr.Body).Decode(&resultTitle)
-//		assert.NoError(t, err, "error unmarshalling response")
-//		assert.Equal(t, newTitle.Title, resultTitle.Title)
-//		assert.Equal(t, newTitle.NumSubs, resultTitle.NumSubs)
-//		assert.Equal(t, newTitle.LanguageId, resultTitle.LanguageId)
-//	})
-//
-//	t.Run("Find title by ID", func(t *testing.T) {
-//		title := oapi.Title{
-//			Id: 100,
-//		}
-//
-//		Server.Titles[title.Id] = title
-//		rr := doGet(t, m, fmt.Sprintf("/titles/%d", title.Id))
-//
-//		var resultTitle oapi.Title
-//		err = json.NewDecoder(rr.Body).Decode(&resultTitle)
-//		assert.NoError(t, err, "error getting title")
-//		assert.Equal(t, title, resultTitle)
-//	})
-//
-//	t.Run("Title not found", func(t *testing.T) {
-//		rr := doGet(t, m, "/titles/27179095781")
-//		assert.Equal(t, http.StatusNotFound, rr.Code)
-//
-//		var titleError oapi.Error
-//		err = json.NewDecoder(rr.Body).Decode(&titleError)
-//		assert.NoError(t, err, "error getting response", err)
-//		assert.Equal(t, int32(http.StatusNotFound), titleError.Code)
-//	})
-//
-//	t.Run("List all titles", func(t *testing.T) {
-//		Server.Titles = map[int64]oapi.Title{
-//			1: {},
-//			2: {},
-//		}
-//
-//		// Now, list all titles, we should have two
-//		rr := doGet(t, m, "/titles")
-//		assert.Equal(t, http.StatusOK, rr.Code)
-//
-//		var titleList []oapi.Title
-//		err = json.NewDecoder(rr.Body).Decode(&titleList)
-//		assert.NoError(t, err, "error getting response", err)
-//		assert.Equal(t, 2, len(titleList))
-//	})
-//
-//	t.Run("Delete titles", func(t *testing.T) {
-//		Server.Titles = map[int64]oapi.Title{
-//			1: {},
-//			2: {},
-//		}
-//
-//		// Let's delete non-existent title
-//		rr := testutil.NewRequest().Delete("/titles/7").GoWithHTTPHandler(t, m).Recorder
-//		assert.Equal(t, http.StatusNotFound, rr.Code)
-//
-//		var titleError oapi.Error
-//		err = json.NewDecoder(rr.Body).Decode(&titleError)
-//		assert.NoError(t, err, "error unmarshalling TitleError")
-//		assert.Equal(t, int32(http.StatusNotFound), titleError.Code)
-//
-//		// Now, delete both real titles
-//		rr = testutil.NewRequest().Delete("/titles/1").GoWithHTTPHandler(t, m).Recorder
-//		assert.Equal(t, http.StatusNoContent, rr.Code)
-//
-//		rr = testutil.NewRequest().Delete("/titles/2").GoWithHTTPHandler(t, m).Recorder
-//		assert.Equal(t, http.StatusNoContent, rr.Code)
-//
-//		// Should have no titles left.
-//		var titleList []oapi.Title
-//		rr = doGet(t, m, "/titles")
-//		assert.Equal(t, http.StatusOK, rr.Code)
-//		err = json.NewDecoder(rr.Body).Decode(&titleList)
-//		assert.NoError(t, err, "error getting response", err)
-//		assert.Equal(t, 0, len(titleList))
-//	})
-//}
+import (
+	"database/sql"
+	"encoding/json"
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/require"
+	"net/http"
+	mockdb "talkliketv.click/tltv/db/mock"
+	db "talkliketv.click/tltv/db/sqlc"
+	"testing"
+)
+
+func TestFindTitles(t *testing.T) {
+	user, _ := randomUser(t)
+	title := randomTitle()
+	listTitleParams := db.ListTitlesParams{
+		Similarity: "similar",
+		Limit:      10,
+	}
+
+	listTitleRow := db.ListTitlesRow{
+		ID:           title.ID,
+		Title:        title.Title,
+		Similarity:   0.13333334,
+		NumSubs:      title.NumSubs,
+		OgLanguageID: title.OgLanguageID,
+		LanguageID:   title.LanguageID,
+	}
+
+	listTitlesRow := []db.ListTitlesRow{listTitleRow}
+
+	testCases := []testCase{
+		{
+			name:   "OK",
+			user:   user,
+			body:   nil,
+			values: map[string]any{"similarity": true, "limit": true},
+			buildStubs: func(store *mockdb.MockQuerier) {
+				store.EXPECT().
+					ListTitles(gomock.Any(), listTitleParams).
+					Times(1).
+					Return(listTitlesRow, nil)
+			},
+			checkResResponse: func(res *http.Response) {
+				require.Equal(t, http.StatusOK, res.StatusCode)
+				body := readBody(t, res)
+				var gotTitlesRow []db.ListTitlesRow
+				err := json.Unmarshal([]byte(body), &gotTitlesRow)
+				require.NoError(t, err)
+				requireMatchAnyExcept(t, listTitlesRow[0], gotTitlesRow[0], nil, "", "")
+			},
+			permissions: []string{db.ReadTitlesCode},
+		},
+		{
+			name:   "Missing similarity value",
+			user:   user,
+			body:   nil,
+			values: map[string]any{"similarity": false, "limit": true},
+			buildStubs: func(store *mockdb.MockQuerier) {
+			},
+			checkResResponse: func(res *http.Response) {
+				require.Equal(t, http.StatusBadRequest, res.StatusCode)
+				body := readBody(t, res)
+				require.Contains(t, body, "{\"message\":\"parameter \\\"similarity\\\" in query has an error: value is required but missing\"}")
+
+			},
+			permissions: []string{db.ReadTitlesCode},
+		},
+		{
+			name:   "Missing permission",
+			user:   user,
+			body:   nil,
+			values: map[string]any{"similarity": false, "limit": true},
+			buildStubs: func(store *mockdb.MockQuerier) {
+			},
+			checkResResponse: func(res *http.Response) {
+				require.Equal(t, http.StatusForbidden, res.StatusCode)
+				body := readBody(t, res)
+				require.Contains(t, body, "\"message\":\"security requirements failed: token claims don't match: provided claims do not match expected scopes\"")
+
+			},
+			permissions: []string{},
+		},
+		{
+			name:   "Missing limit value",
+			user:   user,
+			body:   nil,
+			values: map[string]any{"similarity": true, "limit": false},
+			buildStubs: func(store *mockdb.MockQuerier) {
+			},
+			checkResResponse: func(res *http.Response) {
+				require.Equal(t, http.StatusBadRequest, res.StatusCode)
+				body := readBody(t, res)
+				require.Contains(t, body, "{\"message\":\"parameter \\\"limit\\\" in query has an error: value is required but missing\"}")
+
+			},
+			permissions: []string{db.ReadTitlesCode},
+		},
+	}
+
+	for i := range testCases {
+		tc := testCases[i]
+
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			req, ts := setupServerTest(t, ctrl, tc, []byte(""), titlesBasePath, http.MethodGet)
+
+			q := req.URL.Query()
+			if tc.values["similarity"] == true {
+				q.Add("similarity", "similar")
+			}
+			if tc.values["limit"] == true {
+				q.Add("limit", "10")
+			}
+			req.URL.RawQuery = q.Encode()
+
+			res, err := ts.Client().Do(req)
+			require.NoError(t, err)
+
+			tc.checkResResponse(res)
+		})
+	}
+}
+
+func TestAddTitle(t *testing.T) {
+	user, _ := randomUser(t)
+
+	title := randomTitle()
+
+	insertTitle := db.InsertTitleParams{
+		Title:        title.Title,
+		NumSubs:      title.NumSubs,
+		LanguageID:   title.LanguageID,
+		OgLanguageID: title.OgLanguageID,
+	}
+
+	testCases := []testCase{
+		{
+			name: "OK",
+			user: user,
+			body: map[string]any{
+				"languageId":   title.LanguageID,
+				"numSubs":      title.NumSubs,
+				"ogLanguageId": title.OgLanguageID,
+				"title":        title.Title,
+			},
+			buildStubs: func(store *mockdb.MockQuerier) {
+				store.EXPECT().
+					InsertTitle(gomock.Any(), insertTitle).
+					Times(1).
+					Return(title, nil)
+			},
+			checkResResponse: func(res *http.Response) {
+				require.Equal(t, http.StatusOK, res.StatusCode)
+				body := readBody(t, res)
+				var gotTitle db.Title
+				err := json.Unmarshal([]byte(body), &gotTitle)
+				require.NoError(t, err)
+				requireMatchAnyExcept(t, title, gotTitle, nil, "", "")
+			},
+			permissions: []string{db.WriteTitlesCode},
+		},
+		{
+			name: "Bad Request Body",
+			user: user,
+			body: map[string]any{
+				"languageId":   title.Title,
+				"numSubs":      title.NumSubs,
+				"ogLanguageId": title.OgLanguageID,
+				"title":        title.Title,
+			},
+			buildStubs: func(store *mockdb.MockQuerier) {
+			},
+			checkResResponse: func(res *http.Response) {
+				require.Equal(t, http.StatusBadRequest, res.StatusCode)
+				body := readBody(t, res)
+				require.Contains(t, body, "request body has an error: doesn't match schema #/components/schemas/NewTitle: Error at ")
+			},
+			permissions: []string{db.WriteTitlesCode},
+		},
+		{
+			name: "db connection closed",
+			user: user,
+			body: map[string]any{
+				"languageId":   title.LanguageID,
+				"numSubs":      title.NumSubs,
+				"ogLanguageId": title.OgLanguageID,
+				"title":        title.Title,
+			},
+			buildStubs: func(store *mockdb.MockQuerier) {
+				store.EXPECT().
+					InsertTitle(gomock.Any(), gomock.Any()).
+					Times(1).
+					Return(db.Title{}, sql.ErrConnDone)
+			},
+			checkResResponse: func(res *http.Response) {
+				require.Equal(t, http.StatusInternalServerError, res.StatusCode)
+				body := readBody(t, res)
+				require.Contains(t, body, "sql: connection is already closed")
+			},
+			permissions: []string{db.WriteTitlesCode},
+		},
+		{
+			name: "missing permission",
+			user: user,
+			body: map[string]any{
+				"languageId":   title.LanguageID,
+				"numSubs":      title.NumSubs,
+				"ogLanguageId": title.OgLanguageID,
+				"title":        title.Title,
+			},
+			buildStubs: func(store *mockdb.MockQuerier) {
+			},
+			checkResResponse: func(res *http.Response) {
+				require.Equal(t, http.StatusForbidden, res.StatusCode)
+				body := readBody(t, res)
+				require.Contains(t, body, "\"message\":\"security requirements failed: token claims don't match: provided claims do not match expected scopes\"")
+			},
+			permissions: []string{},
+		},
+	}
+
+	for i := range testCases {
+		tc := testCases[i]
+
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			data, err := json.Marshal(tc.body)
+			require.NoError(t, err)
+
+			req, ts := setupServerTest(t, ctrl, tc, data, titlesBasePath, http.MethodPost)
+
+			res, err := ts.Client().Do(req)
+			require.NoError(t, err)
+
+			tc.checkResResponse(res)
+		})
+	}
+}
