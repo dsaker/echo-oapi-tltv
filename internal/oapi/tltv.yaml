@@ -9,8 +9,6 @@ info:
   license:
     name: Apache 2.0
     url: https://www.apache.org/licenses/LICENSE-2.0.html
-servers:
-  - url: "/v1"
 paths:
   /userspermissions:
     post:
@@ -341,7 +339,7 @@ components:
           description: Username of user. Must be alphanumeric.
           example: username
           pattern: "^[a-zA-Z0-9]*$"
-          minLength: 3
+          minLength: 5
           maxLength: 20
         email:
           type: string

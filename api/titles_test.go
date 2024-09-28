@@ -1,26 +1,15 @@
 package api
 
 import (
+	"database/sql"
 	"encoding/json"
 	"github.com/golang/mock/gomock"
-	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
 	"net/http"
-	"net/http/httptest"
 	mockdb "talkliketv.click/tltv/db/mock"
 	db "talkliketv.click/tltv/db/sqlc"
 	"testing"
 )
-
-type titlesTestCase struct {
-	name          string
-	user          db.User
-	body          db.ListTitlesParams
-	similarity    bool
-	limit         bool
-	buildStubs    func(store *mockdb.MockQuerier)
-	checkResponse func(res *http.Response)
-}
 
 func TestFindTitles(t *testing.T) {
 	user, _ := randomUser(t)
@@ -41,66 +30,72 @@ func TestFindTitles(t *testing.T) {
 
 	listTitlesRow := []db.ListTitlesRow{listTitleRow}
 
-	testCases := []titlesTestCase{
+	testCases := []testCase{
 		{
-			name: "OK",
-			user: user,
-			body: db.ListTitlesParams{
-				Similarity: "similar",
-				Limit:      10,
-			},
-			similarity: true,
-			limit:      true,
+			name:   "OK",
+			user:   user,
+			body:   nil,
+			values: map[string]any{"similarity": true, "limit": true},
 			buildStubs: func(store *mockdb.MockQuerier) {
 				store.EXPECT().
 					ListTitles(gomock.Any(), listTitleParams).
 					Times(1).
 					Return(listTitlesRow, nil)
 			},
-			checkResponse: func(res *http.Response) {
+			checkResResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusOK, res.StatusCode)
 				body := readBody(t, res)
 				var gotTitlesRow []db.ListTitlesRow
 				err := json.Unmarshal([]byte(body), &gotTitlesRow)
 				require.NoError(t, err)
-				requireMatchAnyExcept(t, listTitlesRow[0], gotTitlesRow[0], []string{}, "", "")
+				requireMatchAnyExcept(t, listTitlesRow[0], gotTitlesRow[0], nil, "", "")
 			},
+			permissions: []string{db.ReadTitlesCode},
 		},
 		{
-			name: "Missing similarity value",
-			user: user,
-			body: db.ListTitlesParams{
-				Similarity: "",
-				Limit:      10,
-			},
-			similarity: false,
-			limit:      true,
+			name:   "Missing similarity value",
+			user:   user,
+			body:   nil,
+			values: map[string]any{"similarity": false, "limit": true},
 			buildStubs: func(store *mockdb.MockQuerier) {
 			},
-			checkResponse: func(res *http.Response) {
+			checkResResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)
 				body := readBody(t, res)
-				require.Contains(t, body, "Invalid format for parameter similarity: query parameter 'similarity' is required")
+				require.Contains(t, body, "{\"message\":\"parameter \\\"similarity\\\" in query has an error: value is required but missing\"}")
 
 			},
+			permissions: []string{db.ReadTitlesCode},
 		},
 		{
-			name: "Missing limit value",
-			user: user,
-			body: db.ListTitlesParams{
-				Similarity: "",
-				Limit:      10,
-			},
-			similarity: true,
-			limit:      false,
+			name:   "Missing permission",
+			user:   user,
+			body:   nil,
+			values: map[string]any{"similarity": false, "limit": true},
 			buildStubs: func(store *mockdb.MockQuerier) {
 			},
-			checkResponse: func(res *http.Response) {
-				require.Equal(t, http.StatusBadRequest, res.StatusCode)
+			checkResResponse: func(res *http.Response) {
+				require.Equal(t, http.StatusForbidden, res.StatusCode)
 				body := readBody(t, res)
-				require.Contains(t, body, "Invalid format for parameter limit: query parameter 'limit' is required")
+				require.Contains(t, body, "\"message\":\"security requirements failed: token claims don't match: provided claims do not match expected scopes\"")
 
 			},
+			permissions: []string{},
+		},
+		{
+			name:   "Missing limit value",
+			user:   user,
+			body:   nil,
+			values: map[string]any{"similarity": true, "limit": false},
+			buildStubs: func(store *mockdb.MockQuerier) {
+			},
+			checkResResponse: func(res *http.Response) {
+				require.Equal(t, http.StatusBadRequest, res.StatusCode)
+				body := readBody(t, res)
+				require.Contains(t, body, "{\"message\":\"parameter \\\"limit\\\" in query has an error: value is required but missing\"}")
+
+			},
+			permissions: []string{db.ReadTitlesCode},
 		},
 	}
 
@@ -111,29 +106,13 @@ func TestFindTitles(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			req := setupServerTest(t, ctrl, tc)
-			//store := mockdb.NewMockQuerier(ctrl)
-			//tc.buildStubs(store)
-			//
-			//spec, err := GetSwagger()
-			//require.NoError(t, err)
-			//
-			//e := echo.New()
-			//svr := NewServer(e, testCfg, store, spec)
-			//
-			//RegisterHandlersWithBaseURL(e, svr, "/v1")
-			//ts := httptest.NewServer(e)
-			//
-			//jwsToken, err := svr.fa.CreateJWSWithClaims([]string{db.ReadTitlesCode}, user)
-			//require.NoError(t, err)
-			//urlPath := "/v1/titles"
-			//
-			//req := serverRequest(t, nil, ts, urlPath, http.MethodGet, string(jwsToken))
+			req, ts := setupServerTest(t, ctrl, tc, []byte(""), titlesBasePath, http.MethodGet)
+
 			q := req.URL.Query()
-			if tc.similarity {
+			if tc.values["similarity"] == true {
 				q.Add("similarity", "similar")
 			}
-			if tc.limit {
+			if tc.values["limit"] == true {
 				q.Add("limit", "10")
 			}
 			req.URL.RawQuery = q.Encode()
@@ -141,13 +120,14 @@ func TestFindTitles(t *testing.T) {
 			res, err := ts.Client().Do(req)
 			require.NoError(t, err)
 
-			tc.checkResponse(res)
+			tc.checkResResponse(res)
 		})
 	}
 }
 
 func TestAddTitle(t *testing.T) {
 	user, _ := randomUser(t)
+
 	title := randomTitle()
 
 	insertTitle := db.InsertTitleParams{
@@ -157,14 +137,10 @@ func TestAddTitle(t *testing.T) {
 		OgLanguageID: title.OgLanguageID,
 	}
 
-	testCases := []struct {
-		name          string
-		body          interface{}
-		buildStubs    func(store *mockdb.MockQuerier)
-		checkResponse func(res *http.Response)
-	}{
+	testCases := []testCase{
 		{
 			name: "OK",
+			user: user,
 			body: map[string]any{
 				"languageId":   title.LanguageID,
 				"numSubs":      title.NumSubs,
@@ -177,9 +153,73 @@ func TestAddTitle(t *testing.T) {
 					Times(1).
 					Return(title, nil)
 			},
-			checkResponse: func(res *http.Response) {
+			checkResResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusOK, res.StatusCode)
+				body := readBody(t, res)
+				var gotTitle db.Title
+				err := json.Unmarshal([]byte(body), &gotTitle)
+				require.NoError(t, err)
+				requireMatchAnyExcept(t, title, gotTitle, nil, "", "")
 			},
+			permissions: []string{db.WriteTitlesCode},
+		},
+		{
+			name: "Bad Request Body",
+			user: user,
+			body: map[string]any{
+				"languageId":   title.Title,
+				"numSubs":      title.NumSubs,
+				"ogLanguageId": title.OgLanguageID,
+				"title":        title.Title,
+			},
+			buildStubs: func(store *mockdb.MockQuerier) {
+			},
+			checkResResponse: func(res *http.Response) {
+				require.Equal(t, http.StatusBadRequest, res.StatusCode)
+				body := readBody(t, res)
+				require.Contains(t, body, "request body has an error: doesn't match schema #/components/schemas/NewTitle: Error at ")
+			},
+			permissions: []string{db.WriteTitlesCode},
+		},
+		{
+			name: "db connection closed",
+			user: user,
+			body: map[string]any{
+				"languageId":   title.LanguageID,
+				"numSubs":      title.NumSubs,
+				"ogLanguageId": title.OgLanguageID,
+				"title":        title.Title,
+			},
+			buildStubs: func(store *mockdb.MockQuerier) {
+				store.EXPECT().
+					InsertTitle(gomock.Any(), gomock.Any()).
+					Times(1).
+					Return(db.Title{}, sql.ErrConnDone)
+			},
+			checkResResponse: func(res *http.Response) {
+				require.Equal(t, http.StatusInternalServerError, res.StatusCode)
+				body := readBody(t, res)
+				require.Contains(t, body, "sql: connection is already closed")
+			},
+			permissions: []string{db.WriteTitlesCode},
+		},
+		{
+			name: "missing permission",
+			user: user,
+			body: map[string]any{
+				"languageId":   title.LanguageID,
+				"numSubs":      title.NumSubs,
+				"ogLanguageId": title.OgLanguageID,
+				"title":        title.Title,
+			},
+			buildStubs: func(store *mockdb.MockQuerier) {
+			},
+			checkResResponse: func(res *http.Response) {
+				require.Equal(t, http.StatusForbidden, res.StatusCode)
+				body := readBody(t, res)
+				require.Contains(t, body, "\"message\":\"security requirements failed: token claims don't match: provided claims do not match expected scopes\"")
+			},
+			permissions: []string{},
 		},
 	}
 
@@ -190,31 +230,15 @@ func TestAddTitle(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			store := mockdb.NewMockQuerier(ctrl)
-			tc.buildStubs(store)
-
-			spec, err := GetSwagger()
-			require.NoError(t, err)
-
-			e := echo.New()
-			svr := NewServer(e, testCfg, store, spec)
-
-			RegisterHandlersWithBaseURL(e, svr, "/v1")
-			ts := httptest.NewServer(e)
-
-			jwsToken, err := svr.fa.CreateJWSWithClaims([]string{db.ReadTitlesCode, db.WriteTitlesCode}, user)
-			require.NoError(t, err)
-			urlPath := "/v1/titles"
-
 			data, err := json.Marshal(tc.body)
 			require.NoError(t, err)
 
-			req := serverRequest(t, data, ts, urlPath, http.MethodPost, string(jwsToken))
+			req, ts := setupServerTest(t, ctrl, tc, data, titlesBasePath, http.MethodPost)
 
 			res, err := ts.Client().Do(req)
 			require.NoError(t, err)
 
-			tc.checkResponse(res)
+			tc.checkResResponse(res)
 		})
 	}
 }

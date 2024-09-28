@@ -1,8 +1,10 @@
 package api
 
 import (
+	"encoding/json"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
+	ui "github.com/go-openapi/runtime/middleware"
 	"github.com/labstack/echo/v4"
 	v4mw "github.com/labstack/echo/v4/middleware"
 	mw "github.com/oapi-codegen/echo-middleware"
@@ -21,7 +23,30 @@ type Server struct {
 }
 
 // NewServer creates a new HTTP server and sets up routing.
-func NewServer(e *echo.Echo, cfg config.Config, q db.Querier, spec *openapi3.T) *Server {
+func NewServer(cfg config.Config, q db.Querier) (*echo.Echo, *Server) {
+
+	e := echo.New()
+
+	spec, err := GetSwagger()
+	if err != nil {
+		log.Fatalln("loading spec: %w", err)
+	}
+
+	g := e.Group("/swagger")
+	g.GET("/doc.json", func(ctx echo.Context) error {
+		err := json.NewEncoder(ctx.Response().Writer).Encode(spec)
+		if err != nil {
+			log.Fatalf("Error encoding swagger spec\n: %s\n", err)
+		}
+		return nil
+	})
+
+	swaggerHandler := ui.SwaggerUI(ui.SwaggerUIOpts{
+		Path:    "/swagger/",
+		SpecURL: "/swagger/doc.json",
+	}, nil)
+
+	g.GET("/", echo.WrapHandler(swaggerHandler))
 
 	// Create a fake authenticator. This allows us to issue tokens, and also
 	// implements a validator to check their validity.
@@ -29,6 +54,8 @@ func NewServer(e *echo.Echo, cfg config.Config, q db.Querier, spec *openapi3.T) 
 	if err != nil {
 		log.Fatalln("error creating authenticator:", err)
 	}
+
+	spec.Servers = openapi3.Servers{&openapi3.Server{URL: "/v1"}}
 
 	// Create middleware for validating tokens.
 	middle, err := createMiddleware(fa, spec)
@@ -40,12 +67,15 @@ func NewServer(e *echo.Echo, cfg config.Config, q db.Querier, spec *openapi3.T) 
 	apiGrp.Use(v4mw.Recover())
 	apiGrp.Use(middle...)
 
-	return &Server{
+	srv := &Server{
 		fa:      *fa,
 		queries: q,
 		config:  cfg,
 	}
 
+	RegisterHandlersWithBaseURL(apiGrp, srv, "")
+
+	return e, srv
 }
 
 // Make sure we conform to ServerInterface

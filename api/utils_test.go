@@ -26,6 +26,24 @@ var (
 	testCfg config.Config
 )
 
+const (
+	usersBasePath  = "/v1/users"
+	titlesBasePath = "/v1/titles"
+)
+
+type testCase struct {
+	name             string
+	body             map[string]any
+	stringBody       string
+	user             db.User
+	userId           int64
+	buildStubs       func(store *mockdb.MockQuerier)
+	checkRecResponse func(rec *httptest.ResponseRecorder)
+	checkResResponse func(res *http.Response)
+	values           map[string]any
+	permissions      []string
+}
+
 func TestMain(m *testing.M) {
 	testCfg = config.SetConfigs()
 
@@ -81,20 +99,16 @@ func randomTitle() (title db.Title) {
 	}
 }
 
-func setupHandlerTest(t *testing.T, ctrl *gomock.Controller, tc usersTestCase, body, method string) (*Server, echo.Context, *httptest.ResponseRecorder) {
+func setupHandlerTest(t *testing.T, ctrl *gomock.Controller, tc testCase, urlBasePath, body, method string) (*Server, echo.Context, *httptest.ResponseRecorder) {
 	store := mockdb.NewMockQuerier(ctrl)
 	tc.buildStubs(store)
 
-	spec, err := GetSwagger()
+	e, srv := NewServer(testCfg, store)
+
+	jwsToken, err := srv.fa.CreateJWSWithClaims(tc.permissions, tc.user)
 	require.NoError(t, err)
 
-	e := echo.New()
-	srv := NewServer(e, testCfg, store, spec)
-
-	jwsToken, err := srv.fa.CreateJWSWithClaims([]string{db.ReadTitlesCode}, tc.user)
-	require.NoError(t, err)
-
-	urlPath := util.UserBasePath + strconv.FormatInt(tc.userId, 10)
+	urlPath := urlBasePath + strconv.FormatInt(tc.userId, 10)
 
 	req := handlerRequest(body, urlPath, method, string(jwsToken))
 	rec := httptest.NewRecorder()
@@ -104,24 +118,19 @@ func setupHandlerTest(t *testing.T, ctrl *gomock.Controller, tc usersTestCase, b
 	return srv, c, rec
 }
 
-func setupServerTest(t *testing.T, ctrl *gomock.Controller, tc) *http.Request {
+func setupServerTest(t *testing.T, ctrl *gomock.Controller, tc testCase, body []byte, urlPath, method string) (*http.Request, *httptest.Server) {
 	store := mockdb.NewMockQuerier(ctrl)
 	tc.buildStubs(store)
 
-	spec, err := GetSwagger()
-	require.NoError(t, err)
+	e, srv := NewServer(testCfg, store)
 
-	e := echo.New()
-	svr := NewServer(e, testCfg, store, spec)
-
-	RegisterHandlersWithBaseURL(e, svr, "/v1")
 	ts := httptest.NewServer(e)
 
-	jwsToken, err := svr.fa.CreateJWSWithClaims([]string{db.ReadTitlesCode}, tc.user)
+	jwsToken, err := srv.fa.CreateJWSWithClaims(tc.permissions, tc.user)
 	require.NoError(t, err)
-	urlPath := "/v1/titles"
 
-	req := serverRequest(t, nil, ts, urlPath, http.MethodGet, string(jwsToken))
+	req := serverRequest(t, body, ts, urlPath, method, string(jwsToken))
+	return req, ts
 }
 
 func handlerRequest(json string, urlPath, method, authToken string) *http.Request {
