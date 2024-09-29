@@ -421,14 +421,14 @@ components:
           example: pa55w@rd
     NewUserPermission:
       required:
-        - user_id
-        - permission_id
+        - userId
+        - permissionId
       properties:
-        user_id:
+        userId:
           type: integer
           format: int64
           description: User id of user
-        permission_id:
+        permissionId:
           type: integer
           format: int64
           description: Permission id of permission

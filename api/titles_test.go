@@ -6,6 +6,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	"net/http"
+	"strconv"
 	mockdb "talkliketv.click/tltv/db/mock"
 	db "talkliketv.click/tltv/db/sqlc"
 	"testing"
@@ -34,7 +35,6 @@ func TestFindTitles(t *testing.T) {
 		{
 			name:   "OK",
 			user:   user,
-			body:   nil,
 			values: map[string]any{"similarity": true, "limit": true},
 			buildStubs: func(store *mockdb.MockQuerier) {
 				store.EXPECT().
@@ -55,7 +55,6 @@ func TestFindTitles(t *testing.T) {
 		{
 			name:   "Missing similarity value",
 			user:   user,
-			body:   nil,
 			values: map[string]any{"similarity": false, "limit": true},
 			buildStubs: func(store *mockdb.MockQuerier) {
 			},
@@ -63,14 +62,12 @@ func TestFindTitles(t *testing.T) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)
 				body := readBody(t, res)
 				require.Contains(t, body, "{\"message\":\"parameter \\\"similarity\\\" in query has an error: value is required but missing\"}")
-
 			},
 			permissions: []string{db.ReadTitlesCode},
 		},
 		{
 			name:   "Missing permission",
 			user:   user,
-			body:   nil,
 			values: map[string]any{"similarity": false, "limit": true},
 			buildStubs: func(store *mockdb.MockQuerier) {
 			},
@@ -85,7 +82,6 @@ func TestFindTitles(t *testing.T) {
 		{
 			name:   "Missing limit value",
 			user:   user,
-			body:   nil,
 			values: map[string]any{"similarity": true, "limit": false},
 			buildStubs: func(store *mockdb.MockQuerier) {
 			},
@@ -234,6 +230,120 @@ func TestAddTitle(t *testing.T) {
 			require.NoError(t, err)
 
 			req, ts := setupServerTest(t, ctrl, tc, data, titlesBasePath, http.MethodPost)
+
+			res, err := ts.Client().Do(req)
+			require.NoError(t, err)
+
+			tc.checkResResponse(res)
+		})
+	}
+}
+
+func TestFindTitleById(t *testing.T) {
+	user, _ := randomUser(t)
+	title := randomTitle()
+
+	testCases := []testCase{
+		{
+			name: "OK",
+			user: user,
+			buildStubs: func(store *mockdb.MockQuerier) {
+				store.EXPECT().
+					SelectTitleById(gomock.Any(), title.ID).
+					Times(1).
+					Return(title, nil)
+			},
+			checkResResponse: func(res *http.Response) {
+				require.Equal(t, http.StatusOK, res.StatusCode)
+				body := readBody(t, res)
+				var gotTitle db.Title
+				err := json.Unmarshal([]byte(body), &gotTitle)
+				require.NoError(t, err)
+				requireMatchAnyExcept(t, title, gotTitle, nil, "", "")
+			},
+			permissions: []string{},
+		},
+		{
+			name: "id not found",
+			user: user,
+			buildStubs: func(store *mockdb.MockQuerier) {
+				store.EXPECT().
+					SelectTitleById(gomock.Any(), title.ID).
+					Times(1).
+					Return(db.Title{}, sql.ErrNoRows)
+			},
+			checkResResponse: func(res *http.Response) {
+				require.Equal(t, http.StatusBadRequest, res.StatusCode)
+				body := readBody(t, res)
+				require.Contains(t, body, "sql: no rows in result set")
+			},
+			permissions: []string{},
+		},
+	}
+
+	for i := range testCases {
+		tc := testCases[i]
+
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			urlPath := titlesBasePath + "/" + strconv.FormatInt(title.ID, 10)
+			req, ts := setupServerTest(t, ctrl, tc, []byte(""), urlPath, http.MethodGet)
+
+			res, err := ts.Client().Do(req)
+			require.NoError(t, err)
+
+			tc.checkResResponse(res)
+		})
+	}
+}
+
+func TestDeleteTitleById(t *testing.T) {
+	user, _ := randomUser(t)
+	title := randomTitle()
+
+	testCases := []testCase{
+		{
+			name: "OK",
+			user: user,
+			buildStubs: func(store *mockdb.MockQuerier) {
+				store.EXPECT().
+					DeleteTitleById(gomock.Any(), title.ID).
+					Times(1).Return(nil)
+			},
+			checkResResponse: func(res *http.Response) {
+				require.Equal(t, http.StatusNoContent, res.StatusCode)
+			},
+			permissions: []string{},
+		},
+		{
+			name: "id not found",
+			user: user,
+			buildStubs: func(store *mockdb.MockQuerier) {
+				store.EXPECT().
+					DeleteTitleById(gomock.Any(), title.ID).
+					Times(1).
+					Return(sql.ErrNoRows)
+			},
+			checkResResponse: func(res *http.Response) {
+				require.Equal(t, http.StatusBadRequest, res.StatusCode)
+				body := readBody(t, res)
+				require.Contains(t, body, "sql: no rows in result set")
+			},
+			permissions: []string{},
+		},
+	}
+
+	for i := range testCases {
+		tc := testCases[i]
+
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			urlPath := titlesBasePath + "/" + strconv.FormatInt(title.ID, 10)
+			req, ts := setupServerTest(t, ctrl, tc, []byte(""), urlPath, http.MethodDelete)
 
 			res, err := ts.Client().Do(req)
 			require.NoError(t, err)

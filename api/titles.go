@@ -62,10 +62,9 @@ func (p *Server) AddTitle(ctx echo.Context) error {
 func (p *Server) FindTitleByID(ctx echo.Context, id int64) error {
 
 	title, err := p.queries.SelectTitleById(ctx.Request().Context(), id)
-
 	if err != nil {
 		ctx.Logger().Error(err)
-		return ctx.String(http.StatusInternalServerError, err.Error())
+		return ctx.String(http.StatusBadRequest, err.Error())
 	}
 
 	return ctx.JSON(http.StatusOK, title)
@@ -75,8 +74,7 @@ func (p *Server) DeleteTitle(ctx echo.Context, id int64) error {
 
 	err := p.queries.DeleteTitleById(ctx.Request().Context(), id)
 	if err != nil {
-		ctx.Logger().Error(err)
-		return ctx.String(http.StatusInternalServerError, err.Error())
+		return ctx.String(http.StatusBadRequest, err.Error())
 	}
 	return ctx.NoContent(http.StatusNoContent)
 }

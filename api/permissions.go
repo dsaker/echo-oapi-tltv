@@ -26,7 +26,11 @@ func (p *Server) AddUserPermission(ctx echo.Context) error {
 		})
 
 	if err != nil {
-		return ctx.String(http.StatusBadRequest, err.Error())
+		if db.PqErrorCode(err) == db.ForeignKeyViolation {
+			return ctx.String(http.StatusBadRequest, err.Error())
+		}
+		ctx.Logger().Error(err)
+		return ctx.String(http.StatusInternalServerError, err.Error())
 	}
 
 	return ctx.JSON(http.StatusCreated, userPermission)

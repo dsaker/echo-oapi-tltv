@@ -27,8 +27,9 @@ var (
 )
 
 const (
-	usersBasePath  = "/v1/users"
-	titlesBasePath = "/v1/titles"
+	usersBasePath           = "/v1/users"
+	titlesBasePath          = "/v1/titles"
+	usersPermissionBasePath = "/v1/userspermissions"
 )
 
 type testCase struct {
