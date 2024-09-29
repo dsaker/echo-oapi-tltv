@@ -2,6 +2,7 @@ package util
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 	"strings"
 )
@@ -9,8 +10,8 @@ import (
 const alphabet = "abcdefghijklmnopqrstuvwxyz"
 
 // RandomInt64 generates a random integer between min and max
-func RandomInt64(min, max int64) int64 {
-	return min + rand.Int63n(max-min+1)
+func RandomInt64() int64 {
+	return rand.Int63n(math.MaxInt64 - 1)
 }
 
 // RandomInt32 generates a random integer between min and max
