@@ -137,19 +137,19 @@ func (mr *MockQuerierMockRecorder) ListTitles(arg0, arg1 interface{}) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListTitles", reflect.TypeOf((*MockQuerier)(nil).ListTitles), arg0, arg1)
 }
 
-// ListTitlesByLanguage mocks base method.
-func (m *MockQuerier) ListTitlesByLanguage(arg0 context.Context, arg1 db.ListTitlesByLanguageParams) ([]db.ListTitlesByLanguageRow, error) {
+// ListTitlesByOgLanguage mocks base method.
+func (m *MockQuerier) ListTitlesByOgLanguage(arg0 context.Context, arg1 db.ListTitlesByOgLanguageParams) ([]db.ListTitlesByOgLanguageRow, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListTitlesByLanguage", arg0, arg1)
-	ret0, _ := ret[0].([]db.ListTitlesByLanguageRow)
+	ret := m.ctrl.Call(m, "ListTitlesByOgLanguage", arg0, arg1)
+	ret0, _ := ret[0].([]db.ListTitlesByOgLanguageRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// ListTitlesByLanguage indicates an expected call of ListTitlesByLanguage.
-func (mr *MockQuerierMockRecorder) ListTitlesByLanguage(arg0, arg1 interface{}) *gomock.Call {
+// ListTitlesByOgLanguage indicates an expected call of ListTitlesByOgLanguage.
+func (mr *MockQuerierMockRecorder) ListTitlesByOgLanguage(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListTitlesByLanguage", reflect.TypeOf((*MockQuerier)(nil).ListTitlesByLanguage), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListTitlesByOgLanguage", reflect.TypeOf((*MockQuerier)(nil).ListTitlesByOgLanguage), arg0, arg1)
 }
 
 // SelectPermissionByCode mocks base method.
@@ -165,6 +165,36 @@ func (m *MockQuerier) SelectPermissionByCode(arg0 context.Context, arg1 string) 
 func (mr *MockQuerierMockRecorder) SelectPermissionByCode(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectPermissionByCode", reflect.TypeOf((*MockQuerier)(nil).SelectPermissionByCode), arg0, arg1)
+}
+
+// SelectPhrasesFromTranslates mocks base method.
+func (m *MockQuerier) SelectPhrasesFromTranslates(arg0 context.Context, arg1 db.SelectPhrasesFromTranslatesParams) ([]db.SelectPhrasesFromTranslatesRow, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SelectPhrasesFromTranslates", arg0, arg1)
+	ret0, _ := ret[0].([]db.SelectPhrasesFromTranslatesRow)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SelectPhrasesFromTranslates indicates an expected call of SelectPhrasesFromTranslates.
+func (mr *MockQuerierMockRecorder) SelectPhrasesFromTranslates(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectPhrasesFromTranslates", reflect.TypeOf((*MockQuerier)(nil).SelectPhrasesFromTranslates), arg0, arg1)
+}
+
+// SelectPhrasesFromTranslatesWithCorrect mocks base method.
+func (m *MockQuerier) SelectPhrasesFromTranslatesWithCorrect(arg0 context.Context, arg1 db.SelectPhrasesFromTranslatesWithCorrectParams) ([]db.SelectPhrasesFromTranslatesWithCorrectRow, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SelectPhrasesFromTranslatesWithCorrect", arg0, arg1)
+	ret0, _ := ret[0].([]db.SelectPhrasesFromTranslatesWithCorrectRow)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SelectPhrasesFromTranslatesWithCorrect indicates an expected call of SelectPhrasesFromTranslatesWithCorrect.
+func (mr *MockQuerierMockRecorder) SelectPhrasesFromTranslatesWithCorrect(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectPhrasesFromTranslatesWithCorrect", reflect.TypeOf((*MockQuerier)(nil).SelectPhrasesFromTranslatesWithCorrect), arg0, arg1)
 }
 
 // SelectTitleById mocks base method.
@@ -227,6 +257,36 @@ func (mr *MockQuerierMockRecorder) SelectUserPermissions(arg0, arg1 interface{})
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectUserPermissions", reflect.TypeOf((*MockQuerier)(nil).SelectUserPermissions), arg0, arg1)
 }
 
+// SelectUsersPhrasesByCorrect mocks base method.
+func (m *MockQuerier) SelectUsersPhrasesByCorrect(arg0 context.Context, arg1 db.SelectUsersPhrasesByCorrectParams) ([]int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SelectUsersPhrasesByCorrect", arg0, arg1)
+	ret0, _ := ret[0].([]int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SelectUsersPhrasesByCorrect indicates an expected call of SelectUsersPhrasesByCorrect.
+func (mr *MockQuerierMockRecorder) SelectUsersPhrasesByCorrect(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectUsersPhrasesByCorrect", reflect.TypeOf((*MockQuerier)(nil).SelectUsersPhrasesByCorrect), arg0, arg1)
+}
+
+// SelectUsersPhrasesByIds mocks base method.
+func (m *MockQuerier) SelectUsersPhrasesByIds(arg0 context.Context, arg1 db.SelectUsersPhrasesByIdsParams) (db.UsersPhrase, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SelectUsersPhrasesByIds", arg0, arg1)
+	ret0, _ := ret[0].(db.UsersPhrase)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SelectUsersPhrasesByIds indicates an expected call of SelectUsersPhrasesByIds.
+func (mr *MockQuerierMockRecorder) SelectUsersPhrasesByIds(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectUsersPhrasesByIds", reflect.TypeOf((*MockQuerier)(nil).SelectUsersPhrasesByIds), arg0, arg1)
+}
+
 // UpdateUserById mocks base method.
 func (m *MockQuerier) UpdateUserById(arg0 context.Context, arg1 db.UpdateUserByIdParams) (db.User, error) {
 	m.ctrl.T.Helper()
@@ -240,4 +300,19 @@ func (m *MockQuerier) UpdateUserById(arg0 context.Context, arg1 db.UpdateUserByI
 func (mr *MockQuerierMockRecorder) UpdateUserById(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUserById", reflect.TypeOf((*MockQuerier)(nil).UpdateUserById), arg0, arg1)
+}
+
+// UpdateUsersPhrasesByThreeIds mocks base method.
+func (m *MockQuerier) UpdateUsersPhrasesByThreeIds(arg0 context.Context, arg1 db.UpdateUsersPhrasesByThreeIdsParams) (db.UsersPhrase, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateUsersPhrasesByThreeIds", arg0, arg1)
+	ret0, _ := ret[0].(db.UsersPhrase)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateUsersPhrasesByThreeIds indicates an expected call of UpdateUsersPhrasesByThreeIds.
+func (mr *MockQuerierMockRecorder) UpdateUsersPhrasesByThreeIds(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUsersPhrasesByThreeIds", reflect.TypeOf((*MockQuerier)(nil).UpdateUsersPhrasesByThreeIds), arg0, arg1)
 }

@@ -6,7 +6,7 @@ import (
 	db "talkliketv.click/tltv/db/sqlc"
 )
 
-func (p *Server) AddUserPermission(ctx echo.Context) error {
+func (s *Server) AddUserPermission(ctx echo.Context) error {
 	// We expect a NewTitle object in the request body.
 	var newUserPermission NewUserPermission
 	err := ctx.Bind(&newUserPermission)
@@ -15,10 +15,10 @@ func (p *Server) AddUserPermission(ctx echo.Context) error {
 	}
 
 	// We're always asynchronous, so lock unsafe operations below
-	p.Lock()
-	defer p.Unlock()
+	s.Lock()
+	defer s.Unlock()
 
-	userPermission, err := p.queries.InsertUserPermission(
+	userPermission, err := s.queries.InsertUserPermission(
 		ctx.Request().Context(),
 		db.InsertUserPermissionParams{
 			UserID:       newUserPermission.UserId,

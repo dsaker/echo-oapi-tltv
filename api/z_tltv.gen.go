@@ -56,14 +56,11 @@ type JSONPatchRequestAddReplaceTestOp string
 
 // NewTitle defines model for NewTitle.
 type NewTitle struct {
-	// LanguageId Language id of title
-	LanguageId int64 `json:"languageId"`
-
 	// NumSubs Number of phrases
 	NumSubs int32 `json:"numSubs"`
 
 	// OgLanguageId Language id of title
-	OgLanguageId int64 `json:"ogLanguageId"`
+	OgLanguageId int32 `json:"ogLanguageId"`
 
 	// Title Name of the title
 	Title string `json:"title"`
@@ -74,17 +71,14 @@ type NewUser struct {
 	// Email Email of user
 	Email string `json:"email"`
 
-	// Flipped switch between learning from or to native language
-	Flipped bool `json:"flipped"`
-
 	// Name Username of user. Must be alphanumeric.
 	Name string `json:"name"`
 
 	// NewLanguageId Id of language to learn
-	NewLanguageId int64 `json:"newLanguageId"`
+	NewLanguageId int32 `json:"newLanguageId"`
 
 	// OgLanguageId Id of native language
-	OgLanguageId int64 `json:"ogLanguageId"`
+	OgLanguageId int32 `json:"ogLanguageId"`
 
 	// Password Password of user
 	Password string `json:"password"`
@@ -96,7 +90,7 @@ type NewUser struct {
 // NewUserPermission defines model for NewUserPermission.
 type NewUserPermission struct {
 	// PermissionId Permission id of permission
-	PermissionId int64 `json:"permissionId"`
+	PermissionId int32 `json:"permissionId"`
 
 	// UserId User id of user
 	UserId int64 `json:"userId"`
@@ -110,19 +104,31 @@ type PatchRequest_Item struct {
 	union json.RawMessage
 }
 
+// Phrase defines model for Phrase.
+type Phrase struct {
+	// Id id of phrase
+	Id int64 `json:"id"`
+
+	// Phrase the phrase in native language
+	Phrase string `json:"phrase"`
+
+	// TitleId id of movie
+	TitleId int64 `json:"titleId"`
+
+	// Translates the text that phrase translates to
+	Translates *string `json:"translates,omitempty"`
+}
+
 // Title defines model for Title.
 type Title struct {
 	// Id Unique id of the title
 	Id int64 `json:"id"`
 
-	// LanguageId Language id of title
-	LanguageId int64 `json:"languageId"`
-
 	// NumSubs Number of phrases
 	NumSubs int32 `json:"numSubs"`
 
 	// OgLanguageId Language id of title
-	OgLanguageId int64 `json:"ogLanguageId"`
+	OgLanguageId int32 `json:"ogLanguageId"`
 
 	// Title Name of the title
 	Title string `json:"title"`
@@ -133,9 +139,6 @@ type User struct {
 	// Email Email of user
 	Email string `json:"email"`
 
-	// Flipped switch between learning from or to native language
-	Flipped bool `json:"flipped"`
-
 	// Id Unique id of the user
 	Id int64 `json:"id"`
 
@@ -143,10 +146,10 @@ type User struct {
 	Name string `json:"name"`
 
 	// NewLanguageId Id of language to learn
-	NewLanguageId int64 `json:"newLanguageId"`
+	NewLanguageId int32 `json:"newLanguageId"`
 
 	// OgLanguageId Id of native language
-	OgLanguageId int64 `json:"ogLanguageId"`
+	OgLanguageId int32 `json:"ogLanguageId"`
 
 	// Password Password of user
 	Password string `json:"password"`
@@ -173,13 +176,37 @@ type UserLoginResponse struct {
 // UserPermissionResponse defines model for UserPermissionResponse.
 type UserPermissionResponse struct {
 	// Id Unique id of the user permission
-	Id int64 `json:"id"`
+	Id int32 `json:"id"`
 
 	// PermissionId Permission id of permission
-	PermissionId int64 `json:"permissionId"`
+	PermissionId int32 `json:"permissionId"`
 
 	// UserId User id of user
 	UserId int64 `json:"userId"`
+}
+
+// UsersPhrases defines model for UsersPhrases.
+type UsersPhrases struct {
+	// LanguageId id of language
+	LanguageId int32 `json:"languageId"`
+
+	// PhraseCorrect id of language
+	PhraseCorrect int32 `json:"phraseCorrect"`
+
+	// PhraseId id of phrase
+	PhraseId int64 `json:"phraseId"`
+
+	// TitleId id of title
+	TitleId int64 `json:"titleId"`
+
+	// UserId id of user
+	UserId int64 `json:"userId"`
+}
+
+// GetPhrasesParams defines parameters for GetPhrases.
+type GetPhrasesParams struct {
+	// Limit maximum number of results to return
+	Limit *int32 `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
 // FindTitlesParams defines parameters for FindTitles.
@@ -205,6 +232,9 @@ type UpdateUserApplicationJSONPatchPlusJSONRequestBody = PatchRequest
 
 // AddUserPermissionJSONRequestBody defines body for AddUserPermission for application/json ContentType.
 type AddUserPermissionJSONRequestBody = NewUserPermission
+
+// UpdateUsersPhrasesApplicationJSONPatchPlusJSONRequestBody defines body for UpdateUsersPhrases for application/json-patch+json ContentType.
+type UpdateUsersPhrasesApplicationJSONPatchPlusJSONRequestBody = PatchRequest
 
 // AsJSONPatchRequestAddReplaceTest returns the union data inside the PatchRequest_Item as a JSONPatchRequestAddReplaceTest
 func (t PatchRequest_Item) AsJSONPatchRequestAddReplaceTest() (JSONPatchRequestAddReplaceTest, error) {
@@ -244,6 +274,9 @@ func (t *PatchRequest_Item) UnmarshalJSON(b []byte) error {
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Returns phrases by title_id
+	// (GET /phrases)
+	GetPhrases(ctx echo.Context, params GetPhrasesParams) error
 	// Returns all titles
 	// (GET /titles)
 	FindTitles(ctx echo.Context, params FindTitlesParams) error
@@ -274,11 +307,34 @@ type ServerInterface interface {
 
 	// (POST /userspermissions)
 	AddUserPermission(ctx echo.Context) error
+	// patches usersphrases resource
+	// (PATCH /usersphrases/{phraseId}/{languageId})
+	UpdateUsersPhrases(ctx echo.Context, phraseId int64, languageId int32) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler ServerInterface
+}
+
+// GetPhrases converts echo context to params.
+func (w *ServerInterfaceWrapper) GetPhrases(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetPhrasesParams
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", ctx.QueryParams(), &params.Limit)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter limit: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetPhrases(ctx, params)
+	return err
 }
 
 // FindTitles converts echo context to params.
@@ -438,6 +494,32 @@ func (w *ServerInterfaceWrapper) AddUserPermission(ctx echo.Context) error {
 	return err
 }
 
+// UpdateUsersPhrases converts echo context to params.
+func (w *ServerInterfaceWrapper) UpdateUsersPhrases(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "phraseId" -------------
+	var phraseId int64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "phraseId", ctx.Param("phraseId"), &phraseId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter phraseId: %s", err))
+	}
+
+	// ------------- Path parameter "languageId" -------------
+	var languageId int32
+
+	err = runtime.BindStyledParameterWithOptions("simple", "languageId", ctx.Param("languageId"), &languageId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter languageId: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.UpdateUsersPhrases(ctx, phraseId, languageId)
+	return err
+}
+
 // This is a simple interface which specifies echo.Route addition functions which
 // are present on both echo.Echo and echo.Group, since we want to allow using
 // either of them for path registration
@@ -466,6 +548,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
+	router.GET(baseURL+"/phrases", wrapper.GetPhrases)
 	router.GET(baseURL+"/titles", wrapper.FindTitles)
 	router.POST(baseURL+"/titles", wrapper.AddTitle)
 	router.DELETE(baseURL+"/titles/:id", wrapper.DeleteTitle)
@@ -476,47 +559,53 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.GET(baseURL+"/users/:id", wrapper.FindUserByID)
 	router.PATCH(baseURL+"/users/:id", wrapper.UpdateUser)
 	router.POST(baseURL+"/userspermissions", wrapper.AddUserPermission)
+	router.PATCH(baseURL+"/usersphrases/:phraseId/:languageId", wrapper.UpdateUsersPhrases)
 
 }
 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
+	"AA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

@@ -26,7 +26,6 @@ func TestFindTitles(t *testing.T) {
 		Similarity:   0.13333334,
 		NumSubs:      title.NumSubs,
 		OgLanguageID: title.OgLanguageID,
-		LanguageID:   title.LanguageID,
 	}
 
 	listTitlesRow := []db.ListTitlesRow{listTitleRow}
@@ -42,7 +41,7 @@ func TestFindTitles(t *testing.T) {
 					Times(1).
 					Return(listTitlesRow, nil)
 			},
-			checkResResponse: func(res *http.Response) {
+			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusOK, res.StatusCode)
 				body := readBody(t, res)
 				var gotTitlesRow []db.ListTitlesRow
@@ -58,7 +57,7 @@ func TestFindTitles(t *testing.T) {
 			values: map[string]any{"similarity": false, "limit": true},
 			buildStubs: func(store *mockdb.MockQuerier) {
 			},
-			checkResResponse: func(res *http.Response) {
+			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)
 				body := readBody(t, res)
 				require.Contains(t, body, "{\"message\":\"parameter \\\"similarity\\\" in query has an error: value is required but missing\"}")
@@ -71,7 +70,7 @@ func TestFindTitles(t *testing.T) {
 			values: map[string]any{"similarity": false, "limit": true},
 			buildStubs: func(store *mockdb.MockQuerier) {
 			},
-			checkResResponse: func(res *http.Response) {
+			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusForbidden, res.StatusCode)
 				body := readBody(t, res)
 				require.Contains(t, body, "\"message\":\"security requirements failed: token claims don't match: provided claims do not match expected scopes\"")
@@ -85,11 +84,10 @@ func TestFindTitles(t *testing.T) {
 			values: map[string]any{"similarity": true, "limit": false},
 			buildStubs: func(store *mockdb.MockQuerier) {
 			},
-			checkResResponse: func(res *http.Response) {
+			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)
 				body := readBody(t, res)
 				require.Contains(t, body, "{\"message\":\"parameter \\\"limit\\\" in query has an error: value is required but missing\"}")
-
 			},
 			permissions: []string{db.ReadTitlesCode},
 		},
@@ -116,7 +114,7 @@ func TestFindTitles(t *testing.T) {
 			res, err := ts.Client().Do(req)
 			require.NoError(t, err)
 
-			tc.checkResResponse(res)
+			tc.checkResponse(res)
 		})
 	}
 }
@@ -129,7 +127,6 @@ func TestAddTitle(t *testing.T) {
 	insertTitle := db.InsertTitleParams{
 		Title:        title.Title,
 		NumSubs:      title.NumSubs,
-		LanguageID:   title.LanguageID,
 		OgLanguageID: title.OgLanguageID,
 	}
 
@@ -138,7 +135,6 @@ func TestAddTitle(t *testing.T) {
 			name: "OK",
 			user: user,
 			body: map[string]any{
-				"languageId":   title.LanguageID,
 				"numSubs":      title.NumSubs,
 				"ogLanguageId": title.OgLanguageID,
 				"title":        title.Title,
@@ -149,7 +145,7 @@ func TestAddTitle(t *testing.T) {
 					Times(1).
 					Return(title, nil)
 			},
-			checkResResponse: func(res *http.Response) {
+			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusOK, res.StatusCode)
 				body := readBody(t, res)
 				var gotTitle db.Title
@@ -163,14 +159,13 @@ func TestAddTitle(t *testing.T) {
 			name: "Bad Request Body",
 			user: user,
 			body: map[string]any{
-				"languageId":   title.Title,
-				"numSubs":      title.NumSubs,
-				"ogLanguageId": title.OgLanguageID,
-				"title":        title.Title,
+				"numSubs":    title.NumSubs,
+				"ogLanguage": title.OgLanguageID,
+				"title":      title.Title,
 			},
 			buildStubs: func(store *mockdb.MockQuerier) {
 			},
-			checkResResponse: func(res *http.Response) {
+			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)
 				body := readBody(t, res)
 				require.Contains(t, body, "request body has an error: doesn't match schema #/components/schemas/NewTitle: Error at ")
@@ -181,7 +176,6 @@ func TestAddTitle(t *testing.T) {
 			name: "db connection closed",
 			user: user,
 			body: map[string]any{
-				"languageId":   title.LanguageID,
 				"numSubs":      title.NumSubs,
 				"ogLanguageId": title.OgLanguageID,
 				"title":        title.Title,
@@ -192,7 +186,7 @@ func TestAddTitle(t *testing.T) {
 					Times(1).
 					Return(db.Title{}, sql.ErrConnDone)
 			},
-			checkResResponse: func(res *http.Response) {
+			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusInternalServerError, res.StatusCode)
 				body := readBody(t, res)
 				require.Contains(t, body, "sql: connection is already closed")
@@ -203,14 +197,13 @@ func TestAddTitle(t *testing.T) {
 			name: "missing permission",
 			user: user,
 			body: map[string]any{
-				"languageId":   title.LanguageID,
 				"numSubs":      title.NumSubs,
 				"ogLanguageId": title.OgLanguageID,
 				"title":        title.Title,
 			},
 			buildStubs: func(store *mockdb.MockQuerier) {
 			},
-			checkResResponse: func(res *http.Response) {
+			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusForbidden, res.StatusCode)
 				body := readBody(t, res)
 				require.Contains(t, body, "\"message\":\"security requirements failed: token claims don't match: provided claims do not match expected scopes\"")
@@ -234,7 +227,7 @@ func TestAddTitle(t *testing.T) {
 			res, err := ts.Client().Do(req)
 			require.NoError(t, err)
 
-			tc.checkResResponse(res)
+			tc.checkResponse(res)
 		})
 	}
 }
@@ -253,7 +246,7 @@ func TestFindTitleById(t *testing.T) {
 					Times(1).
 					Return(title, nil)
 			},
-			checkResResponse: func(res *http.Response) {
+			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusOK, res.StatusCode)
 				body := readBody(t, res)
 				var gotTitle db.Title
@@ -272,7 +265,7 @@ func TestFindTitleById(t *testing.T) {
 					Times(1).
 					Return(db.Title{}, sql.ErrNoRows)
 			},
-			checkResResponse: func(res *http.Response) {
+			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)
 				body := readBody(t, res)
 				require.Contains(t, body, "sql: no rows in result set")
@@ -294,7 +287,7 @@ func TestFindTitleById(t *testing.T) {
 			res, err := ts.Client().Do(req)
 			require.NoError(t, err)
 
-			tc.checkResResponse(res)
+			tc.checkResponse(res)
 		})
 	}
 }
@@ -312,7 +305,7 @@ func TestDeleteTitleById(t *testing.T) {
 					DeleteTitleById(gomock.Any(), title.ID).
 					Times(1).Return(nil)
 			},
-			checkResResponse: func(res *http.Response) {
+			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusNoContent, res.StatusCode)
 			},
 			permissions: []string{},
@@ -326,7 +319,7 @@ func TestDeleteTitleById(t *testing.T) {
 					Times(1).
 					Return(sql.ErrNoRows)
 			},
-			checkResResponse: func(res *http.Response) {
+			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)
 				body := readBody(t, res)
 				require.Contains(t, body, "sql: no rows in result set")
@@ -348,7 +341,7 @@ func TestDeleteTitleById(t *testing.T) {
 			res, err := ts.Client().Do(req)
 			require.NoError(t, err)
 
-			tc.checkResResponse(res)
+			tc.checkResponse(res)
 		})
 	}
 }

@@ -19,9 +19,9 @@ func (q *Queries) DeleteUserById(ctx context.Context, id int64) error {
 }
 
 const insertUser = `-- name: InsertUser :one
-INSERT INTO users (name, email, hashed_password, title_id, flipped, og_language_id, new_language_id)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, title_id, name, email, hashed_password, flipped, og_language_id, new_language_id, created
+INSERT INTO users (name, email, hashed_password, title_id, og_language_id, new_language_id)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, title_id, name, email, hashed_password, og_language_id, new_language_id, created
 `
 
 type InsertUserParams struct {
@@ -29,9 +29,8 @@ type InsertUserParams struct {
 	Email          string `json:"email"`
 	HashedPassword string `json:"hashed_password"`
 	TitleID        int64  `json:"title_id"`
-	Flipped        bool   `json:"flipped"`
-	OgLanguageID   int64  `json:"og_language_id"`
-	NewLanguageID  int64  `json:"new_language_id"`
+	OgLanguageID   int32  `json:"og_language_id"`
+	NewLanguageID  int32  `json:"new_language_id"`
 }
 
 func (q *Queries) InsertUser(ctx context.Context, arg InsertUserParams) (User, error) {
@@ -40,7 +39,6 @@ func (q *Queries) InsertUser(ctx context.Context, arg InsertUserParams) (User, e
 		arg.Email,
 		arg.HashedPassword,
 		arg.TitleID,
-		arg.Flipped,
 		arg.OgLanguageID,
 		arg.NewLanguageID,
 	)
@@ -51,7 +49,6 @@ func (q *Queries) InsertUser(ctx context.Context, arg InsertUserParams) (User, e
 		&i.Name,
 		&i.Email,
 		&i.HashedPassword,
-		&i.Flipped,
 		&i.OgLanguageID,
 		&i.NewLanguageID,
 		&i.Created,
@@ -60,7 +57,7 @@ func (q *Queries) InsertUser(ctx context.Context, arg InsertUserParams) (User, e
 }
 
 const selectUserById = `-- name: SelectUserById :one
-SELECT id, title_id, name, email, hashed_password, flipped, og_language_id, new_language_id, created FROM users WHERE  id = $1
+SELECT id, title_id, name, email, hashed_password, og_language_id, new_language_id, created FROM users WHERE  id = $1
 `
 
 func (q *Queries) SelectUserById(ctx context.Context, id int64) (User, error) {
@@ -72,7 +69,6 @@ func (q *Queries) SelectUserById(ctx context.Context, id int64) (User, error) {
 		&i.Name,
 		&i.Email,
 		&i.HashedPassword,
-		&i.Flipped,
 		&i.OgLanguageID,
 		&i.NewLanguageID,
 		&i.Created,
@@ -81,7 +77,7 @@ func (q *Queries) SelectUserById(ctx context.Context, id int64) (User, error) {
 }
 
 const selectUserByName = `-- name: SelectUserByName :one
-SELECT id, title_id, name, email, hashed_password, flipped, og_language_id, new_language_id, created FROM users WHERE  name = $1
+SELECT id, title_id, name, email, hashed_password, og_language_id, new_language_id, created FROM users WHERE  name = $1
 `
 
 func (q *Queries) SelectUserByName(ctx context.Context, name string) (User, error) {
@@ -93,7 +89,6 @@ func (q *Queries) SelectUserByName(ctx context.Context, name string) (User, erro
 		&i.Name,
 		&i.Email,
 		&i.HashedPassword,
-		&i.Flipped,
 		&i.OgLanguageID,
 		&i.NewLanguageID,
 		&i.Created,
@@ -103,17 +98,16 @@ func (q *Queries) SelectUserByName(ctx context.Context, name string) (User, erro
 
 const updateUserById = `-- name: UpdateUserById :one
 UPDATE users
-SET title_id = $1, email = $2, flipped = $3, og_language_id = $4, new_language_id = $5, hashed_password = $6
-WHERE id = $7
-RETURNING id, title_id, name, email, hashed_password, flipped, og_language_id, new_language_id, created
+SET title_id = $1, email = $2, og_language_id = $3, new_language_id = $4, hashed_password = $5
+WHERE id = $6
+RETURNING id, title_id, name, email, hashed_password, og_language_id, new_language_id, created
 `
 
 type UpdateUserByIdParams struct {
 	TitleID        int64  `json:"title_id"`
 	Email          string `json:"email"`
-	Flipped        bool   `json:"flipped"`
-	OgLanguageID   int64  `json:"og_language_id"`
-	NewLanguageID  int64  `json:"new_language_id"`
+	OgLanguageID   int32  `json:"og_language_id"`
+	NewLanguageID  int32  `json:"new_language_id"`
 	HashedPassword string `json:"hashed_password"`
 	ID             int64  `json:"id"`
 }
@@ -122,7 +116,6 @@ func (q *Queries) UpdateUserById(ctx context.Context, arg UpdateUserByIdParams) 
 	row := q.db.QueryRowContext(ctx, updateUserById,
 		arg.TitleID,
 		arg.Email,
-		arg.Flipped,
 		arg.OgLanguageID,
 		arg.NewLanguageID,
 		arg.HashedPassword,
@@ -135,7 +128,6 @@ func (q *Queries) UpdateUserById(ctx context.Context, arg UpdateUserByIdParams) 
 		&i.Name,
 		&i.Email,
 		&i.HashedPassword,
-		&i.Flipped,
 		&i.OgLanguageID,
 		&i.NewLanguageID,
 		&i.Created,

@@ -38,7 +38,7 @@ func TestAddUserPermission(t *testing.T) {
 					Times(1).
 					Return(userPermission, nil)
 			},
-			checkResResponse: func(res *http.Response) {
+			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusCreated, res.StatusCode)
 				body := readBody(t, res)
 				var got db.UsersPermission
@@ -57,7 +57,7 @@ func TestAddUserPermission(t *testing.T) {
 			},
 			buildStubs: func(store *mockdb.MockQuerier) {
 			},
-			checkResResponse: func(res *http.Response) {
+			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)
 				body := readBody(t, res)
 				require.Contains(t, body, "request body has an error: doesn't match schema #/components/schemas/NewUserPermission: Error at ")
@@ -77,7 +77,7 @@ func TestAddUserPermission(t *testing.T) {
 					Times(1).
 					Return(db.UsersPermission{}, sql.ErrConnDone)
 			},
-			checkResResponse: func(res *http.Response) {
+			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusInternalServerError, res.StatusCode)
 				body := readBody(t, res)
 				require.Contains(t, body, "sql: connection is already closed")
@@ -93,7 +93,7 @@ func TestAddUserPermission(t *testing.T) {
 			},
 			buildStubs: func(store *mockdb.MockQuerier) {
 			},
-			checkResResponse: func(res *http.Response) {
+			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusForbidden, res.StatusCode)
 				body := readBody(t, res)
 				require.Contains(t, body, "\"message\":\"security requirements failed: token claims don't match: provided claims do not match expected scopes\"")
@@ -113,7 +113,7 @@ func TestAddUserPermission(t *testing.T) {
 					Times(1).
 					Return(db.UsersPermission{}, db.ErrForeignKeyViolation)
 			},
-			checkResResponse: func(res *http.Response) {
+			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)
 				body := readBody(t, res)
 				require.Contains(t, body, "pq: insert or update on table \"users_permissions\" violates foreign key constraint \"users_permissions_user_id_fkey\"")
@@ -137,7 +137,7 @@ func TestAddUserPermission(t *testing.T) {
 			res, err := ts.Client().Do(req)
 			require.NoError(t, err)
 
-			tc.checkResResponse(res)
+			tc.checkResponse(res)
 		})
 	}
 }

@@ -16,7 +16,6 @@ func createRandomUser(t *testing.T) User {
 		HashedPassword: hashedPassword,
 		Email:          util.RandomEmail(),
 		TitleID:        util.ValidTitleId,
-		Flipped:        false,
 		OgLanguageID:   util.ValidOgLanguageId,
 		NewLanguageID:  util.ValidNewLanguageId,
 	}
@@ -27,7 +26,6 @@ func createRandomUser(t *testing.T) User {
 
 	require.Equal(t, newUser.Name, user.Name)
 	require.Equal(t, newUser.Email, user.Email)
-	require.Equal(t, newUser.Flipped, user.Flipped)
 	require.Equal(t, newUser.TitleID, user.TitleID)
 	require.Equal(t, newUser.OgLanguageID, user.OgLanguageID)
 	require.Equal(t, newUser.NewLanguageID, user.NewLanguageID)
@@ -48,7 +46,6 @@ func TestSelectUserById(t *testing.T) {
 
 	require.Equal(t, newUser.Name, user.Name)
 	require.Equal(t, newUser.Email, user.Email)
-	require.Equal(t, newUser.Flipped, user.Flipped)
 	require.Equal(t, newUser.TitleID, user.TitleID)
 	require.Equal(t, newUser.OgLanguageID, user.OgLanguageID)
 	require.Equal(t, newUser.NewLanguageID, user.NewLanguageID)
@@ -69,7 +66,6 @@ func TestSelectUserByName(t *testing.T) {
 
 	require.Equal(t, newUser.Name, user.Name)
 	require.Equal(t, newUser.Email, user.Email)
-	require.Equal(t, newUser.Flipped, user.Flipped)
 	require.Equal(t, newUser.TitleID, user.TitleID)
 	require.Equal(t, newUser.OgLanguageID, user.OgLanguageID)
 	require.Equal(t, newUser.NewLanguageID, user.NewLanguageID)
@@ -88,7 +84,6 @@ func TestUpdateUserById(t *testing.T) {
 		ID:             user.ID,
 		TitleID:        user.TitleID,
 		Email:          user.Email,
-		Flipped:        !user.Flipped,
 		OgLanguageID:   user.OgLanguageID,
 		NewLanguageID:  user.NewLanguageID,
 		HashedPassword: user.HashedPassword,
@@ -99,7 +94,6 @@ func TestUpdateUserById(t *testing.T) {
 
 	require.Equal(t, newUser.Name, user.Name)
 	require.Equal(t, newUser.Email, user.Email)
-	require.NotEqual(t, newUser.Flipped, user.Flipped)
 	require.Equal(t, newUser.TitleID, user.TitleID)
 	require.Equal(t, newUser.OgLanguageID, user.OgLanguageID)
 	require.Equal(t, newUser.NewLanguageID, user.NewLanguageID)

@@ -30,19 +30,21 @@ const (
 	usersBasePath           = "/v1/users"
 	titlesBasePath          = "/v1/titles"
 	usersPermissionBasePath = "/v1/userspermissions"
+	phrasesBasePath         = "/v1/phrases"
+	usersPhrasesBasePath    = "/v1/usersphrases"
 )
 
 type testCase struct {
-	name             string
-	body             map[string]any
-	stringBody       string
-	user             db.User
-	userId           int64
-	buildStubs       func(store *mockdb.MockQuerier)
-	checkRecResponse func(rec *httptest.ResponseRecorder)
-	checkResResponse func(res *http.Response)
-	values           map[string]any
-	permissions      []string
+	name          string
+	body          map[string]any
+	stringBody    string
+	user          db.User
+	userId        int64
+	buildStubs    func(store *mockdb.MockQuerier)
+	checkRecorder func(rec *httptest.ResponseRecorder)
+	checkResponse func(res *http.Response)
+	values        map[string]any
+	permissions   []string
 }
 
 func TestMain(m *testing.M) {
@@ -54,7 +56,7 @@ func TestMain(m *testing.M) {
 }
 
 func readBody(t *testing.T, rs *http.Response) string {
-	// Read the response body from the test server.
+	// Read the checkResponse body from the test server.
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
 		if err != nil {
@@ -77,11 +79,10 @@ func randomUser(t *testing.T) (user db.User, password string) {
 	require.NoError(t, err)
 
 	user = db.User{
-		ID:             util.RandomInt64(1, 1000),
+		ID:             util.RandomInt64(),
 		Name:           util.RandomName(),
 		Email:          util.RandomEmail(),
 		TitleID:        util.ValidTitleId,
-		Flipped:        false,
 		OgLanguageID:   util.ValidOgLanguageId,
 		NewLanguageID:  util.ValidNewLanguageId,
 		HashedPassword: hashedPassword,
@@ -89,13 +90,29 @@ func randomUser(t *testing.T) (user db.User, password string) {
 	return
 }
 
+func randomPhrase() (title Phrase) {
+	return Phrase{
+		Id:      util.RandomInt64(),
+		TitleId: util.RandomInt64(),
+	}
+}
+
+func randomTranslate(phrase Phrase, languageId int32) db.Translate {
+
+	return db.Translate{
+		PhraseID:   phrase.Id,
+		LanguageID: languageId,
+		Phrase:     util.RandomString(8),
+		PhraseHint: util.RandomString(8),
+	}
+}
+
 func randomTitle() (title db.Title) {
 
 	return db.Title{
-		ID:           util.RandomInt64(1, 1000),
+		ID:           util.RandomInt64(),
 		Title:        util.RandomName(),
-		NumSubs:      util.RandomInt32(1, 9999),
-		LanguageID:   util.ValidNewLanguageId,
+		NumSubs:      util.RandomInt32(),
 		OgLanguageID: util.ValidOgLanguageId,
 	}
 }
@@ -160,18 +177,30 @@ func serverRequest(t *testing.T, json []byte, ts *httptest.Server, urlPath, meth
 	return req
 }
 
-func requireMatchAnyExcept(t *testing.T, model any, response any, skip []string, except, shouldEqual string) {
+func requireMatchAnyExcept(t *testing.T, model any, response any, skip []string, except string, shouldEqual any) {
 
 	v := reflect.ValueOf(response)
 	u := reflect.ValueOf(model)
 
 	for i := 0; i < v.NumField(); i++ {
+		// Check if field name is the one that should be different
 		if v.Type().Field(i).Name == except {
-			require.Equal(t, shouldEqual, v.Field(i).String())
+			// Check if type is int32 or int64
+			if v.Field(i).CanInt() {
+				// check if equal as int64
+				require.Equal(t, shouldEqual, v.Field(i).Int())
+			} else {
+				// if not check if equal as string
+				require.Equal(t, shouldEqual, v.Field(i).String())
+			}
 		} else if slices.Contains(skip, v.Type().Field(i).Name) {
 			continue
 		} else {
-			require.Equal(t, u.Field(i).String(), v.Field(i).String())
+			if v.Field(i).CanInt() {
+				require.Equal(t, u.Field(i).Int(), v.Field(i).Int())
+			} else {
+				require.Equal(t, u.Field(i).String(), v.Field(i).String())
+			}
 		}
 	}
 }

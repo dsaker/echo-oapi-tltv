@@ -7,15 +7,9 @@ import (
 )
 
 // FindTitles implements all the handlers in the ServerInterface
-func (p *Server) FindTitles(ctx echo.Context, params FindTitlesParams) error {
+func (s *Server) FindTitles(ctx echo.Context, params FindTitlesParams) error {
 
-	var findTitlesParams FindTitlesParams
-	err := ctx.Bind(&findTitlesParams)
-	if err != nil {
-		return ctx.String(http.StatusBadRequest, err.Error())
-	}
-
-	titles, err := p.queries.ListTitles(
+	titles, err := s.queries.ListTitles(
 		ctx.Request().Context(),
 		db.ListTitlesParams{
 			Similarity: params.Similarity,
@@ -30,7 +24,7 @@ func (p *Server) FindTitles(ctx echo.Context, params FindTitlesParams) error {
 	return ctx.JSON(http.StatusOK, titles)
 }
 
-func (p *Server) AddTitle(ctx echo.Context) error {
+func (s *Server) AddTitle(ctx echo.Context) error {
 	// We expect a NewTitle object in the request body.
 	var newTitle NewTitle
 	err := ctx.Bind(&newTitle)
@@ -39,15 +33,14 @@ func (p *Server) AddTitle(ctx echo.Context) error {
 	}
 
 	// We're always asynchronous, so lock unsafe operations below
-	p.Lock()
-	defer p.Unlock()
+	s.Lock()
+	defer s.Unlock()
 
-	title, err := p.queries.InsertTitle(
+	title, err := s.queries.InsertTitle(
 		ctx.Request().Context(),
 		db.InsertTitleParams{
 			Title:        newTitle.Title,
 			NumSubs:      newTitle.NumSubs,
-			LanguageID:   newTitle.LanguageId,
 			OgLanguageID: newTitle.OgLanguageId,
 		})
 
@@ -59,9 +52,9 @@ func (p *Server) AddTitle(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, title)
 }
 
-func (p *Server) FindTitleByID(ctx echo.Context, id int64) error {
+func (s *Server) FindTitleByID(ctx echo.Context, id int64) error {
 
-	title, err := p.queries.SelectTitleById(ctx.Request().Context(), id)
+	title, err := s.queries.SelectTitleById(ctx.Request().Context(), id)
 	if err != nil {
 		ctx.Logger().Error(err)
 		return ctx.String(http.StatusBadRequest, err.Error())
@@ -70,9 +63,9 @@ func (p *Server) FindTitleByID(ctx echo.Context, id int64) error {
 	return ctx.JSON(http.StatusOK, title)
 }
 
-func (p *Server) DeleteTitle(ctx echo.Context, id int64) error {
+func (s *Server) DeleteTitle(ctx echo.Context, id int64) error {
 
-	err := p.queries.DeleteTitleById(ctx.Request().Context(), id)
+	err := s.queries.DeleteTitleById(ctx.Request().Context(), id)
 	if err != nil {
 		return ctx.String(http.StatusBadRequest, err.Error())
 	}

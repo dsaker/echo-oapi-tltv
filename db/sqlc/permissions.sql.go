@@ -15,7 +15,7 @@ DELETE FROM users_permissions WHERE  user_id = $1 and permission_id = $2
 
 type DeleteUserPermissionByIdParams struct {
 	UserID       int64 `json:"user_id"`
-	PermissionID int64 `json:"permission_id"`
+	PermissionID int32 `json:"permission_id"`
 }
 
 func (q *Queries) DeleteUserPermissionById(ctx context.Context, arg DeleteUserPermissionByIdParams) error {
@@ -31,7 +31,7 @@ RETURNING user_id, permission_id
 
 type InsertUserPermissionParams struct {
 	UserID       int64 `json:"user_id"`
-	PermissionID int64 `json:"permission_id"`
+	PermissionID int32 `json:"permission_id"`
 }
 
 func (q *Queries) InsertUserPermission(ctx context.Context, arg InsertUserPermissionParams) (UsersPermission, error) {

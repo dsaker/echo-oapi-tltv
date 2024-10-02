@@ -15,8 +15,8 @@ func RandomInt64() int64 {
 }
 
 // RandomInt32 generates a random integer between min and max
-func RandomInt32(min, max int32) int32 {
-	return min + rand.Int31n(max-min+1)
+func RandomInt32() int32 {
+	return rand.Int31n(math.MaxInt32 - 1)
 }
 
 // RandomString generates a random string of length n
