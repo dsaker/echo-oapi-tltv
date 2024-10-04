@@ -26,8 +26,8 @@ RETURNING id, title, num_subs, og_language_id
 
 type InsertTitleParams struct {
 	Title        string `json:"title"`
-	NumSubs      int32  `json:"num_subs"`
-	OgLanguageID int32  `json:"og_language_id"`
+	NumSubs      int16  `json:"num_subs"`
+	OgLanguageID int16  `json:"og_language_id"`
 }
 
 func (q *Queries) InsertTitle(ctx context.Context, arg InsertTitleParams) (Title, error) {
@@ -58,8 +58,8 @@ type ListTitlesRow struct {
 	ID           int64   `json:"id"`
 	Title        string  `json:"title"`
 	Similarity   float32 `json:"similarity"`
-	NumSubs      int32   `json:"num_subs"`
-	OgLanguageID int32   `json:"og_language_id"`
+	NumSubs      int16   `json:"num_subs"`
+	OgLanguageID int16   `json:"og_language_id"`
 }
 
 func (q *Queries) ListTitles(ctx context.Context, arg ListTitlesParams) ([]ListTitlesRow, error) {
@@ -101,15 +101,15 @@ LIMIT $3
 
 type ListTitlesByOgLanguageParams struct {
 	Similarity   string `json:"similarity"`
-	OgLanguageID int32  `json:"og_language_id"`
+	OgLanguageID int16  `json:"og_language_id"`
 	Limit        int32  `json:"limit"`
 }
 
 type ListTitlesByOgLanguageRow struct {
 	Title        string  `json:"title"`
 	Similarity   float32 `json:"similarity"`
-	NumSubs      int32   `json:"num_subs"`
-	OgLanguageID int32   `json:"og_language_id"`
+	NumSubs      int16   `json:"num_subs"`
+	OgLanguageID int16   `json:"og_language_id"`
 }
 
 func (q *Queries) ListTitlesByOgLanguage(ctx context.Context, arg ListTitlesByOgLanguageParams) ([]ListTitlesByOgLanguageRow, error) {

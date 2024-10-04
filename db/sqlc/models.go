@@ -9,13 +9,13 @@ import (
 )
 
 type Language struct {
-	ID       int32  `json:"id"`
+	ID       int16  `json:"id"`
 	Language string `json:"language"`
 	Tag      string `json:"tag"`
 }
 
 type Permission struct {
-	ID   int32  `json:"id"`
+	ID   int16  `json:"id"`
 	Code string `json:"code"`
 }
 
@@ -27,13 +27,13 @@ type Phrase struct {
 type Title struct {
 	ID           int64  `json:"id"`
 	Title        string `json:"title"`
-	NumSubs      int32  `json:"num_subs"`
-	OgLanguageID int32  `json:"og_language_id"`
+	NumSubs      int16  `json:"num_subs"`
+	OgLanguageID int16  `json:"og_language_id"`
 }
 
 type Translate struct {
 	PhraseID   int64  `json:"phrase_id"`
-	LanguageID int32  `json:"language_id"`
+	LanguageID int16  `json:"language_id"`
 	Phrase     string `json:"phrase"`
 	PhraseHint string `json:"phrase_hint"`
 }
@@ -44,20 +44,20 @@ type User struct {
 	Name           string    `json:"name"`
 	Email          string    `json:"email"`
 	HashedPassword string    `json:"hashed_password"`
-	OgLanguageID   int32     `json:"og_language_id"`
-	NewLanguageID  int32     `json:"new_language_id"`
+	OgLanguageID   int16     `json:"og_language_id"`
+	NewLanguageID  int16     `json:"new_language_id"`
 	Created        time.Time `json:"created"`
 }
 
 type UsersPermission struct {
 	UserID       int64 `json:"user_id"`
-	PermissionID int32 `json:"permission_id"`
+	PermissionID int16 `json:"permission_id"`
 }
 
 type UsersPhrase struct {
 	UserID        int64 `json:"user_id"`
 	TitleID       int64 `json:"title_id"`
 	PhraseID      int64 `json:"phrase_id"`
-	LanguageID    int32 `json:"language_id"`
-	PhraseCorrect int32 `json:"phrase_correct"`
+	LanguageID    int16 `json:"language_id"`
+	PhraseCorrect int16 `json:"phrase_correct"`
 }

@@ -11,7 +11,7 @@ func createRandomTitle(t *testing.T) Title {
 
 	args := InsertTitleParams{
 		Title:        util.RandomString(8),
-		NumSubs:      util.RandomInt32(),
+		NumSubs:      util.RandomInt16(),
 		OgLanguageID: util.ValidOgLanguageId,
 	}
 

@@ -64,7 +64,7 @@ paths:
           required: true
           schema:
             type: integer
-            format: int32
+            format: int16
       responses:
         '200':
           description: usersphrases response
@@ -291,7 +291,19 @@ paths:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/NewTitle'
+              type: object
+              required:
+                - titleName
+                - languageId
+                - filePath
+              properties:
+                titleName:
+                  type: string
+                languageId:
+                  type: string
+                filePath:
+                  type: string
+                  format: binary
       responses:
         '200':
           description: title response
@@ -428,12 +440,12 @@ components:
           example: -1
         ogLanguageId:
           type: integer
-          format: int32
+          format: int16
           description: Id of native language
           example: -1
         newLanguageId:
           type: integer
-          format: int32
+          format: int16
           description: Id of language to learn
           example: -1
     Title:
@@ -461,7 +473,7 @@ components:
           description: the file to upload
         ogLanguageId:
           type: integer
-          format: int32
+          format: int16
           description: Language id of title
     UserLogin:
       required:
@@ -509,7 +521,7 @@ components:
           description: User id of user
         permissionId:
           type: integer
-          format: int32
+          format: int16
           description: Permission id of permission
     UserPermissionResponse:
       allOf:
@@ -519,7 +531,7 @@ components:
           properties:
             id:
               type: integer
-              format: int32
+              format: int16
               description: Unique id of the user permission
     UsersPhrases:
       required:
@@ -543,11 +555,11 @@ components:
           description: id of phrase
         languageId:
           type: integer
-          format: int32
+          format: int16
           description: id of language
         phraseCorrect:
           type: integer
-          format: int32
+          format: int16
           description: id of language
     UserLoginResponse:
       required:

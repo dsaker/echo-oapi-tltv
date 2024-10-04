@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS languages (
-    id serial PRIMARY KEY,
+    id smallserial PRIMARY KEY,
     language text NOT NULL,
     tag text NOT NULL
 );

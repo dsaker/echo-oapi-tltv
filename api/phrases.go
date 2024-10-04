@@ -41,7 +41,7 @@ func (s *Server) GetPhrases(ctx echo.Context, params GetPhrasesParams) error {
 	return ctx.JSON(http.StatusOK, usersPhrases)
 }
 
-func (s *Server) UpdateUsersPhrases(ctx echo.Context, phraseId int64, languageId int32) error {
+func (s *Server) UpdateUsersPhrases(ctx echo.Context, phraseId int64, languageId int16) error {
 	user, err := token.GetUserFromContext(ctx)
 	if err != nil {
 		return ctx.String(http.StatusBadRequest, err.Error())

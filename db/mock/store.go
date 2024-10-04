@@ -183,7 +183,7 @@ func (mr *MockQuerierMockRecorder) ListTitlesByOgLanguage(arg0, arg1 interface{}
 }
 
 // SelectLanguagesById mocks base method.
-func (m *MockQuerier) SelectLanguagesById(arg0 context.Context, arg1 int32) (db.Language, error) {
+func (m *MockQuerier) SelectLanguagesById(arg0 context.Context, arg1 int16) (db.Language, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SelectLanguagesById", arg0, arg1)
 	ret0, _ := ret[0].(db.Language)

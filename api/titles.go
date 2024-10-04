@@ -10,9 +10,9 @@ import (
 	"fmt"
 	"github.com/labstack/echo/v4"
 	"golang.org/x/text/language"
-	"mime/multipart"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	db "talkliketv.click/tltv/db/sqlc"
@@ -41,48 +41,45 @@ func (s *Server) FindTitles(ctx echo.Context, params FindTitlesParams) error {
 func (s *Server) AddTitle(eCtx echo.Context) error {
 
 	// Maximum upload of 32768 Bytes... this is ~4 pages
-	err := eCtx.Request().ParseMultipartForm(32768)
-	// if file is too big send error
-	if err != nil {
-		return eCtx.String(http.StatusBadRequest, err.Error())
-	}
+	//err := eCtx.
+	//err := eCtx.Request().ParseMultipartForm(32768)
+	//// if file is too big send error
+	//if err != nil {
+	//	return eCtx.String(http.StatusBadRequest, err.Error())
+	//}
 
-	// We expect a NewTitle object in the request body.
-	var newTitle NewTitle
-	err = eCtx.Bind(&newTitle)
+	lang := eCtx.FormValue("languageId")
+	titleName := eCtx.FormValue("titleName")
+	langIdInt16, err := strconv.ParseInt(lang, 10, 16)
 	if err != nil {
 		return eCtx.String(http.StatusBadRequest, err.Error())
 	}
 
 	//Get language model from id for tag
-	langModel, err := s.queries.SelectLanguagesById(eCtx.Request().Context(), newTitle.OgLanguageId)
-	if err != nil {
-		eCtx.Logger().Error(err)
-		return eCtx.String(http.StatusInternalServerError, err.Error())
-	}
-
-	tag, err := language.Parse(langModel.Tag)
+	langModel, err := s.queries.SelectLanguagesById(eCtx.Request().Context(), int16(langIdInt16))
 	if err != nil {
 		eCtx.Logger().Error(err)
 		return eCtx.String(http.StatusInternalServerError, err.Error())
 	}
 
 	// Get handler for filename, size and headers
-	file, handler, err := eCtx.Request().FormFile(newTitle.Filename.Filename())
+	file, err := eCtx.FormFile("filePath")
 	if err != nil {
 		return eCtx.String(http.StatusBadRequest, err.Error())
 	}
-	defer func(file multipart.File) {
-		err = file.Close()
-		if err != nil {
-			eCtx.Logger().Error(err)
-		}
-	}(file)
+	if file.Size > 32768 {
+		return eCtx.String(http.StatusBadRequest, "file too large")
+	}
+	src, err := file.Open()
+	if err != nil {
+		return eCtx.String(http.StatusBadRequest, err.Error())
+	}
+	defer src.Close()
 
-	eCtx.Logger().Info(fmt.Sprintf("File uploaded successfully: %s", handler.Filename))
+	eCtx.Logger().Info(fmt.Sprintf("File uploaded successfully: %s", file.Filename))
 
-	// Create phrases slice and count number of lines form titles model
-	scanner := bufio.NewScanner(file)
+	// Create strings slice and count number of lines form titles model
+	scanner := bufio.NewScanner(src)
 	var stringsSlice []string
 	numLines := 0
 	for scanner.Scan() {
@@ -90,23 +87,33 @@ func (s *Server) AddTitle(eCtx echo.Context) error {
 		stringsSlice = append(stringsSlice, scanner.Text())
 	}
 
+	// We're always asynchronous, so lock unsafe operations below
+	s.Lock()
+	defer s.Unlock()
+
 	title, err := s.queries.InsertTitle(
 		eCtx.Request().Context(),
 		db.InsertTitleParams{
-			Title:        newTitle.Title,
-			NumSubs:      int32(numLines),
-			OgLanguageID: newTitle.OgLanguageId,
+			Title:        titleName,
+			NumSubs:      int16(numLines),
+			OgLanguageID: int16(langIdInt16),
 		})
 
+	// insert phrases into db as translates object of OgLanguage
 	translatesSlice, err := s.insertPhrases(eCtx, title, stringsSlice, numLines)
 	if err != nil {
 		return eCtx.String(http.StatusInternalServerError, err.Error())
 	}
 
-	err = textToSpeech(eCtx, translatesSlice, tag)
-	// We're always asynchronous, so lock unsafe operations below
-	s.Lock()
-	defer s.Unlock()
+	//create base path for storing mp3 audio files
+	audioBasePath := s.config.TTSBasePath +
+		strconv.FormatInt(title.ID, 10) + "/" +
+		strconv.Itoa(int(title.OgLanguageID)) + "/"
+	err = os.MkdirAll(audioBasePath, os.ModePerm)
+	if err != nil {
+		return eCtx.String(http.StatusInternalServerError, err.Error())
+	}
+	err = textToSpeech(eCtx, translatesSlice, audioBasePath, langModel.Tag)
 
 	if err != nil {
 		eCtx.Logger().Error(err)
@@ -139,12 +146,13 @@ func (s *Server) DeleteTitle(ctx echo.Context, id int64) error {
 func (s *Server) insertPhrases(eCtx echo.Context, title db.Title, stringsSlice []string, numLines int) ([]db.Translate, error) {
 	dbTranslates := make([]db.Translate, numLines)
 	for i, str := range stringsSlice {
+
 		phrase, err := s.queries.InsertPhrases(eCtx.Request().Context(), title.ID)
 		if err != nil {
 			return nil, err
 		}
 
-		translate, err := s.queries.InsertTranslates(
+		insertTranslate, err := s.queries.InsertTranslates(
 			eCtx.Request().Context(),
 			db.InsertTranslatesParams{
 				PhraseID:   phrase.ID,
@@ -156,15 +164,15 @@ func (s *Server) insertPhrases(eCtx echo.Context, title db.Title, stringsSlice [
 			return nil, err
 		}
 
-		dbTranslates[i] = translate
+		dbTranslates[i] = insertTranslate
 	}
 
 	return dbTranslates, nil
 }
 
-func textToSpeech(eCtx echo.Context, translatesSlice []db.Translate, tag language.Tag) error {
+func textToSpeech(eCtx echo.Context, translatesSlice []db.Translate, basepath, tag string) error {
 
-	// concurrently get all the audio content from Google texttospeech
+	// concurrently get all the audio content from Google text-to-speech
 	var wg sync.WaitGroup
 	// create context with cancel, so you can cancel all other requests after any error
 	newCtx, cancel := context.WithCancel(context.Background())
@@ -177,7 +185,7 @@ func textToSpeech(eCtx echo.Context, translatesSlice []db.Translate, tag languag
 		}
 		wg.Add(1)
 		//get responses concurrently with go routines
-		go getSpeech(eCtx, newCtx, cancel, tag, nextSpeech.Phrase, &wg)
+		go getSpeech(eCtx, newCtx, cancel, nextSpeech, &wg, basepath, tag)
 	}
 	wg.Wait()
 
@@ -192,9 +200,10 @@ func textToSpeech(eCtx echo.Context, translatesSlice []db.Translate, tag languag
 func getSpeech(eCtx echo.Context,
 	ctx context.Context,
 	cancel context.CancelFunc,
-	tag language.Tag,
-	phrase string,
-	wg *sync.WaitGroup) {
+	translate db.Translate,
+	wg *sync.WaitGroup,
+	basepath,
+	tag string) {
 	defer wg.Done()
 	select {
 	case <-ctx.Done():
@@ -213,12 +222,12 @@ func getSpeech(eCtx echo.Context,
 		req := texttospeechpb.SynthesizeSpeechRequest{
 			// Set the text input to be synthesized.
 			Input: &texttospeechpb.SynthesisInput{
-				InputSource: &texttospeechpb.SynthesisInput_Text{Text: phrase},
+				InputSource: &texttospeechpb.SynthesisInput_Text{Text: translate.Phrase},
 			},
 			// Build the voice request, select the language code ("en-US") and the SSML
 			// voice gender ("neutral").
 			Voice: &texttospeechpb.VoiceSelectionParams{
-				LanguageCode: tag.String(),
+				LanguageCode: tag,
 				SsmlGender:   texttospeechpb.SsmlVoiceGender_NEUTRAL,
 			},
 			// Select the type of audio file you want returned.
@@ -229,13 +238,13 @@ func getSpeech(eCtx echo.Context,
 
 		resp, err := client.SynthesizeSpeech(ctx, &req)
 		if err != nil {
-			eCtx.Logger().Error(fmt.Errorf("error creating translate client: %s", err))
+			eCtx.Logger().Error(fmt.Errorf("error creating Synthesize Speech client: %s", err))
 			cancel()
 			return
 		}
 
 		// The resp's AudioContent is binary.
-		filename := "output.mp3"
+		filename := basepath + strconv.FormatInt(translate.PhraseID, 10) + ".mp3"
 		err = os.WriteFile(filename, resp.AudioContent, 0644)
 		if err != nil {
 			eCtx.Logger().Error(fmt.Errorf("error creating translate client: %s", err))

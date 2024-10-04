@@ -29,8 +29,8 @@ type InsertUserParams struct {
 	Email          string `json:"email"`
 	HashedPassword string `json:"hashed_password"`
 	TitleID        int64  `json:"title_id"`
-	OgLanguageID   int32  `json:"og_language_id"`
-	NewLanguageID  int32  `json:"new_language_id"`
+	OgLanguageID   int16  `json:"og_language_id"`
+	NewLanguageID  int16  `json:"new_language_id"`
 }
 
 func (q *Queries) InsertUser(ctx context.Context, arg InsertUserParams) (User, error) {
@@ -106,8 +106,8 @@ RETURNING id, title_id, name, email, hashed_password, og_language_id, new_langua
 type UpdateUserByIdParams struct {
 	TitleID        int64  `json:"title_id"`
 	Email          string `json:"email"`
-	OgLanguageID   int32  `json:"og_language_id"`
-	NewLanguageID  int32  `json:"new_language_id"`
+	OgLanguageID   int16  `json:"og_language_id"`
+	NewLanguageID  int16  `json:"new_language_id"`
 	HashedPassword string `json:"hashed_password"`
 	ID             int64  `json:"id"`
 }

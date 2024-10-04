@@ -19,7 +19,7 @@ type Querier interface {
 	InsertUserPermission(ctx context.Context, arg InsertUserPermissionParams) (UsersPermission, error)
 	ListTitles(ctx context.Context, arg ListTitlesParams) ([]ListTitlesRow, error)
 	ListTitlesByOgLanguage(ctx context.Context, arg ListTitlesByOgLanguageParams) ([]ListTitlesByOgLanguageRow, error)
-	SelectLanguagesById(ctx context.Context, id int32) (Language, error)
+	SelectLanguagesById(ctx context.Context, id int16) (Language, error)
 	SelectPermissionByCode(ctx context.Context, code string) (Permission, error)
 	SelectPhrasesFromTranslates(ctx context.Context, arg SelectPhrasesFromTranslatesParams) ([]SelectPhrasesFromTranslatesRow, error)
 	SelectPhrasesFromTranslatesWithCorrect(ctx context.Context, arg SelectPhrasesFromTranslatesWithCorrectParams) ([]SelectPhrasesFromTranslatesWithCorrectRow, error)

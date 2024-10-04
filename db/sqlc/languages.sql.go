@@ -13,7 +13,7 @@ const selectLanguagesById = `-- name: SelectLanguagesById :one
 select id, language, tag from languages where id = $1
 `
 
-func (q *Queries) SelectLanguagesById(ctx context.Context, id int32) (Language, error) {
+func (q *Queries) SelectLanguagesById(ctx context.Context, id int16) (Language, error) {
 	row := q.db.QueryRowContext(ctx, selectLanguagesById, id)
 	var i Language
 	err := row.Scan(&i.ID, &i.Language, &i.Tag)

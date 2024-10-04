@@ -30,7 +30,7 @@ RETURNING phrase_id, language_id, phrase, phrase_hint
 
 type InsertTranslatesParams struct {
 	PhraseID   int64  `json:"phrase_id"`
-	LanguageID int32  `json:"language_id"`
+	LanguageID int16  `json:"language_id"`
 	Phrase     string `json:"phrase"`
 	PhraseHint string `json:"phrase_hint"`
 }
@@ -76,8 +76,8 @@ IN (
 `
 
 type SelectPhrasesFromTranslatesParams struct {
-	LanguageID   int32 `json:"language_id"`
-	LanguageID_2 int32 `json:"language_id_2"`
+	LanguageID   int16 `json:"language_id"`
+	LanguageID_2 int16 `json:"language_id_2"`
 	UserID       int64 `json:"user_id"`
 	TitleID      int64 `json:"title_id"`
 	Limit        int32 `json:"limit"`
@@ -157,8 +157,8 @@ IN
 `
 
 type SelectPhrasesFromTranslatesWithCorrectParams struct {
-	LanguageID   int32 `json:"language_id"`
-	LanguageID_2 int32 `json:"language_id_2"`
+	LanguageID   int16 `json:"language_id"`
+	LanguageID_2 int16 `json:"language_id_2"`
 	UserID       int64 `json:"user_id"`
 	TitleID      int64 `json:"title_id"`
 	Limit        int32 `json:"limit"`
@@ -170,7 +170,7 @@ type SelectPhrasesFromTranslatesWithCorrectRow struct {
 	PhraseHint    string `json:"phrase_hint"`
 	Phrase_2      string `json:"phrase_2"`
 	PhraseHint_2  string `json:"phrase_hint_2"`
-	PhraseCorrect int32  `json:"phrase_correct"`
+	PhraseCorrect int16  `json:"phrase_correct"`
 }
 
 func (q *Queries) SelectPhrasesFromTranslatesWithCorrect(ctx context.Context, arg SelectPhrasesFromTranslatesWithCorrectParams) ([]SelectPhrasesFromTranslatesWithCorrectRow, error) {
@@ -219,7 +219,7 @@ limit $4
 type SelectUsersPhrasesByCorrectParams struct {
 	UserID     int64 `json:"user_id"`
 	TitleID    int64 `json:"title_id"`
-	LanguageID int32 `json:"language_id"`
+	LanguageID int16 `json:"language_id"`
 	Limit      int32 `json:"limit"`
 }
 
@@ -258,7 +258,7 @@ WHERE user_id = $1 and language_id = $2 and phrase_id = $3
 
 type SelectUsersPhrasesByIdsParams struct {
 	UserID     int64 `json:"user_id"`
-	LanguageID int32 `json:"language_id"`
+	LanguageID int16 `json:"language_id"`
 	PhraseID   int64 `json:"phrase_id"`
 }
 
@@ -286,8 +286,8 @@ type UpdateUsersPhrasesByThreeIdsParams struct {
 	UserID        int64 `json:"user_id"`
 	TitleID       int64 `json:"title_id"`
 	PhraseID      int64 `json:"phrase_id"`
-	LanguageID    int32 `json:"language_id"`
-	PhraseCorrect int32 `json:"phrase_correct"`
+	LanguageID    int16 `json:"language_id"`
+	PhraseCorrect int16 `json:"phrase_correct"`
 }
 
 func (q *Queries) UpdateUsersPhrasesByThreeIds(ctx context.Context, arg UpdateUsersPhrasesByThreeIdsParams) (UsersPhrase, error) {

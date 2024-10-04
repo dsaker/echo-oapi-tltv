@@ -21,8 +21,8 @@ type userResponse struct {
 	Name          string    `json:"name"`
 	Email         string    `json:"email"`
 	Flipped       bool      `json:"flipped"`
-	OgLanguageID  int32     `json:"og_language_id"`
-	NewLanguageID int32     `json:"new_language_id"`
+	OgLanguageID  int16     `json:"og_language_id"`
+	NewLanguageID int16     `json:"new_language_id"`
 	Created       time.Time `json:"created"`
 }
 

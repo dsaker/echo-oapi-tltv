@@ -97,7 +97,7 @@ func randomPhrase() (title Phrase) {
 	}
 }
 
-func randomTranslate(phrase Phrase, languageId int32) db.Translate {
+func randomTranslate(phrase Phrase, languageId int16) db.Translate {
 
 	return db.Translate{
 		PhraseID:   phrase.Id,
@@ -112,7 +112,7 @@ func randomTitle() (title db.Title) {
 	return db.Title{
 		ID:           util.RandomInt64(),
 		Title:        util.RandomName(),
-		NumSubs:      util.RandomInt32(),
+		NumSubs:      util.RandomInt16(),
 		OgLanguageID: util.ValidOgLanguageId,
 	}
 }

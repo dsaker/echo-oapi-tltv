@@ -6,7 +6,7 @@ CREATE TABLE users (
    name text UNIQUE NOT NULL,
    email citext UNIQUE NOT NULL,
    hashed_password varchar NOT NULL,
-   og_language_id int NOT NULL REFERENCES languages DEFAULT -1,
-   new_language_id int NOT NULL REFERENCES languages DEFAULT -1,
+   og_language_id smallint NOT NULL REFERENCES languages DEFAULT -1,
+   new_language_id smallint NOT NULL REFERENCES languages DEFAULT -1,
    created timestamp(0) NOT NULL DEFAULT NOW()
 );

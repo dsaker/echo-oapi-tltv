@@ -20,6 +20,7 @@ type Config struct {
 	Env         string
 	CtxTimeout  time.Duration
 	JWTDuration time.Duration
+	TTSBasePath string
 	Db          struct {
 		Dsn          string
 		MaxOpenConns int
@@ -34,6 +35,7 @@ type Config struct {
 }
 
 func SetConfigs() (config Config) {
+
 	// get port and debug from commandline flags... if not present use defaults
 	flag.StringVar(&config.Port, "port", "8080", "API server port")
 
@@ -49,6 +51,8 @@ func SetConfigs() (config Config) {
 	flag.BoolVar(&config.Limiter.Enabled, "limiter-enabled", true, "Enable rate limiter")
 	flag.Float64Var(&config.Limiter.Rps, "limiter-rps", 2, "Rate limiter maximum requests per second")
 	flag.IntVar(&config.Limiter.Burst, "limiter-burst", 4, "Rate limiter maximum burst")
+
+	flag.StringVar(&config.TTSBasePath, "tts-base-path", "/Users/dustysaker/go/src/github.com/dsaker/echo-oapi-tltv/audio/", "text-to-speech base path for permanent or temporary storage of mp3 audio files")
 
 	flag.DurationVar(&config.JWTDuration, "jwt-duration", 24, "JWT duration in hours")
 
