@@ -83,18 +83,12 @@ func (s *Server) AddTitle(eCtx echo.Context) error {
 
 	// Create phrases slice and count number of lines form titles model
 	scanner := bufio.NewScanner(file)
-	var phrasesSlice []string
+	var stringsSlice []string
 	numLines := 0
 	for scanner.Scan() {
 		numLines += 1
-		phrasesSlice = append(phrasesSlice, scanner.Text())
+		stringsSlice = append(stringsSlice, scanner.Text())
 	}
-
-	//err = translateText(eCtx, numLines, phrasesSlice, tag)
-	err = textToSpeech(eCtx, numLines, phrasesSlice, tag)
-	// We're always asynchronous, so lock unsafe operations below
-	s.Lock()
-	defer s.Unlock()
 
 	title, err := s.queries.InsertTitle(
 		eCtx.Request().Context(),
@@ -103,6 +97,16 @@ func (s *Server) AddTitle(eCtx echo.Context) error {
 			NumSubs:      int32(numLines),
 			OgLanguageID: newTitle.OgLanguageId,
 		})
+
+	translatesSlice, err := s.insertPhrases(eCtx, title, stringsSlice, numLines)
+	if err != nil {
+		return eCtx.String(http.StatusInternalServerError, err.Error())
+	}
+
+	err = textToSpeech(eCtx, translatesSlice, tag)
+	// We're always asynchronous, so lock unsafe operations below
+	s.Lock()
+	defer s.Unlock()
 
 	if err != nil {
 		eCtx.Logger().Error(err)
@@ -132,7 +136,33 @@ func (s *Server) DeleteTitle(ctx echo.Context, id int64) error {
 	return ctx.NoContent(http.StatusNoContent)
 }
 
-func textToSpeech(eCtx echo.Context, numLines int, phrasesSlice []string, tag language.Tag) error {
+func (s *Server) insertPhrases(eCtx echo.Context, title db.Title, stringsSlice []string, numLines int) ([]db.Translate, error) {
+	dbTranslates := make([]db.Translate, numLines)
+	for i, str := range stringsSlice {
+		phrase, err := s.queries.InsertPhrases(eCtx.Request().Context(), title.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		translate, err := s.queries.InsertTranslates(
+			eCtx.Request().Context(),
+			db.InsertTranslatesParams{
+				PhraseID:   phrase.ID,
+				LanguageID: title.OgLanguageID,
+				Phrase:     str,
+				PhraseHint: makeHintString(str),
+			})
+		if err != nil {
+			return nil, err
+		}
+
+		dbTranslates[i] = translate
+	}
+
+	return dbTranslates, nil
+}
+
+func textToSpeech(eCtx echo.Context, translatesSlice []db.Translate, tag language.Tag) error {
 
 	// concurrently get all the audio content from Google texttospeech
 	var wg sync.WaitGroup
@@ -140,14 +170,14 @@ func textToSpeech(eCtx echo.Context, numLines int, phrasesSlice []string, tag la
 	newCtx, cancel := context.WithCancel(context.Background())
 	defer cancel() // Make sure it's called to release resources even if no errors
 
-	for i, nextSpeech := range phrasesSlice {
+	for i, nextSpeech := range translatesSlice {
 		// added intermittent sleep to fix TLS handshake errors on the client side
 		if i%50 == 0 && i != 0 {
 			time.Sleep(2 * time.Second)
 		}
 		wg.Add(1)
 		//get responses concurrently with go routines
-		go getSpeech(eCtx, newCtx, cancel, tag, nextSpeech, &wg)
+		go getSpeech(eCtx, newCtx, cancel, tag, nextSpeech.Phrase, &wg)
 	}
 	wg.Wait()
 

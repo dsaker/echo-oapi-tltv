@@ -65,3 +65,13 @@ UPDATE users_phrases
 SET user_id = $1, title_id = $2, phrase_id = $3, language_id = $4, phrase_correct = $5
 WHERE user_id = $1 AND phrase_id = $3 AND language_id = $4
 RETURNING *;
+
+-- name: InsertPhrases :one
+INSERT INTO phrases (title_id)
+VALUES ($1)
+RETURNING *;
+
+-- name: InsertTranslates :one
+INSERT INTO translates (phrase_id, language_id, phrase, phrase_hint)
+VALUES ($1, $2, $3, $4)
+RETURNING *;

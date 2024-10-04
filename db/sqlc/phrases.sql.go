@@ -9,6 +9,49 @@ import (
 	"context"
 )
 
+const insertPhrases = `-- name: InsertPhrases :one
+INSERT INTO phrases (title_id)
+VALUES ($1)
+RETURNING id, title_id
+`
+
+func (q *Queries) InsertPhrases(ctx context.Context, titleID int64) (Phrase, error) {
+	row := q.db.QueryRowContext(ctx, insertPhrases, titleID)
+	var i Phrase
+	err := row.Scan(&i.ID, &i.TitleID)
+	return i, err
+}
+
+const insertTranslates = `-- name: InsertTranslates :one
+INSERT INTO translates (phrase_id, language_id, phrase, phrase_hint)
+VALUES ($1, $2, $3, $4)
+RETURNING phrase_id, language_id, phrase, phrase_hint
+`
+
+type InsertTranslatesParams struct {
+	PhraseID   int64  `json:"phrase_id"`
+	LanguageID int32  `json:"language_id"`
+	Phrase     string `json:"phrase"`
+	PhraseHint string `json:"phrase_hint"`
+}
+
+func (q *Queries) InsertTranslates(ctx context.Context, arg InsertTranslatesParams) (Translate, error) {
+	row := q.db.QueryRowContext(ctx, insertTranslates,
+		arg.PhraseID,
+		arg.LanguageID,
+		arg.Phrase,
+		arg.PhraseHint,
+	)
+	var i Translate
+	err := row.Scan(
+		&i.PhraseID,
+		&i.LanguageID,
+		&i.Phrase,
+		&i.PhraseHint,
+	)
+	return i, err
+}
+
 const selectPhrasesFromTranslates = `-- name: SelectPhrasesFromTranslates :many
 SELECT og.phrase_id, og.phrase, og.phrase_hint, new.phrase, new.phrase_hint
 FROM

@@ -77,6 +77,21 @@ func (mr *MockQuerierMockRecorder) DeleteUserPermissionById(arg0, arg1 interface
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteUserPermissionById", reflect.TypeOf((*MockQuerier)(nil).DeleteUserPermissionById), arg0, arg1)
 }
 
+// InsertPhrases mocks base method.
+func (m *MockQuerier) InsertPhrases(arg0 context.Context, arg1 int64) (db.Phrase, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InsertPhrases", arg0, arg1)
+	ret0, _ := ret[0].(db.Phrase)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// InsertPhrases indicates an expected call of InsertPhrases.
+func (mr *MockQuerierMockRecorder) InsertPhrases(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertPhrases", reflect.TypeOf((*MockQuerier)(nil).InsertPhrases), arg0, arg1)
+}
+
 // InsertTitle mocks base method.
 func (m *MockQuerier) InsertTitle(arg0 context.Context, arg1 db.InsertTitleParams) (db.Title, error) {
 	m.ctrl.T.Helper()
@@ -90,6 +105,21 @@ func (m *MockQuerier) InsertTitle(arg0 context.Context, arg1 db.InsertTitleParam
 func (mr *MockQuerierMockRecorder) InsertTitle(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertTitle", reflect.TypeOf((*MockQuerier)(nil).InsertTitle), arg0, arg1)
+}
+
+// InsertTranslates mocks base method.
+func (m *MockQuerier) InsertTranslates(arg0 context.Context, arg1 db.InsertTranslatesParams) (db.Translate, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InsertTranslates", arg0, arg1)
+	ret0, _ := ret[0].(db.Translate)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// InsertTranslates indicates an expected call of InsertTranslates.
+func (mr *MockQuerierMockRecorder) InsertTranslates(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertTranslates", reflect.TypeOf((*MockQuerier)(nil).InsertTranslates), arg0, arg1)
 }
 
 // InsertUser mocks base method.

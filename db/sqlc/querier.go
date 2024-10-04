@@ -12,7 +12,9 @@ type Querier interface {
 	DeleteTitleById(ctx context.Context, id int64) error
 	DeleteUserById(ctx context.Context, id int64) error
 	DeleteUserPermissionById(ctx context.Context, arg DeleteUserPermissionByIdParams) error
+	InsertPhrases(ctx context.Context, titleID int64) (Phrase, error)
 	InsertTitle(ctx context.Context, arg InsertTitleParams) (Title, error)
+	InsertTranslates(ctx context.Context, arg InsertTranslatesParams) (Translate, error)
 	InsertUser(ctx context.Context, arg InsertUserParams) (User, error)
 	InsertUserPermission(ctx context.Context, arg InsertUserPermissionParams) (UsersPermission, error)
 	ListTitles(ctx context.Context, arg ListTitlesParams) ([]ListTitlesRow, error)
