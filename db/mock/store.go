@@ -152,6 +152,21 @@ func (mr *MockQuerierMockRecorder) ListTitlesByOgLanguage(arg0, arg1 interface{}
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListTitlesByOgLanguage", reflect.TypeOf((*MockQuerier)(nil).ListTitlesByOgLanguage), arg0, arg1)
 }
 
+// SelectLanguagesById mocks base method.
+func (m *MockQuerier) SelectLanguagesById(arg0 context.Context, arg1 int32) (db.Language, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SelectLanguagesById", arg0, arg1)
+	ret0, _ := ret[0].(db.Language)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SelectLanguagesById indicates an expected call of SelectLanguagesById.
+func (mr *MockQuerierMockRecorder) SelectLanguagesById(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectLanguagesById", reflect.TypeOf((*MockQuerier)(nil).SelectLanguagesById), arg0, arg1)
+}
+
 // SelectPermissionByCode mocks base method.
 func (m *MockQuerier) SelectPermissionByCode(arg0 context.Context, arg1 string) (db.Permission, error) {
 	m.ctrl.T.Helper()

@@ -289,7 +289,7 @@ paths:
         description:  Title to add
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
               $ref: '#/components/schemas/NewTitle'
       responses:
@@ -449,16 +449,16 @@ components:
     NewTitle:
       required:
         - title
-        - numSubs
         - ogLanguageId
+        - filename
       properties:
         title:
           type: string
           description: Name of the title
-        numSubs:
-          type: integer
-          format: int32
-          description: Number of phrases
+        filename:
+          type: string
+          format: binary
+          description: the file to upload
         ogLanguageId:
           type: integer
           format: int32
