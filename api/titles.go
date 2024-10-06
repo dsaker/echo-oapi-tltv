@@ -40,14 +40,6 @@ func (s *Server) FindTitles(ctx echo.Context, params FindTitlesParams) error {
 
 func (s *Server) AddTitle(eCtx echo.Context) error {
 
-	// Maximum upload of 32768 Bytes... this is ~4 pages
-	//err := eCtx.
-	//err := eCtx.Request().ParseMultipartForm(32768)
-	//// if file is too big send error
-	//if err != nil {
-	//	return eCtx.String(http.StatusBadRequest, err.Error())
-	//}
-
 	lang := eCtx.FormValue("languageId")
 	titleName := eCtx.FormValue("titleName")
 	langIdInt16, err := strconv.ParseInt(lang, 10, 16)
@@ -67,6 +59,8 @@ func (s *Server) AddTitle(eCtx echo.Context) error {
 	if err != nil {
 		return eCtx.String(http.StatusBadRequest, err.Error())
 	}
+
+	// Check if file size is too large
 	if file.Size > 32768 {
 		return eCtx.String(http.StatusBadRequest, "file too large")
 	}
@@ -100,7 +94,7 @@ func (s *Server) AddTitle(eCtx echo.Context) error {
 		})
 
 	// insert phrases into db as translates object of OgLanguage
-	translatesSlice, err := s.insertPhrases(eCtx, title, stringsSlice, numLines)
+	translatesSlice, err := insertPhrases(eCtx, title, s.queries, stringsSlice, numLines)
 	if err != nil {
 		return eCtx.String(http.StatusInternalServerError, err.Error())
 	}
@@ -143,16 +137,76 @@ func (s *Server) DeleteTitle(ctx echo.Context, id int64) error {
 	return ctx.NoContent(http.StatusNoContent)
 }
 
-func (s *Server) insertPhrases(eCtx echo.Context, title db.Title, stringsSlice []string, numLines int) ([]db.Translate, error) {
+func (s *Server) TranslateTitle(eCtx echo.Context) error {
+
+	var newTranslateTitle TranslateTitleJSONBody
+	err := eCtx.Bind(&newTranslateTitle)
+	if err != nil {
+		return eCtx.String(http.StatusBadRequest, err.Error())
+	}
+
+	exists, err := s.queries.SelectExistsTranslates(
+		eCtx.Request().Context(),
+		db.SelectExistsTranslatesParams{
+			LanguageID: newTranslateTitle.NewLanguageId,
+			ID:         newTranslateTitle.TitleId,
+		})
+	if exists {
+		return eCtx.String(http.StatusBadRequest, "title already exists in that language")
+	}
+
+	title, err := s.queries.SelectTitleById(eCtx.Request().Context(), newTranslateTitle.TitleId)
+	if err != nil {
+		return eCtx.String(http.StatusBadRequest, "invalid title id")
+	}
+
+	dbLang, err := s.queries.SelectLanguagesById(eCtx.Request().Context(), newTranslateTitle.NewLanguageId)
+	if err != nil {
+		return eCtx.String(http.StatusBadRequest, err.Error())
+	}
+
+	langTag, err := language.Parse(dbLang.Tag)
+	if err != nil {
+		return eCtx.String(http.StatusBadRequest, err.Error())
+	}
+
+	// We're always asynchronous, so lock unsafe operations below
+	s.Lock()
+	defer s.Unlock()
+
+	translates, err := s.queries.SelectTranslatesByTitleIdLangId(
+		eCtx.Request().Context(),
+		db.SelectTranslatesByTitleIdLangIdParams{
+			ID:         newTranslateTitle.TitleId,
+			LanguageID: title.OgLanguageID,
+		})
+	if err != nil {
+		return eCtx.String(http.StatusBadRequest, err.Error())
+	}
+
+	newTranslates, err := translatePhrases(eCtx, int(translates[0].NumSubs), translates, langTag)
+	if err != nil {
+		return eCtx.String(http.StatusInternalServerError, err.Error())
+	}
+
+	insertTranslates, err := insertPhrases(eCtx, title, s.queries, newTranslates, int(translates[0].NumSubs))
+	if err != nil {
+		return eCtx.String(http.StatusInternalServerError, err.Error())
+	}
+
+	return eCtx.JSON(http.StatusCreated, insertTranslates[0])
+}
+
+func insertPhrases(eCtx echo.Context, title db.Title, q db.Querier, stringsSlice []string, numLines int) ([]db.Translate, error) {
 	dbTranslates := make([]db.Translate, numLines)
 	for i, str := range stringsSlice {
 
-		phrase, err := s.queries.InsertPhrases(eCtx.Request().Context(), title.ID)
+		phrase, err := q.InsertPhrases(eCtx.Request().Context(), title.ID)
 		if err != nil {
 			return nil, err
 		}
 
-		insertTranslate, err := s.queries.InsertTranslates(
+		insertTranslate, err := q.InsertTranslates(
 			eCtx.Request().Context(),
 			db.InsertTranslatesParams{
 				PhraseID:   phrase.ID,
@@ -181,7 +235,7 @@ func textToSpeech(eCtx echo.Context, translatesSlice []db.Translate, basepath, t
 	for i, nextSpeech := range translatesSlice {
 		// added intermittent sleep to fix TLS handshake errors on the client side
 		if i%50 == 0 && i != 0 {
-			time.Sleep(2 * time.Second)
+			time.Sleep(1 * time.Second)
 		}
 		wg.Add(1)
 		//get responses concurrently with go routines
@@ -255,7 +309,7 @@ func getSpeech(eCtx echo.Context,
 	}
 }
 
-func translatePhrases(eCtx echo.Context, numLines int, translatesSlice []db.Translate, tag language.Tag) ([]string, error) {
+func translatePhrases(eCtx echo.Context, numLines int, translatesSlice []db.SelectTranslatesByTitleIdLangIdRow, tag language.Tag) ([]string, error) {
 
 	// concurrently get all the responses from Google Translate
 	var wg sync.WaitGroup
@@ -267,7 +321,7 @@ func translatePhrases(eCtx echo.Context, numLines int, translatesSlice []db.Tran
 	for i, nextTranslate := range translatesSlice {
 		// added intermittent sleep to fix TLS handshake errors on the client side
 		if i%50 == 0 && i != 0 {
-			time.Sleep(2 * time.Second)
+			time.Sleep(1 * time.Second)
 		}
 		wg.Add(1)
 		//get responses concurrently with go routines
@@ -349,4 +403,8 @@ func makeHintString(s string) string {
 		hintString += " "
 	}
 	return hintString
+}
+
+func deleteTitleSendError() {
+
 }

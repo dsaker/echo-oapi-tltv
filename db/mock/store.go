@@ -182,6 +182,21 @@ func (mr *MockQuerierMockRecorder) ListTitlesByOgLanguage(arg0, arg1 interface{}
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListTitlesByOgLanguage", reflect.TypeOf((*MockQuerier)(nil).ListTitlesByOgLanguage), arg0, arg1)
 }
 
+// SelectExistsTranslates mocks base method.
+func (m *MockQuerier) SelectExistsTranslates(arg0 context.Context, arg1 db.SelectExistsTranslatesParams) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SelectExistsTranslates", arg0, arg1)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SelectExistsTranslates indicates an expected call of SelectExistsTranslates.
+func (mr *MockQuerierMockRecorder) SelectExistsTranslates(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectExistsTranslates", reflect.TypeOf((*MockQuerier)(nil).SelectExistsTranslates), arg0, arg1)
+}
+
 // SelectLanguagesById mocks base method.
 func (m *MockQuerier) SelectLanguagesById(arg0 context.Context, arg1 int16) (db.Language, error) {
 	m.ctrl.T.Helper()
@@ -255,6 +270,21 @@ func (m *MockQuerier) SelectTitleById(arg0 context.Context, arg1 int64) (db.Titl
 func (mr *MockQuerierMockRecorder) SelectTitleById(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectTitleById", reflect.TypeOf((*MockQuerier)(nil).SelectTitleById), arg0, arg1)
+}
+
+// SelectTranslatesByTitleIdLangId mocks base method.
+func (m *MockQuerier) SelectTranslatesByTitleIdLangId(arg0 context.Context, arg1 db.SelectTranslatesByTitleIdLangIdParams) ([]db.SelectTranslatesByTitleIdLangIdRow, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SelectTranslatesByTitleIdLangId", arg0, arg1)
+	ret0, _ := ret[0].([]db.SelectTranslatesByTitleIdLangIdRow)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SelectTranslatesByTitleIdLangId indicates an expected call of SelectTranslatesByTitleIdLangId.
+func (mr *MockQuerierMockRecorder) SelectTranslatesByTitleIdLangId(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectTranslatesByTitleIdLangId", reflect.TypeOf((*MockQuerier)(nil).SelectTranslatesByTitleIdLangId), arg0, arg1)
 }
 
 // SelectUserById mocks base method.

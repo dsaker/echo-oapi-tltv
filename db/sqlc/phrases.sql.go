@@ -52,6 +52,26 @@ func (q *Queries) InsertTranslates(ctx context.Context, arg InsertTranslatesPara
 	return i, err
 }
 
+const selectExistsTranslates = `-- name: SelectExistsTranslates :one
+SELECT EXISTS(
+    SELECT 1 FROM titles t
+    JOIN phrases p ON t.id = p.title_id
+    JOIN translates tr ON p.id = tr.phrase_id AND tr.language_id = $1
+    WHERE tr.language_id = $1 and t.id = $2 ) AS "exists"
+`
+
+type SelectExistsTranslatesParams struct {
+	LanguageID int16 `json:"language_id"`
+	ID         int64 `json:"id"`
+}
+
+func (q *Queries) SelectExistsTranslates(ctx context.Context, arg SelectExistsTranslatesParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, selectExistsTranslates, arg.LanguageID, arg.ID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const selectPhrasesFromTranslates = `-- name: SelectPhrasesFromTranslates :many
 SELECT og.phrase_id, og.phrase, og.phrase_hint, new.phrase, new.phrase_hint
 FROM
@@ -196,6 +216,47 @@ func (q *Queries) SelectPhrasesFromTranslatesWithCorrect(ctx context.Context, ar
 			&i.PhraseHint_2,
 			&i.PhraseCorrect,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const selectTranslatesByTitleIdLangId = `-- name: SelectTranslatesByTitleIdLangId :many
+SELECT t.num_subs, tr.phrase_id, tr.phrase FROM titles t
+JOIN phrases p ON t.id = p.title_id
+JOIN translates tr ON p.id = tr.phrase_id AND tr.language_id = $1
+WHERE tr.language_id = $1 and t.id = $2
+`
+
+type SelectTranslatesByTitleIdLangIdParams struct {
+	LanguageID int16 `json:"language_id"`
+	ID         int64 `json:"id"`
+}
+
+type SelectTranslatesByTitleIdLangIdRow struct {
+	NumSubs  int16  `json:"num_subs"`
+	PhraseID int64  `json:"phrase_id"`
+	Phrase   string `json:"phrase"`
+}
+
+func (q *Queries) SelectTranslatesByTitleIdLangId(ctx context.Context, arg SelectTranslatesByTitleIdLangIdParams) ([]SelectTranslatesByTitleIdLangIdRow, error) {
+	rows, err := q.db.QueryContext(ctx, selectTranslatesByTitleIdLangId, arg.LanguageID, arg.ID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SelectTranslatesByTitleIdLangIdRow{}
+	for rows.Next() {
+		var i SelectTranslatesByTitleIdLangIdRow
+		if err := rows.Scan(&i.NumSubs, &i.PhraseID, &i.Phrase); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
