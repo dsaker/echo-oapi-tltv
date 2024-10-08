@@ -37,7 +37,7 @@ func main() {
 
 	q := db.New(conn)
 
-	e, _ := api.NewServer(cfg, q)
+	e, _ := api.NewServer(cfg, q, &api.Translates{})
 
 	e.Logger.Fatal(e.Start(net.JoinHostPort("0.0.0.0", cfg.Port)))
 }

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	mockdb "talkliketv.click/tltv/db/mock"
 	db "talkliketv.click/tltv/db/sqlc"
+	mock "talkliketv.click/tltv/internal/mock"
 	"testing"
 )
 
@@ -32,7 +33,7 @@ func TestAddUserPermission(t *testing.T) {
 				"permissionId": 1,
 				"userId":       user.ID,
 			},
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 				store.EXPECT().
 					InsertUserPermission(gomock.Any(), insertUsersPermission).
 					Times(1).
@@ -55,7 +56,7 @@ func TestAddUserPermission(t *testing.T) {
 				"permission": 1,
 				"userId":     user.ID,
 			},
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)
@@ -71,7 +72,7 @@ func TestAddUserPermission(t *testing.T) {
 				"permissionId": 1,
 				"userId":       user.ID,
 			},
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 				store.EXPECT().
 					InsertUserPermission(gomock.Any(), gomock.Any()).
 					Times(1).
@@ -91,7 +92,7 @@ func TestAddUserPermission(t *testing.T) {
 				"permissionId": 1,
 				"userId":       user.ID,
 			},
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusForbidden, res.StatusCode)
@@ -107,7 +108,7 @@ func TestAddUserPermission(t *testing.T) {
 				"permissionId": 1,
 				"userId":       user.ID,
 			},
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 				store.EXPECT().
 					InsertUserPermission(gomock.Any(), gomock.Any()).
 					Times(1).
@@ -134,6 +135,7 @@ func TestAddUserPermission(t *testing.T) {
 
 			req, ts := setupServerTest(t, ctrl, tc, data, usersPermissionBasePath, http.MethodPost)
 
+			req := serverRequest(t, body, ts, urlPath, method, string(jwsToken))
 			res, err := ts.Client().Do(req)
 			require.NoError(t, err)
 

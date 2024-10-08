@@ -12,6 +12,7 @@ import (
 	"strconv"
 	mockdb "talkliketv.click/tltv/db/mock"
 	db "talkliketv.click/tltv/db/sqlc"
+	mock "talkliketv.click/tltv/internal/mock"
 	"talkliketv.click/tltv/internal/util"
 	"testing"
 )
@@ -53,7 +54,7 @@ func TestGetUser(t *testing.T) {
 			name:   "get user1",
 			user:   user1,
 			userId: user1.ID,
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 				store.EXPECT().
 					SelectUserById(gomock.Any(), user1.ID).
 					Times(1).
@@ -71,7 +72,7 @@ func TestGetUser(t *testing.T) {
 			name:   "Id's don't match",
 			user:   user1,
 			userId: user2.ID,
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 			},
 			checkRecorder: func(rec *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusForbidden, rec.Code)
@@ -82,7 +83,7 @@ func TestGetUser(t *testing.T) {
 			name:   "User does not exist",
 			user:   user2,
 			userId: user2.ID,
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 				store.EXPECT().
 					SelectUserById(gomock.Any(), user2.ID).
 					Times(1).
@@ -125,7 +126,7 @@ func TestDeleteUser(t *testing.T) {
 			name:   "delete user1",
 			user:   user1,
 			userId: user1.ID,
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 				store.EXPECT().
 					DeleteUserById(gomock.Any(), user1.ID).
 					Times(1).
@@ -139,7 +140,7 @@ func TestDeleteUser(t *testing.T) {
 			name:   "Id's don't match",
 			user:   user1,
 			userId: user2.ID,
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 			},
 			checkRecorder: func(rec *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusForbidden, rec.Code)
@@ -150,7 +151,7 @@ func TestDeleteUser(t *testing.T) {
 			name:   "User does not exist",
 			user:   user2,
 			userId: user2.ID,
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 				store.EXPECT().
 					DeleteUserById(gomock.Any(), user2.ID).
 					Times(1).
@@ -196,7 +197,7 @@ func TestCreateUser(t *testing.T) {
 				"password":      password,
 				"titleId":       user.TitleID,
 			},
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 				arg := db.InsertUserParams{
 					Name:           user.Name,
 					Email:          user.Email,
@@ -241,7 +242,7 @@ func TestCreateUser(t *testing.T) {
 				"password":      password,
 				"titleId":       user.TitleID,
 			},
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 				store.EXPECT().
 					InsertUser(gomock.Any(), gomock.Any()).
 					Times(1).
@@ -262,7 +263,7 @@ func TestCreateUser(t *testing.T) {
 				"password":      password,
 				"titleId":       user.TitleID,
 			},
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 				store.EXPECT().
 					InsertUser(gomock.Any(), gomock.Any()).
 					Times(1).
@@ -320,7 +321,7 @@ func TestUpdateUser(t *testing.T) {
 				"value": "newemail2@email.com"
 			}
 		]`,
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 				userCopy := user1
 				paramsCopy := updateUserParams
 				paramsCopy.Email = "newemail2@email.com"
@@ -353,7 +354,7 @@ func TestUpdateUser(t *testing.T) {
 				"value": "newemail2@email.com"
 			}
 		]`,
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 			},
 			checkRecorder: func(rec *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusForbidden, rec.Code)
@@ -371,7 +372,7 @@ func TestUpdateUser(t *testing.T) {
 				"value": "newemail2@email.com"
 			}
 		]`,
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 			},
 			checkRecorder: func(rec *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, rec.Code)
@@ -389,7 +390,7 @@ func TestUpdateUser(t *testing.T) {
 				"value": "newemail2@email.com"
 			}
 		]`,
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 				store.EXPECT().
 					SelectUserById(gomock.Any(), user2.ID).
 					Times(1).
@@ -429,7 +430,7 @@ func TestLoginUser(t *testing.T) {
 				"username": user.Name,
 				"password": password,
 			},
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 				store.EXPECT().
 					SelectUserByName(gomock.Any(), gomock.Any()).
 					Times(1).
@@ -449,7 +450,7 @@ func TestLoginUser(t *testing.T) {
 				"username": "NotFound",
 				"password": password,
 			},
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 				store.EXPECT().
 					SelectUserByName(gomock.Any(), gomock.Any()).
 					Times(1).
@@ -466,7 +467,7 @@ func TestLoginUser(t *testing.T) {
 				"username": user.Name,
 				"password": "incorrect",
 			},
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 				store.EXPECT().
 					SelectUserByName(gomock.Any(), gomock.Eq(user.Name)).
 					Times(1).
@@ -483,7 +484,7 @@ func TestLoginUser(t *testing.T) {
 				"username": user.Name,
 				"password": password,
 			},
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 				store.EXPECT().
 					SelectUserByName(gomock.Any(), gomock.Any()).
 					Times(1).
@@ -528,7 +529,7 @@ func TestCreateUserMiddleware(t *testing.T) {
 				"titleId":       user.TitleID,
 				"email":         "invalid-email",
 			},
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)
@@ -546,7 +547,7 @@ func TestCreateUserMiddleware(t *testing.T) {
 				"titleId":       user.TitleID,
 				"email":         user.Email,
 			},
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)
@@ -564,9 +565,10 @@ func TestCreateUserMiddleware(t *testing.T) {
 			defer ctrl.Finish()
 
 			store := mockdb.NewMockQuerier(ctrl)
-			tc.buildStubs(store)
+			text := mock.NewMockTranslateX(ctrl)
+			tc.buildStubs(store, text)
 
-			e, _ := NewServer(testCfg, store)
+			e, _ := NewServer(testCfg, store, text)
 
 			// Marshal body data to JSON
 			data, err := json.Marshal(tc.body)

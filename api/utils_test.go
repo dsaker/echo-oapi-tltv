@@ -17,13 +17,19 @@ import (
 	mockdb "talkliketv.click/tltv/db/mock"
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/config"
+	mock "talkliketv.click/tltv/internal/mock"
 	"talkliketv.click/tltv/internal/token"
 	"talkliketv.click/tltv/internal/util"
 	"testing"
 )
 
 var (
-	testCfg config.Config
+	testCfg            config.Config
+	validLanguageModel = db.Language{
+		ID:       27,
+		Language: "English",
+		Tag:      "en",
+	}
 )
 
 const (
@@ -32,6 +38,7 @@ const (
 	usersPermissionBasePath = "/v1/userspermissions"
 	phrasesBasePath         = "/v1/phrases"
 	usersPhrasesBasePath    = "/v1/usersphrases"
+	validLanguageId         = 27
 )
 
 type testCase struct {
@@ -40,7 +47,7 @@ type testCase struct {
 	stringBody    string
 	user          db.User
 	userId        int64
-	buildStubs    func(store *mockdb.MockQuerier)
+	buildStubs    func(*mockdb.MockQuerier, *mock.MockTranslateX)
 	checkRecorder func(rec *httptest.ResponseRecorder)
 	checkResponse func(res *http.Response)
 	values        map[string]any
@@ -51,7 +58,7 @@ func TestMain(m *testing.M) {
 	testCfg = config.SetConfigs()
 
 	flag.Parse()
-
+	testCfg.TTSBasePath = "/tmp/audio/"
 	os.Exit(m.Run())
 }
 
@@ -113,15 +120,16 @@ func randomTitle() (title db.Title) {
 		ID:           util.RandomInt64(),
 		Title:        util.RandomName(),
 		NumSubs:      util.RandomInt16(),
-		OgLanguageID: util.ValidOgLanguageId,
+		OgLanguageID: validLanguageId,
 	}
 }
 
 func setupHandlerTest(t *testing.T, ctrl *gomock.Controller, tc testCase, urlBasePath, body, method string) (*Server, echo.Context, *httptest.ResponseRecorder) {
+	text := mock.NewMockTranslateX(ctrl)
 	store := mockdb.NewMockQuerier(ctrl)
-	tc.buildStubs(store)
+	tc.buildStubs(store, text)
 
-	e, srv := NewServer(testCfg, store)
+	e, srv := NewServer(testCfg, store, text)
 
 	jwsToken, err := srv.fa.CreateJWSWithClaims(tc.permissions, tc.user)
 	require.NoError(t, err)
@@ -136,19 +144,20 @@ func setupHandlerTest(t *testing.T, ctrl *gomock.Controller, tc testCase, urlBas
 	return srv, c, rec
 }
 
-func setupServerTest(t *testing.T, ctrl *gomock.Controller, tc testCase, body []byte, urlPath, method string) (*http.Request, *httptest.Server) {
+func setupServerTest(t *testing.T, ctrl *gomock.Controller, tc testCase) (*httptest.Server, string) {
+	text := mock.NewMockTranslateX(ctrl)
 	store := mockdb.NewMockQuerier(ctrl)
-	tc.buildStubs(store)
+	tc.buildStubs(store, text)
 
-	e, srv := NewServer(testCfg, store)
+	e, srv := NewServer(testCfg, store, text)
 
 	ts := httptest.NewServer(e)
 
 	jwsToken, err := srv.fa.CreateJWSWithClaims(tc.permissions, tc.user)
 	require.NoError(t, err)
 
-	req := serverRequest(t, body, ts, urlPath, method, string(jwsToken))
-	return req, ts
+	//req := serverRequest(t, body, ts, urlPath, method, string(jwsToken))
+	return ts, string(jwsToken)
 }
 
 func handlerRequest(json string, urlPath, method, authToken string) *http.Request {

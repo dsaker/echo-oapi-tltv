@@ -9,6 +9,7 @@ import (
 	"strconv"
 	mockdb "talkliketv.click/tltv/db/mock"
 	db "talkliketv.click/tltv/db/sqlc"
+	mock "talkliketv.click/tltv/internal/mock"
 	"testing"
 )
 
@@ -41,7 +42,7 @@ func TestGetPhrases(t *testing.T) {
 			name:   "OK",
 			user:   user,
 			values: map[string]any{"limit": true},
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 				store.EXPECT().
 					SelectPhrasesFromTranslatesWithCorrect(gomock.Any(), selectPhrasesFromTranslatesParams).
 					Times(1).
@@ -61,7 +62,7 @@ func TestGetPhrases(t *testing.T) {
 			name:   "No limit set",
 			user:   user,
 			values: map[string]any{"limit": false},
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 				store.EXPECT().
 					SelectPhrasesFromTranslatesWithCorrect(gomock.Any(), selectPhrasesFromTranslatesParams).
 					Times(1).
@@ -140,7 +141,7 @@ func TestUpdateUsersPhrases(t *testing.T) {
 				"value": 1
 			}
 		]`,
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 				args := db.SelectUsersPhrasesByIdsParams{
 					UserID:     user1.ID,
 					LanguageID: user1.NewLanguageID,
@@ -184,7 +185,7 @@ func TestUpdateUsersPhrases(t *testing.T) {
 				"value": 1
 			}
 		]`,
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)
