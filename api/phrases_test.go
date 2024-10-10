@@ -87,8 +87,10 @@ func TestGetPhrases(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			req, ts := setupServerTest(t, ctrl, tc, []byte(""), phrasesBasePath, http.MethodGet)
+			ts, jwsToken := setupServerTest(t, ctrl, tc)
+			req := jsonRequest(t, []byte(""), ts, phrasesBasePath, http.MethodGet, jwsToken)
 
+			// add parameters to the url query path
 			q := req.URL.Query()
 			if tc.values["limit"] == true {
 				q.Add("limit", "10")
@@ -105,7 +107,6 @@ func TestGetPhrases(t *testing.T) {
 
 func TestUpdateUsersPhrases(t *testing.T) {
 	user1, _ := randomUser(t)
-	//user2, _ := randomUser(t)
 	phrase := randomPhrase()
 	usersPhrase := randomUsersPhrase(user1, phrase)
 
@@ -117,14 +118,6 @@ func TestUpdateUsersPhrases(t *testing.T) {
 		PhraseID:      phrase.Id,
 	}
 
-	//usersPhrases := UsersPhrases{
-	//	LanguageId:    usersPhrase.LanguageID,
-	//	PhraseCorrect: usersPhrase.PhraseCorrect,
-	//	PhraseId:      usersPhrase.PhraseID,
-	//	TitleId:       usersPhrase.TitleID,
-	//	UserId:        usersPhrase.UserID,
-	//}
-
 	testCases := []testCase{
 		{
 			name:        "update UsersPhrase phraseCorrect",
@@ -134,7 +127,7 @@ func TestUpdateUsersPhrases(t *testing.T) {
 				"languageId": fmt.Sprint(user1.NewLanguageID)},
 			user:   user1,
 			userId: user1.ID,
-			stringBody: `[
+			body: `[
 			{
 				"op": "replace",
 				"path": "/phraseCorrect",
@@ -178,7 +171,7 @@ func TestUpdateUsersPhrases(t *testing.T) {
 				"languageId": fmt.Sprint(user1.NewLanguageID)},
 			user:   user1,
 			userId: user1.ID,
-			stringBody: `[
+			body: `[
 			{
 				"wrong": "replace",
 				"path": "/phraseCorrect",
@@ -203,7 +196,10 @@ func TestUpdateUsersPhrases(t *testing.T) {
 			defer ctrl.Finish()
 
 			urlPath := usersPhrasesBasePath + "/" + tc.values["phraseId"].(string) + "/" + tc.values["languageId"].(string)
-			req, ts := setupServerTest(t, ctrl, tc, []byte(tc.stringBody), urlPath, http.MethodPatch)
+			ts, jwsToken := setupServerTest(t, ctrl, tc)
+			req := jsonRequest(t, []byte(tc.body.(string)), ts, urlPath, http.MethodPatch, jwsToken)
+
+			// change request content-type to patch
 			req.Header.Set("Content-Type", "application/json-patch+json")
 			res, err := ts.Client().Do(req)
 			require.NoError(t, err)

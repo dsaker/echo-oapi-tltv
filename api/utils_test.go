@@ -7,6 +7,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -43,11 +44,11 @@ const (
 
 type testCase struct {
 	name          string
-	body          map[string]any
-	stringBody    string
+	body          interface{}
 	user          db.User
 	userId        int64
 	buildStubs    func(*mockdb.MockQuerier, *mock.MockTranslateX)
+	multipartBody func(*testing.T) (*bytes.Buffer, *multipart.Writer)
 	checkRecorder func(rec *httptest.ResponseRecorder)
 	checkResponse func(res *http.Response)
 	values        map[string]any
@@ -156,7 +157,7 @@ func setupServerTest(t *testing.T, ctrl *gomock.Controller, tc testCase) (*httpt
 	jwsToken, err := srv.fa.CreateJWSWithClaims(tc.permissions, tc.user)
 	require.NoError(t, err)
 
-	//req := serverRequest(t, body, ts, urlPath, method, string(jwsToken))
+	//req := jsonRequest(t, body, ts, urlPath, method, string(jwsToken))
 	return ts, string(jwsToken)
 }
 
@@ -172,7 +173,7 @@ func handlerRequest(json string, urlPath, method, authToken string) *http.Reques
 	return req
 }
 
-func serverRequest(t *testing.T, json []byte, ts *httptest.Server, urlPath, method, authToken string) *http.Request {
+func jsonRequest(t *testing.T, json []byte, ts *httptest.Server, urlPath, method, authToken string) *http.Request {
 
 	req, err := http.NewRequest(method, ts.URL+urlPath, bytes.NewBuffer(json))
 	require.NoError(t, err)

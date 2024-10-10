@@ -133,9 +133,8 @@ func TestAddUserPermission(t *testing.T) {
 			data, err := json.Marshal(tc.body)
 			require.NoError(t, err)
 
-			req, ts := setupServerTest(t, ctrl, tc, data, usersPermissionBasePath, http.MethodPost)
-
-			req := serverRequest(t, body, ts, urlPath, method, string(jwsToken))
+			ts, jwsToken := setupServerTest(t, ctrl, tc)
+			req := jsonRequest(t, data, ts, usersPermissionBasePath, http.MethodPost, jwsToken)
 			res, err := ts.Client().Do(req)
 			require.NoError(t, err)
 

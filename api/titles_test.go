@@ -105,8 +105,9 @@ func TestFindTitles(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			req, ts := setupServerTest(t, ctrl, tc, []byte(""), titlesBasePath, http.MethodGet)
-
+			//req, ts := setupServerTest(t, ctrl, tc, []byte(""), titlesBasePath, http.MethodGet)
+			ts, jwsToken := setupServerTest(t, ctrl, tc)
+			req := jsonRequest(t, []byte(""), ts, titlesBasePath, http.MethodGet, jwsToken)
 			q := req.URL.Query()
 			if tc.values["similarity"] == true {
 				q.Add("similarity", "similar")
@@ -125,18 +126,18 @@ func TestFindTitles(t *testing.T) {
 }
 
 func TestAddTitle(t *testing.T) {
+
 	user, _ := randomUser(t)
 	title := randomTitle()
-	phrase1 := randomPhrase()
-	phrase2 := randomPhrase()
-	translate1 := randomTranslate(phrase1, validLanguageId)
-	translate2 := randomTranslate(phrase2, validLanguageId)
+	translate1 := randomTranslate(randomPhrase(), title.OgLanguageID)
+	translate2 := randomTranslate(randomPhrase(), title.OgLanguageID)
 
 	dbTranslates := []db.Translate{translate1, translate2}
 
-	filename := "sentences.txt"
+	filename := "/tmp/sentences2.txt"
 	stringsSlice := []string{"This is the first sentence.", "This is the second sentence."}
-	//create base path for storing mp3 audio files
+
+	//create a base path for storing mp3 audio files
 	audioBasePath := "/tmp/audio/" +
 		strconv.Itoa(int(title.ID)) + "/" +
 		strconv.Itoa(int(title.OgLanguageID)) + "/"
@@ -147,15 +148,42 @@ func TestAddTitle(t *testing.T) {
 		OgLanguageID: title.OgLanguageID,
 	}
 
+	filename = "/tmp/filename.txt"
+
+	data := []byte("This is the first sentence.\nThis is the second sentence.\n")
+	err := os.WriteFile(filename, data, 0644)
+	file, err := os.Open(filename)
+
+	// Create a multipart form data
+	body := new(bytes.Buffer)
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("filePath", filename)
+	require.NoError(t, err)
+	_, err = io.Copy(part, file)
+	require.NoError(t, err)
+	err = writer.WriteField("titleName", title.Title)
+	err = writer.WriteField("languageId", strconv.Itoa(int(title.OgLanguageID)))
+	require.NoError(t, writer.Close())
+
 	testCases := []testCase{
 		{
 			name: "OK",
 			user: user,
-			body: map[string]any{
-				"titleName":  "sentences",
-				"languageId": title.OgLanguageID,
-				"filePath":   filename,
-			},
+			//multipartBody: func(t *testing.T) (*bytes.Buffer, *multipart.Writer) {
+			//	data := []byte("This is the first sentence.\nThis is the second sentence.\n")
+			//	body := bytes.NewBuffer(data)
+			//	writer := multipart.NewWriter(body)
+			//	file, err := os.Create(filename)
+			//	require.NoError(t, err)
+			//	part, err := writer.CreateFormFile("filePath", filename)
+			//	require.NoError(t, err)
+			//	_, err = io.Copy(part, file)
+			//	require.NoError(t, err)
+			//	err = writer.WriteField("titleName", title.Title)
+			//	err = writer.WriteField("languageId", strconv.Itoa(int(title.OgLanguageID)))
+			//	require.NoError(t, writer.Close())
+			//	return body, writer
+			//},
 			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 				store.EXPECT().
 					SelectLanguagesById(gomock.Any(), title.OgLanguageID).
@@ -180,23 +208,49 @@ func TestAddTitle(t *testing.T) {
 				requireMatchAnyExcept(t, title, gotTitle, nil, "", "")
 			},
 			permissions: []string{db.WriteTitlesCode},
+			values:      map[string]any{"include1": true, "include2": true},
 		},
 		//{
 		//	name: "Bad Request Body",
 		//	user: user,
-		//	body: map[string]any{
-		//		"numSubs":    title.NumSubs,
-		//		"ogLanguage": title.OgLanguageID,
-		//		"title":      title.Title,
+		//	multipartBody: func(t *testing.T) (*bytes.Buffer, *multipart.Writer) {
+		//		data := []byte("This is the first sentence.\nThis is the second sentence.\n")
+		//		body := bytes.NewBuffer(data)
+		//		writer := multipart.NewWriter(body)
+		//		file, err := os.Create(filename)
+		//		require.NoError(t, err)
+		//		part, err := writer.CreateFormFile("filePath", filename)
+		//		require.NoError(t, err)
+		//		_, err = io.Copy(part, file)
+		//		require.NoError(t, err)
+		//		err = writer.WriteField("titleName", title.Title)
+		//		err = writer.WriteField("languageId", strconv.Itoa(int(title.OgLanguageID)))
+		//		require.NoError(t, writer.Close())
+		//		dir, err := os.Getwd()
+		//		if err != nil {
+		//			fmt.Println("Error:", err)
+		//		} else {
+		//			fmt.Println("Current working directory:", dir)
+		//		}
+		//		files, err := os.ReadDir(".")
+		//		if err != nil {
+		//			fmt.Println("Error reading directory:", err)
+		//		}
+		//
+		//		for _, file := range files {
+		//			fmt.Println(file.Name())
+		//		}
+		//		return body, writer
 		//	},
 		//	buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 		//	},
 		//	checkResponse: func(res *http.Response) {
 		//		require.Equal(t, http.StatusBadRequest, res.StatusCode)
-		//		body := readBody(t, res)
-		//		require.Contains(t, body, "request body has an error: doesn't match schema #/components/schemas/NewTitle: Error at ")
+		//		resBody := readBody(t, res)
+		//		require.Contains(t, resBody, "{\"message\":\"request body has an error: doesn't match schema: Error at \\\"/titleName\\\": property")
 		//	},
 		//	permissions: []string{db.WriteTitlesCode},
+		//	values:      map[string]any{"include1": false, "include2": true},
 		//},
 		//{
 		//	name: "db connection closed",
@@ -245,39 +299,10 @@ func TestAddTitle(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			//data, err := json.Marshal(body)
-			//require.NoError(t, err)
-
-			//req, ts := setupServerTest(t, ctrl, tc, data, titlesBasePath, http.MethodPost)
-
-			data := []byte("This is the first sentence.\nThis is the second sentence.\n")
-			body := bytes.NewBuffer(data)
-			writer := multipart.NewWriter(body)
-			file, err := os.Open(filename)
+			ts, jwsToken := setupServerTest(t, ctrl, tc)
+			//multiBody, multiWriter := tc.multipartBody(t)
+			req, err := http.NewRequest(http.MethodPost, ts.URL+titlesBasePath, body)
 			require.NoError(t, err)
-			part, err := writer.CreateFormFile("filePath", filename)
-			require.NoError(t, err)
-			_, err = io.Copy(part, file)
-			require.NoError(t, err)
-			err = writer.WriteField("titleName", title.Title)
-			err = writer.WriteField("languageId", strconv.Itoa(int(title.OgLanguageID)))
-			require.NoError(t, writer.Close())
-
-			//text := mock.NewMockTranslateX(ctrl)
-			//store := mockdb.NewMockQuerier(ctrl)
-			//tc.buildStubs(store, text)
-			//
-			//e, srv := NewServer(testCfg, store, text)
-			//
-			//ts := httptest.NewServer(e)
-			//
-			//jwsToken, err := srv.fa.CreateJWSWithClaims(tc.permissions, tc.user)
-			//require.NoError(t, err)
-
-			//req, err := http.NewRequest(http.MethodPost, ts.URL+titlesBasePath, body)
-			//require.NoError(t, err)
-
-			req, ts := setupServerTest(t, ctrl, tc, body, titlesBasePath, http.MethodPost)
 
 			req.Header.Set("Authorization", "Bearer "+string(jwsToken))
 
@@ -342,8 +367,9 @@ func TestFindTitleById(t *testing.T) {
 			defer ctrl.Finish()
 
 			urlPath := titlesBasePath + "/" + strconv.FormatInt(title.ID, 10)
-			req, ts := setupServerTest(t, ctrl, tc, []byte(""), urlPath, http.MethodGet)
-
+			//req, ts := setupServerTest(t, ctrl, tc, []byte(""), urlPath, http.MethodGet)
+			ts, jwsToken := setupServerTest(t, ctrl, tc)
+			req := jsonRequest(t, []byte(""), ts, urlPath, http.MethodGet, jwsToken)
 			res, err := ts.Client().Do(req)
 			require.NoError(t, err)
 
@@ -396,8 +422,9 @@ func TestDeleteTitleById(t *testing.T) {
 			defer ctrl.Finish()
 
 			urlPath := titlesBasePath + "/" + strconv.FormatInt(title.ID, 10)
-			req, ts := setupServerTest(t, ctrl, tc, []byte(""), urlPath, http.MethodDelete)
-
+			//req, ts := setupServerTest(t, ctrl, tc, []byte(""), urlPath, http.MethodDelete)
+			ts, jwsToken := setupServerTest(t, ctrl, tc)
+			req := jsonRequest(t, []byte(""), ts, urlPath, http.MethodDelete, jwsToken)
 			res, err := ts.Client().Do(req)
 			require.NoError(t, err)
 

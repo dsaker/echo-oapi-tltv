@@ -314,7 +314,7 @@ func TestUpdateUser(t *testing.T) {
 			name:   "update user1 email",
 			user:   user1,
 			userId: user1.ID,
-			stringBody: `[
+			body: `[
 			{
 				"op": "replace",
 				"path": "/email",
@@ -347,7 +347,7 @@ func TestUpdateUser(t *testing.T) {
 			name:   "Id does not match",
 			user:   user1,
 			userId: user2.ID,
-			stringBody: `[
+			body: `[
 			{
 				"op": "replace",
 				"path": "/email",
@@ -365,7 +365,7 @@ func TestUpdateUser(t *testing.T) {
 			name:   "Invalid format for PatchUser",
 			user:   user1,
 			userId: user1.ID,
-			stringBody: `[
+			body: `[
 			{
 				"wrong": "replace",
 				"path": "/email",
@@ -383,7 +383,7 @@ func TestUpdateUser(t *testing.T) {
 			name:   "User does not exist",
 			user:   user2,
 			userId: user2.ID,
-			stringBody: `[
+			body: `[
 			{
 				"op": "replace",
 				"path": "/email",
@@ -411,7 +411,7 @@ func TestUpdateUser(t *testing.T) {
 			defer ctrl.Finish()
 
 			urlPath := usersBasePath + "/" + strconv.FormatInt(tc.user.ID, 10)
-			srv, c, rec := setupHandlerTest(t, ctrl, tc, urlPath, tc.stringBody, http.MethodPatch)
+			srv, c, rec := setupHandlerTest(t, ctrl, tc, urlPath, tc.body.(string), http.MethodPatch)
 			err := srv.UpdateUser(c, tc.userId)
 			require.NoError(t, err)
 			tc.checkRecorder(rec)
@@ -563,21 +563,12 @@ func TestCreateUserMiddleware(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
-
-			store := mockdb.NewMockQuerier(ctrl)
-			text := mock.NewMockTranslateX(ctrl)
-			tc.buildStubs(store, text)
-
-			e, _ := NewServer(testCfg, store, text)
-
-			// Marshal body data to JSON
 			data, err := json.Marshal(tc.body)
 			require.NoError(t, err)
 
-			ts := httptest.NewServer(e)
 			urlPath := "/v1/users"
-
-			req := serverRequest(t, data, ts, urlPath, http.MethodPost, "")
+			ts, _ := setupServerTest(t, ctrl, tc)
+			req := jsonRequest(t, data, ts, urlPath, http.MethodPost, "")
 
 			res, err := ts.Client().Do(req)
 			require.NoError(t, err)

@@ -51,8 +51,8 @@ func (s *Server) AddTitle(eCtx echo.Context) error {
 		return eCtx.String(http.StatusBadRequest, err.Error())
 	}
 
-	// Check if file size is too large
-	if file.Size > 32768 {
+	// Check if file size is too large 32000 == 4KB ~ approximately 4 pages
+	if file.Size > 32000 {
 		return eCtx.String(http.StatusBadRequest, "file too large")
 	}
 	src, err := file.Open()
