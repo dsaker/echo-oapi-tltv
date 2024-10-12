@@ -88,7 +88,7 @@ func randomUser(t *testing.T) (user db.User, password string) {
 
 	user = db.User{
 		ID:             util.RandomInt64(),
-		Name:           util.RandomName(),
+		Name:           util.RandomString(8),
 		Email:          util.RandomEmail(),
 		TitleID:        util.ValidTitleId,
 		OgLanguageID:   util.ValidOgLanguageId,
@@ -119,9 +119,17 @@ func randomTitle() (title db.Title) {
 
 	return db.Title{
 		ID:           util.RandomInt64(),
-		Title:        util.RandomName(),
+		Title:        util.RandomString(8),
 		NumSubs:      util.RandomInt16(),
 		OgLanguageID: validLanguageId,
+	}
+}
+
+func randomLanguage() (language db.Language) {
+	return db.Language{
+		ID:       util.RandomInt16(),
+		Language: util.RandomString(6),
+		Tag:      "en",
 	}
 }
 

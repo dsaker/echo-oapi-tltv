@@ -16,12 +16,13 @@ import (
 
 // Config Update the config struct to hold the SMTP server settings.
 type Config struct {
-	Port        string
-	Env         string
-	CtxTimeout  time.Duration
-	JWTDuration time.Duration
-	TTSBasePath string
-	Db          struct {
+	Port            string
+	Env             string
+	CtxTimeout      time.Duration
+	JWTDuration     time.Duration
+	TTSBasePath     string
+	FileUploadLimit int64
+	Db              struct {
 		Dsn          string
 		MaxOpenConns int
 		MaxIdleConns int
@@ -55,7 +56,7 @@ func SetConfigs() (config Config) {
 	flag.StringVar(&config.TTSBasePath, "tts-base-path", "/Users/dustysaker/go/src/github.com/dsaker/echo-oapi-tltv/audio/", "text-to-speech base path for permanent or temporary storage of mp3 audio files")
 
 	flag.DurationVar(&config.JWTDuration, "jwt-duration", 24, "JWT duration in hours")
-
+	flag.Int64Var(&config.FileUploadLimit, "upload-size-limit", 4, "File upload size limit in KB (default is 4)")
 	return config
 
 }

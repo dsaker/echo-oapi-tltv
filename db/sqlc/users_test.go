@@ -12,7 +12,7 @@ func createRandomUser(t *testing.T) User {
 	require.NoError(t, err)
 
 	newUser := InsertUserParams{
-		Name:           util.RandomName(),
+		Name:           util.RandomName(8),
 		HashedPassword: hashedPassword,
 		Email:          util.RandomEmail(),
 		TitleID:        util.ValidTitleId,

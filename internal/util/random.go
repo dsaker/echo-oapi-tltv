@@ -38,8 +38,8 @@ func RandomString(n int) string {
 }
 
 // RandomName generates a random user name
-func RandomName() string {
-	return RandomString(6)
+func RandomName(n int) string {
+	return RandomString(n)
 }
 
 // RandomEmail generates a random email

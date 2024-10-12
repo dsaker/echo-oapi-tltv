@@ -11,6 +11,7 @@ import (
 	echo "github.com/labstack/echo/v4"
 	language "golang.org/x/text/language"
 	db "talkliketv.click/tltv/db/sqlc"
+	util "talkliketv.click/tltv/internal/util"
 )
 
 // MockTranslateX is a mock of TranslateX interface.
@@ -36,19 +37,34 @@ func (m *MockTranslateX) EXPECT() *MockTranslateXMockRecorder {
 	return m.recorder
 }
 
-// InsertPhrases mocks base method.
-func (m *MockTranslateX) InsertPhrases(arg0 echo.Context, arg1 db.Title, arg2 db.Querier, arg3 []string, arg4 int) ([]db.Translate, error) {
+// InsertNewPhrases mocks base method.
+func (m *MockTranslateX) InsertNewPhrases(arg0 echo.Context, arg1 db.Title, arg2 db.Querier, arg3 []string) ([]db.Translate, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "InsertPhrases", arg0, arg1, arg2, arg3, arg4)
+	ret := m.ctrl.Call(m, "InsertNewPhrases", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].([]db.Translate)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// InsertPhrases indicates an expected call of InsertPhrases.
-func (mr *MockTranslateXMockRecorder) InsertPhrases(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+// InsertNewPhrases indicates an expected call of InsertNewPhrases.
+func (mr *MockTranslateXMockRecorder) InsertNewPhrases(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertPhrases", reflect.TypeOf((*MockTranslateX)(nil).InsertPhrases), arg0, arg1, arg2, arg3, arg4)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertNewPhrases", reflect.TypeOf((*MockTranslateX)(nil).InsertNewPhrases), arg0, arg1, arg2, arg3)
+}
+
+// InsertTranslates mocks base method.
+func (m *MockTranslateX) InsertTranslates(arg0 echo.Context, arg1 db.Querier, arg2 int16, arg3 []util.TranslatesReturn) ([]db.Translate, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InsertTranslates", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].([]db.Translate)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// InsertTranslates indicates an expected call of InsertTranslates.
+func (mr *MockTranslateXMockRecorder) InsertTranslates(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertTranslates", reflect.TypeOf((*MockTranslateX)(nil).InsertTranslates), arg0, arg1, arg2, arg3)
 }
 
 // TextToSpeech mocks base method.
@@ -66,16 +82,16 @@ func (mr *MockTranslateXMockRecorder) TextToSpeech(arg0, arg1, arg2, arg3 interf
 }
 
 // TranslatePhrases mocks base method.
-func (m *MockTranslateX) TranslatePhrases(arg0 echo.Context, arg1 int, arg2 []db.SelectTranslatesByTitleIdLangIdRow, arg3 language.Tag) ([]string, error) {
+func (m *MockTranslateX) TranslatePhrases(arg0 echo.Context, arg1 []db.SelectTranslatesByTitleIdLangIdRow, arg2 language.Tag) ([]util.TranslatesReturn, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TranslatePhrases", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].([]string)
+	ret := m.ctrl.Call(m, "TranslatePhrases", arg0, arg1, arg2)
+	ret0, _ := ret[0].([]util.TranslatesReturn)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // TranslatePhrases indicates an expected call of TranslatePhrases.
-func (mr *MockTranslateXMockRecorder) TranslatePhrases(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+func (mr *MockTranslateXMockRecorder) TranslatePhrases(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TranslatePhrases", reflect.TypeOf((*MockTranslateX)(nil).TranslatePhrases), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TranslatePhrases", reflect.TypeOf((*MockTranslateX)(nil).TranslatePhrases), arg0, arg1, arg2)
 }

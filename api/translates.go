@@ -15,21 +15,23 @@ import (
 	"strings"
 	"sync"
 	db "talkliketv.click/tltv/db/sqlc"
+	"talkliketv.click/tltv/internal/util"
 	"time"
 	"unicode"
 )
 
 type TranslateX interface {
-	InsertPhrases(echo.Context, db.Title, db.Querier, []string, int) ([]db.Translate, error)
+	InsertNewPhrases(echo.Context, db.Title, db.Querier, []string) ([]db.Translate, error)
 	TextToSpeech(echo.Context, []db.Translate, string, string) error
-	TranslatePhrases(echo.Context, int, []db.SelectTranslatesByTitleIdLangIdRow, language.Tag) ([]string, error)
+	TranslatePhrases(echo.Context, []db.SelectTranslatesByTitleIdLangIdRow, language.Tag) ([]util.TranslatesReturn, error)
+	InsertTranslates(echo.Context, db.Querier, int16, []util.TranslatesReturn) ([]db.Translate, error)
 }
 
-type Translates struct {
+type Translate struct {
 }
 
-func (t *Translates) InsertPhrases(eCtx echo.Context, title db.Title, q db.Querier, stringsSlice []string, numLines int) ([]db.Translate, error) {
-	dbTranslates := make([]db.Translate, numLines)
+func (t *Translate) InsertNewPhrases(eCtx echo.Context, title db.Title, q db.Querier, stringsSlice []string) ([]db.Translate, error) {
+	dbTranslates := make([]db.Translate, len(stringsSlice))
 	for i, str := range stringsSlice {
 
 		phrase, err := q.InsertPhrases(eCtx.Request().Context(), title.ID)
@@ -55,7 +57,29 @@ func (t *Translates) InsertPhrases(eCtx echo.Context, title db.Title, q db.Queri
 	return dbTranslates, nil
 }
 
-func (t *Translates) TextToSpeech(eCtx echo.Context, translatesSlice []db.Translate, basepath, tag string) error {
+func (t *Translate) InsertTranslates(eCtx echo.Context, q db.Querier, langId int16, trr []util.TranslatesReturn) ([]db.Translate, error) {
+	dbTranslates := make([]db.Translate, len(trr))
+	for i, row := range trr {
+
+		insertTranslate, err := q.InsertTranslates(
+			eCtx.Request().Context(),
+			db.InsertTranslatesParams{
+				PhraseID:   row.PhraseId,
+				LanguageID: langId,
+				Phrase:     row.Text,
+				PhraseHint: makeHintString(row.Text),
+			})
+		if err != nil {
+			return nil, err
+		}
+
+		dbTranslates[i] = insertTranslate
+	}
+
+	return dbTranslates, nil
+}
+
+func (t *Translate) TextToSpeech(eCtx echo.Context, translatesSlice []db.Translate, basepath, tag string) error {
 
 	// concurrently get all the audio content from Google text-to-speech
 	var wg sync.WaitGroup
@@ -140,23 +164,23 @@ func getSpeech(eCtx echo.Context,
 	}
 }
 
-func (t *Translates) TranslatePhrases(eCtx echo.Context, numLines int, translatesSlice []db.SelectTranslatesByTitleIdLangIdRow, tag language.Tag) ([]string, error) {
+func (t *Translate) TranslatePhrases(eCtx echo.Context, ts []db.SelectTranslatesByTitleIdLangIdRow, tag language.Tag) ([]util.TranslatesReturn, error) {
 
 	// concurrently get all the responses from Google Translate
 	var wg sync.WaitGroup
-	responses := make([]string, numLines) // string array to hold all the responses
+	responses := make([]util.TranslatesReturn, len(ts)) // string array to hold all the responses
 	// create context with cancel, so you can cancel all other requests after any error
 	newCtx, cancel := context.WithCancel(context.Background())
 	defer cancel() // Make sure it's called to release resources even if no errors
 
-	for i, nextTranslate := range translatesSlice {
+	for i, nextTranslate := range ts {
 		// added intermittent sleep to fix TLS handshake errors on the client side
 		if i%50 == 0 && i != 0 {
 			time.Sleep(1 * time.Second)
 		}
 		wg.Add(1)
 		//get responses concurrently with go routines
-		go getTranslate(eCtx, newCtx, cancel, tag, nextTranslate.Phrase, responses, i, &wg)
+		go getTranslate(eCtx, newCtx, cancel, tag, nextTranslate, responses, i, &wg)
 	}
 	wg.Wait()
 
@@ -172,8 +196,8 @@ func getTranslate(eCtx echo.Context,
 	ctx context.Context,
 	cancel context.CancelFunc,
 	lang language.Tag,
-	phrase string,
-	responses []string,
+	phrase db.SelectTranslatesByTitleIdLangIdRow,
+	responses []util.TranslatesReturn,
 	i int,
 	wg *sync.WaitGroup) {
 
@@ -190,7 +214,7 @@ func getTranslate(eCtx echo.Context,
 		}
 		defer client.Close()
 
-		resp, err := client.Translate(ctx, []string{phrase}, lang, nil)
+		resp, err := client.Translate(ctx, []string{phrase.Phrase}, lang, nil)
 		if err != nil {
 			switch {
 			case errors.Is(err, context.Canceled):
@@ -208,7 +232,10 @@ func getTranslate(eCtx echo.Context,
 		}
 
 		//app.Logger.PrintInfo(fmt.Sprintf("response is: %s", resp[0].Text), nil)
-		responses[i] = resp[0].Text
+		responses[i] = util.TranslatesReturn{
+			PhraseId: phrase.PhraseID,
+			Text:     resp[0].Text,
+		}
 	}
 }
 

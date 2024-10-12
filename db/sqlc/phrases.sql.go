@@ -230,7 +230,7 @@ func (q *Queries) SelectPhrasesFromTranslatesWithCorrect(ctx context.Context, ar
 }
 
 const selectTranslatesByTitleIdLangId = `-- name: SelectTranslatesByTitleIdLangId :many
-SELECT t.num_subs, tr.phrase_id, tr.phrase FROM titles t
+SELECT tr.phrase_id, tr.phrase FROM titles t
 JOIN phrases p ON t.id = p.title_id
 JOIN translates tr ON p.id = tr.phrase_id AND tr.language_id = $1
 WHERE tr.language_id = $1 and t.id = $2
@@ -242,7 +242,6 @@ type SelectTranslatesByTitleIdLangIdParams struct {
 }
 
 type SelectTranslatesByTitleIdLangIdRow struct {
-	NumSubs  int16  `json:"num_subs"`
 	PhraseID int64  `json:"phrase_id"`
 	Phrase   string `json:"phrase"`
 }
@@ -256,7 +255,7 @@ func (q *Queries) SelectTranslatesByTitleIdLangId(ctx context.Context, arg Selec
 	items := []SelectTranslatesByTitleIdLangIdRow{}
 	for rows.Next() {
 		var i SelectTranslatesByTitleIdLangIdRow
-		if err := rows.Scan(&i.NumSubs, &i.PhraseID, &i.Phrase); err != nil {
+		if err := rows.Scan(&i.PhraseID, &i.Phrase); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

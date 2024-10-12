@@ -77,7 +77,7 @@ VALUES ($1, $2, $3, $4)
 RETURNING *;
 
 -- name: SelectTranslatesByTitleIdLangId :many
-SELECT t.num_subs, tr.phrase_id, tr.phrase FROM titles t
+SELECT tr.phrase_id, tr.phrase FROM titles t
 JOIN phrases p ON t.id = p.title_id
 JOIN translates tr ON p.id = tr.phrase_id AND tr.language_id = $1
 WHERE tr.language_id = $1 and t.id = $2;
@@ -88,3 +88,4 @@ SELECT EXISTS(
     JOIN phrases p ON t.id = p.title_id
     JOIN translates tr ON p.id = tr.phrase_id AND tr.language_id = $1
     WHERE tr.language_id = $1 and t.id = $2 ) AS "exists";
+

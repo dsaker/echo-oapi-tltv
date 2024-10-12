@@ -39,7 +39,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
   /usersphrases/{phraseId}/{languageId}:
     patch:
       summary: patches usersphrases resource
@@ -330,30 +329,16 @@ paths:
         content:
           application/json:
             schema:
-              required:
-                - titleId
-                - newLanguageId
-                - oldLanguageId
-              properties:
-                titleId:
-                  type: integer
-                  format: int64
-                  description: title id of title to translate from
-                newLanguageId:
-                  type: integer
-                  format: int16
-                  description: id of language to translate to
-                oldLanguageId:
-                  type: integer
-                  format: int16
-                  description: id of language to translate from
+              $ref: '#/components/schemas/TitlesTranslateRequest'
       responses:
         '200':
-          description: new title response
+          description: new translates response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/NewTitle'
+                type: array
+                items:
+                  $ref: '#/components/schemas/Translates'
         default:
           description: unexpected error
           content:
@@ -611,6 +596,41 @@ components:
         jwt:
           type: string
           description: token of user
+    TitlesTranslateRequest:
+      required:
+        - titleId
+        - newLanguageId
+        - oldLanguageId
+      properties:
+        titleId:
+          type: integer
+          format: int64
+          description: title id of title to translate from
+        newLanguageId:
+          type: integer
+          format: int16
+          description: id of language to translate to
+        oldLanguageId:
+          type: integer
+          format: int16
+          description: id of language to translate from
+    Translates:
+      required:
+        - phraseId
+        - languageId
+        - phrase
+        - phraseHint
+      properties:
+        phraseId:
+          type: integer
+          format: int64
+        languageId:
+          type: integer
+          format: int16
+        phrase:
+          type: string
+        phraseHint:
+          type: string
     Error:
       required:
         - code

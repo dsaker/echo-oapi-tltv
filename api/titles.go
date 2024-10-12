@@ -2,6 +2,8 @@ package api
 
 import (
 	"bufio"
+	"database/sql"
+	"errors"
 	"fmt"
 	"github.com/labstack/echo/v4"
 	"golang.org/x/text/language"
@@ -31,6 +33,7 @@ func (s *Server) FindTitles(ctx echo.Context, params FindTitlesParams) error {
 
 func (s *Server) AddTitle(eCtx echo.Context) error {
 
+	// get lang id and title from multipart form
 	lang := eCtx.FormValue("languageId")
 	titleName := eCtx.FormValue("titleName")
 	langIdInt16, err := strconv.ParseInt(lang, 10, 16)
@@ -38,21 +41,14 @@ func (s *Server) AddTitle(eCtx echo.Context) error {
 		return eCtx.String(http.StatusBadRequest, err.Error())
 	}
 
-	//Get language model from id for tag
-	langModel, err := s.queries.SelectLanguagesById(eCtx.Request().Context(), int16(langIdInt16))
-	if err != nil {
-		eCtx.Logger().Error(err)
-		return eCtx.String(http.StatusBadRequest, err.Error())
-	}
-
-	// Get handler for filename, size and headers
+	// Get file handler for filename, size and headers
 	file, err := eCtx.FormFile("filePath")
 	if err != nil {
 		return eCtx.String(http.StatusBadRequest, err.Error())
 	}
 
-	// Check if file size is too large 32000 == 4KB ~ approximately 4 pages
-	if file.Size > 32000 {
+	// Check if file size is too large 32000 == 4KB ~ approximately 2 pages of text
+	if file.Size > s.config.FileUploadLimit*8000 {
 		return eCtx.String(http.StatusBadRequest, "file too large")
 	}
 	src, err := file.Open()
@@ -61,7 +57,15 @@ func (s *Server) AddTitle(eCtx echo.Context) error {
 	}
 	defer src.Close()
 
-	eCtx.Logger().Info(fmt.Sprintf("File uploaded successfully: %s", file.Filename))
+	//Get language model from id
+	langModel, err := s.queries.SelectLanguagesById(eCtx.Request().Context(), int16(langIdInt16))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return eCtx.String(http.StatusBadRequest, err.Error())
+		}
+		eCtx.Logger().Error(err)
+		return eCtx.String(http.StatusInternalServerError, err.Error())
+	}
 
 	// Create strings slice and count number of lines form titles model
 	scanner := bufio.NewScanner(src)
@@ -84,28 +88,42 @@ func (s *Server) AddTitle(eCtx echo.Context) error {
 			OgLanguageID: int16(langIdInt16),
 		})
 
+	// use helper function so you can roll back InsertTitle in case of any error
+	err = addTitleHelper(eCtx, s, stringsSlice, title, langModel.Tag)
+	if err != nil {
+		err = s.queries.DeleteTitleById(eCtx.Request().Context(), title.ID)
+		eCtx.Logger().Error(err)
+		return eCtx.String(http.StatusInternalServerError, err.Error())
+	}
+
+	return eCtx.JSON(http.StatusOK, title)
+}
+
+func addTitleHelper(eCtx echo.Context, s *Server, slice []string, t db.Title, tag string) error {
+
 	// insert phrases into db as translates object of OgLanguage
-	translatesSlice, err := s.translates.InsertPhrases(eCtx, title, s.queries, stringsSlice, numLines)
+	translatesSlice, err := s.translates.InsertNewPhrases(eCtx, t, s.queries, slice)
 	if err != nil {
 		return eCtx.String(http.StatusInternalServerError, err.Error())
 	}
 
 	//create base path for storing mp3 audio files
 	audioBasePath := s.config.TTSBasePath +
-		strconv.Itoa(int(title.ID)) + "/" +
-		strconv.Itoa(int(title.OgLanguageID)) + "/"
+		strconv.Itoa(int(t.ID)) + "/" +
+		strconv.Itoa(int(t.OgLanguageID)) + "/"
 	err = os.MkdirAll(audioBasePath, os.ModePerm)
 	if err != nil {
 		return eCtx.String(http.StatusInternalServerError, err.Error())
 	}
-	err = s.translates.TextToSpeech(eCtx, translatesSlice, audioBasePath, langModel.Tag)
 
+	// get
+	err = s.translates.TextToSpeech(eCtx, translatesSlice, audioBasePath, tag)
 	if err != nil {
 		eCtx.Logger().Error(err)
 		return eCtx.String(http.StatusInternalServerError, err.Error())
 	}
 
-	return eCtx.JSON(http.StatusOK, title)
+	return nil
 }
 
 func (s *Server) FindTitleByID(ctx echo.Context, id int64) error {
@@ -130,12 +148,13 @@ func (s *Server) DeleteTitle(ctx echo.Context, id int64) error {
 
 func (s *Server) TranslateTitle(eCtx echo.Context) error {
 
-	var newTranslateTitle TranslateTitleJSONBody
+	var newTranslateTitle TitlesTranslateRequest
 	err := eCtx.Bind(&newTranslateTitle)
 	if err != nil {
 		return eCtx.String(http.StatusBadRequest, err.Error())
 	}
 
+	// make sure the translates for that title don't already exist
 	exists, err := s.queries.SelectExistsTranslates(
 		eCtx.Request().Context(),
 		db.SelectExistsTranslatesParams{
@@ -146,16 +165,27 @@ func (s *Server) TranslateTitle(eCtx echo.Context) error {
 		return eCtx.String(http.StatusBadRequest, "title already exists in that language")
 	}
 
+	// get title to translate from
 	title, err := s.queries.SelectTitleById(eCtx.Request().Context(), newTranslateTitle.TitleId)
 	if err != nil {
-		return eCtx.String(http.StatusBadRequest, "invalid title id")
+		if errors.Is(err, sql.ErrNoRows) {
+			return eCtx.String(http.StatusBadRequest, "invalid title id")
+		}
+		eCtx.Logger().Error(err)
+		return eCtx.String(http.StatusInternalServerError, err.Error())
 	}
 
+	// get language model for tag
 	dbLang, err := s.queries.SelectLanguagesById(eCtx.Request().Context(), newTranslateTitle.NewLanguageId)
 	if err != nil {
-		return eCtx.String(http.StatusBadRequest, err.Error())
+		if errors.Is(err, sql.ErrNoRows) {
+			return eCtx.String(http.StatusBadRequest, "invalid language id")
+		}
+		eCtx.Logger().Error(err)
+		return eCtx.String(http.StatusInternalServerError, err.Error())
 	}
 
+	// get language tag to translate to
 	langTag, err := language.Parse(dbLang.Tag)
 	if err != nil {
 		return eCtx.String(http.StatusBadRequest, err.Error())
@@ -165,25 +195,32 @@ func (s *Server) TranslateTitle(eCtx echo.Context) error {
 	s.Lock()
 	defer s.Unlock()
 
-	translatesRow, err := s.queries.SelectTranslatesByTitleIdLangId(
+	// get translates for original language to translate from
+	phrasesToTranslate, err := s.queries.SelectTranslatesByTitleIdLangId(
 		eCtx.Request().Context(),
 		db.SelectTranslatesByTitleIdLangIdParams{
 			ID:         newTranslateTitle.TitleId,
 			LanguageID: title.OgLanguageID,
 		})
 	if err != nil {
-		return eCtx.String(http.StatusBadRequest, err.Error())
-	}
-
-	newTranslates, err := s.translates.TranslatePhrases(eCtx, int(translatesRow[0].NumSubs), translatesRow, langTag)
-	if err != nil {
+		eCtx.Logger().Error(err)
 		return eCtx.String(http.StatusInternalServerError, err.Error())
 	}
 
-	insertTranslates, err := s.translates.InsertPhrases(eCtx, title, s.queries, newTranslates, int(translatesRow[0].NumSubs))
+	// get the translates from the phrases
+	newTranslates, err := s.translates.TranslatePhrases(eCtx, phrasesToTranslate, langTag)
 	if err != nil {
+		eCtx.Logger().Error(err)
 		return eCtx.String(http.StatusInternalServerError, err.Error())
 	}
 
-	return eCtx.JSON(http.StatusCreated, insertTranslates[0])
+	// insert new translated phrases into the database
+	insertTranslates, err := s.translates.InsertTranslates(eCtx, s.queries, dbLang.ID, newTranslates)
+	if err != nil {
+		eCtx.Logger().Info(fmt.Sprintf("Error inserting translates -- titleId: %d -- languageId: %d -- error: %s", title.ID, dbLang.ID, err.Error()))
+		// TODO		delete translates where language id and phrase id in ( select by title id)
+		return eCtx.String(http.StatusInternalServerError, err.Error())
+	}
+
+	return eCtx.JSON(http.StatusCreated, insertTranslates)
 }
