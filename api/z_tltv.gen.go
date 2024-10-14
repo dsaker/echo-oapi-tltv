@@ -17,6 +17,7 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/labstack/echo/v4"
 	"github.com/oapi-codegen/runtime"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 const (
@@ -56,14 +57,11 @@ type JSONPatchRequestAddReplaceTestOp string
 
 // NewTitle defines model for NewTitle.
 type NewTitle struct {
-	// LanguageId Language id of title
-	LanguageId int64 `json:"languageId"`
-
-	// NumSubs Number of phrases
-	NumSubs int32 `json:"numSubs"`
+	// Filename the file to upload
+	Filename openapi_types.File `json:"filename"`
 
 	// OgLanguageId Language id of title
-	OgLanguageId int64 `json:"ogLanguageId"`
+	OgLanguageId int16 `json:"ogLanguageId"`
 
 	// Title Name of the title
 	Title string `json:"title"`
@@ -74,17 +72,14 @@ type NewUser struct {
 	// Email Email of user
 	Email string `json:"email"`
 
-	// Flipped switch between learning from or to native language
-	Flipped bool `json:"flipped"`
-
 	// Name Username of user. Must be alphanumeric.
 	Name string `json:"name"`
 
 	// NewLanguageId Id of language to learn
-	NewLanguageId int64 `json:"newLanguageId"`
+	NewLanguageId int16 `json:"newLanguageId"`
 
 	// OgLanguageId Id of native language
-	OgLanguageId int64 `json:"ogLanguageId"`
+	OgLanguageId int16 `json:"ogLanguageId"`
 
 	// Password Password of user
 	Password string `json:"password"`
@@ -96,10 +91,10 @@ type NewUser struct {
 // NewUserPermission defines model for NewUserPermission.
 type NewUserPermission struct {
 	// PermissionId Permission id of permission
-	PermissionId int64 `json:"permission_id"`
+	PermissionId int16 `json:"permissionId"`
 
 	// UserId User id of user
-	UserId int64 `json:"user_id"`
+	UserId int64 `json:"userId"`
 }
 
 // PatchRequest defines model for PatchRequest.
@@ -110,31 +105,54 @@ type PatchRequest_Item struct {
 	union json.RawMessage
 }
 
+// Phrase defines model for Phrase.
+type Phrase struct {
+	// Id id of phrase
+	Id int64 `json:"id"`
+
+	// TitleId id of movie
+	TitleId int64 `json:"titleId"`
+}
+
 // Title defines model for Title.
 type Title struct {
+	// Filename the file to upload
+	Filename openapi_types.File `json:"filename"`
+
 	// Id Unique id of the title
 	Id int64 `json:"id"`
 
-	// LanguageId Language id of title
-	LanguageId int64 `json:"languageId"`
-
-	// NumSubs Number of phrases
-	NumSubs int32 `json:"numSubs"`
-
 	// OgLanguageId Language id of title
-	OgLanguageId int64 `json:"ogLanguageId"`
+	OgLanguageId int16 `json:"ogLanguageId"`
 
 	// Title Name of the title
 	Title string `json:"title"`
+}
+
+// TitlesTranslateRequest defines model for TitlesTranslateRequest.
+type TitlesTranslateRequest struct {
+	// NewLanguageId id of language to translate to
+	NewLanguageId int16 `json:"newLanguageId"`
+
+	// OldLanguageId id of language to translate from
+	OldLanguageId int16 `json:"oldLanguageId"`
+
+	// TitleId title id of title to translate from
+	TitleId int64 `json:"titleId"`
+}
+
+// Translates defines model for Translates.
+type Translates struct {
+	LanguageId int16  `json:"languageId"`
+	Phrase     string `json:"phrase"`
+	PhraseHint string `json:"phraseHint"`
+	PhraseId   int64  `json:"phraseId"`
 }
 
 // User defines model for User.
 type User struct {
 	// Email Email of user
 	Email string `json:"email"`
-
-	// Flipped switch between learning from or to native language
-	Flipped bool `json:"flipped"`
 
 	// Id Unique id of the user
 	Id int64 `json:"id"`
@@ -143,10 +161,10 @@ type User struct {
 	Name string `json:"name"`
 
 	// NewLanguageId Id of language to learn
-	NewLanguageId int64 `json:"newLanguageId"`
+	NewLanguageId int16 `json:"newLanguageId"`
 
 	// OgLanguageId Id of native language
-	OgLanguageId int64 `json:"ogLanguageId"`
+	OgLanguageId int16 `json:"ogLanguageId"`
 
 	// Password Password of user
 	Password string `json:"password"`
@@ -173,13 +191,37 @@ type UserLoginResponse struct {
 // UserPermissionResponse defines model for UserPermissionResponse.
 type UserPermissionResponse struct {
 	// Id Unique id of the user permission
-	Id int64 `json:"id"`
+	Id int16 `json:"id"`
 
 	// PermissionId Permission id of permission
-	PermissionId int64 `json:"permission_id"`
+	PermissionId int16 `json:"permissionId"`
 
 	// UserId User id of user
-	UserId int64 `json:"user_id"`
+	UserId int64 `json:"userId"`
+}
+
+// UsersPhrases defines model for UsersPhrases.
+type UsersPhrases struct {
+	// LanguageId id of language
+	LanguageId int16 `json:"languageId"`
+
+	// PhraseCorrect id of language
+	PhraseCorrect int16 `json:"phraseCorrect"`
+
+	// PhraseId id of phrase
+	PhraseId int64 `json:"phraseId"`
+
+	// TitleId id of title
+	TitleId int64 `json:"titleId"`
+
+	// UserId id of user
+	UserId int64 `json:"userId"`
+}
+
+// GetPhrasesParams defines parameters for GetPhrases.
+type GetPhrasesParams struct {
+	// Limit maximum number of results to return
+	Limit *int32 `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
 // FindTitlesParams defines parameters for FindTitles.
@@ -191,8 +233,18 @@ type FindTitlesParams struct {
 	Limit int32 `form:"limit" json:"limit"`
 }
 
-// AddTitleJSONRequestBody defines body for AddTitle for application/json ContentType.
-type AddTitleJSONRequestBody = NewTitle
+// AddTitleMultipartBody defines parameters for AddTitle.
+type AddTitleMultipartBody struct {
+	FilePath   openapi_types.File `json:"filePath"`
+	LanguageId string             `json:"languageId"`
+	TitleName  string             `json:"titleName"`
+}
+
+// AddTitleMultipartRequestBody defines body for AddTitle for multipart/form-data ContentType.
+type AddTitleMultipartRequestBody AddTitleMultipartBody
+
+// TranslateTitleJSONRequestBody defines body for TranslateTitle for application/json ContentType.
+type TranslateTitleJSONRequestBody = TitlesTranslateRequest
 
 // CreateUserJSONRequestBody defines body for CreateUser for application/json ContentType.
 type CreateUserJSONRequestBody = NewUser
@@ -205,6 +257,9 @@ type UpdateUserApplicationJSONPatchPlusJSONRequestBody = PatchRequest
 
 // AddUserPermissionJSONRequestBody defines body for AddUserPermission for application/json ContentType.
 type AddUserPermissionJSONRequestBody = NewUserPermission
+
+// UpdateUsersPhrasesApplicationJSONPatchPlusJSONRequestBody defines body for UpdateUsersPhrases for application/json-patch+json ContentType.
+type UpdateUsersPhrasesApplicationJSONPatchPlusJSONRequestBody = PatchRequest
 
 // AsJSONPatchRequestAddReplaceTest returns the union data inside the PatchRequest_Item as a JSONPatchRequestAddReplaceTest
 func (t PatchRequest_Item) AsJSONPatchRequestAddReplaceTest() (JSONPatchRequestAddReplaceTest, error) {
@@ -244,12 +299,18 @@ func (t *PatchRequest_Item) UnmarshalJSON(b []byte) error {
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Returns phrases by title_id
+	// (GET /phrases)
+	GetPhrases(ctx echo.Context, params GetPhrasesParams) error
 	// Returns all titles
 	// (GET /titles)
 	FindTitles(ctx echo.Context, params FindTitlesParams) error
 	// Creates a new title
 	// (POST /titles)
 	AddTitle(ctx echo.Context) error
+
+	// (POST /titles/translate)
+	TranslateTitle(ctx echo.Context) error
 	// Deletes a title by ID
 	// (DELETE /titles/{id})
 	DeleteTitle(ctx echo.Context, id int64) error
@@ -274,11 +335,34 @@ type ServerInterface interface {
 
 	// (POST /userspermissions)
 	AddUserPermission(ctx echo.Context) error
+	// patches usersphrases resource
+	// (PATCH /usersphrases/{phraseId}/{languageId})
+	UpdateUsersPhrases(ctx echo.Context, phraseId int64, languageId int16) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler ServerInterface
+}
+
+// GetPhrases converts echo context to params.
+func (w *ServerInterfaceWrapper) GetPhrases(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetPhrasesParams
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", ctx.QueryParams(), &params.Limit)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter limit: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetPhrases(ctx, params)
+	return err
 }
 
 // FindTitles converts echo context to params.
@@ -316,6 +400,17 @@ func (w *ServerInterfaceWrapper) AddTitle(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.AddTitle(ctx)
+	return err
+}
+
+// TranslateTitle converts echo context to params.
+func (w *ServerInterfaceWrapper) TranslateTitle(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BearerAuthScopes, []string{"titles:w"})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.TranslateTitle(ctx)
 	return err
 }
 
@@ -438,6 +533,32 @@ func (w *ServerInterfaceWrapper) AddUserPermission(ctx echo.Context) error {
 	return err
 }
 
+// UpdateUsersPhrases converts echo context to params.
+func (w *ServerInterfaceWrapper) UpdateUsersPhrases(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "phraseId" -------------
+	var phraseId int64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "phraseId", ctx.Param("phraseId"), &phraseId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter phraseId: %s", err))
+	}
+
+	// ------------- Path parameter "languageId" -------------
+	var languageId int16
+
+	err = runtime.BindStyledParameterWithOptions("simple", "languageId", ctx.Param("languageId"), &languageId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter languageId: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.UpdateUsersPhrases(ctx, phraseId, languageId)
+	return err
+}
+
 // This is a simple interface which specifies echo.Route addition functions which
 // are present on both echo.Echo and echo.Group, since we want to allow using
 // either of them for path registration
@@ -466,8 +587,10 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
+	router.GET(baseURL+"/phrases", wrapper.GetPhrases)
 	router.GET(baseURL+"/titles", wrapper.FindTitles)
 	router.POST(baseURL+"/titles", wrapper.AddTitle)
+	router.POST(baseURL+"/titles/translate", wrapper.TranslateTitle)
 	router.DELETE(baseURL+"/titles/:id", wrapper.DeleteTitle)
 	router.GET(baseURL+"/titles/:id", wrapper.FindTitleByID)
 	router.POST(baseURL+"/users", wrapper.CreateUser)
@@ -476,47 +599,56 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.GET(baseURL+"/users/:id", wrapper.FindUserByID)
 	router.PATCH(baseURL+"/users/:id", wrapper.UpdateUser)
 	router.POST(baseURL+"/userspermissions", wrapper.AddUserPermission)
+	router.PATCH(baseURL+"/usersphrases/:phraseId/:languageId", wrapper.UpdateUsersPhrases)
 
 }
 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
+	"FYH/CwAA//8Uzjra3zQAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

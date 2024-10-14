@@ -17,13 +17,14 @@ import (
 
 type Server struct {
 	sync.RWMutex
-	queries db.Querier
-	config  config.Config
-	fa      token.FakeAuthenticator
+	queries    db.Querier
+	translates TranslateX
+	config     config.Config
+	fa         token.FakeAuthenticator
 }
 
 // NewServer creates a new HTTP server and sets up routing.
-func NewServer(cfg config.Config, q db.Querier) (*echo.Echo, *Server) {
+func NewServer(cfg config.Config, q db.Querier, t TranslateX) (*echo.Echo, *Server) {
 
 	e := echo.New()
 
@@ -68,9 +69,10 @@ func NewServer(cfg config.Config, q db.Querier) (*echo.Echo, *Server) {
 	apiGrp.Use(middle...)
 
 	srv := &Server{
-		fa:      *fa,
-		queries: q,
-		config:  cfg,
+		fa:         *fa,
+		translates: t,
+		queries:    q,
+		config:     cfg,
 	}
 
 	RegisterHandlersWithBaseURL(apiGrp, srv, "")

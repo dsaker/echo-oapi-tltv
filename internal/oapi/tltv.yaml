@@ -10,6 +10,73 @@ info:
     name: Apache 2.0
     url: https://www.apache.org/licenses/LICENSE-2.0.html
 paths:
+  /phrases:
+    get:
+      summary: Returns phrases by title_id
+      description: Returns next [limit] phrases by title_id with lowest correct score in users_phrases table
+      operationId: getPhrases
+      parameters:
+        - name: limit
+          in: query
+          description: maximum number of results to return
+          required: false
+          example: 10
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: phrase response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Phrase'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /usersphrases/{phraseId}/{languageId}:
+    patch:
+      summary: patches usersphrases resource
+      description: returns usersphrases object
+      operationId: updateUsersPhrases
+      requestBody:
+        content:
+          application/json-patch+json:
+            schema:
+              $ref: '#/components/schemas/PatchRequest'
+      parameters:
+        - name: phraseId
+          in: path
+          description: phraseId of usersphrases to patch
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: languageId
+          in: path
+          description: languageId of usersphrases to patch
+          required: true
+          schema:
+            type: integer
+            format: int16
+      responses:
+        '200':
+          description: usersphrases response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsersPhrases'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /userspermissions:
     post:
       description: Adds a new permission to a user. Must have global admin privilege
@@ -119,10 +186,15 @@ paths:
       summary: Patch an existing user
       description: Patch an existing user
       operationId: updateUser
+      requestBody:
+        content:
+          application/json-patch+json:
+            schema:
+              $ref: '#/components/schemas/PatchRequest'
       parameters:
         - name: id
           in: path
-          description: ID of user to delete
+          description: ID of user to patch
           required: true
           schema:
             type: integer
@@ -140,11 +212,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      requestBody:
-        content:
-          application/json-patch+json:
-            schema:
-              $ref: '#/components/schemas/PatchRequest'
   /users/login:
     post:
       summary: Login a user
@@ -221,9 +288,21 @@ paths:
         description:  Title to add
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
-              $ref: '#/components/schemas/NewTitle'
+              type: object
+              required:
+                - titleName
+                - languageId
+                - filePath
+              properties:
+                titleName:
+                  type: string
+                languageId:
+                  type: string
+                filePath:
+                  type: string
+                  format: binary
       responses:
         '200':
           description: title response
@@ -231,6 +310,35 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Title'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /titles/translate:
+    post:
+      description: translates phrases from original language of title to language provided in request body
+      operationId: translate title
+      security:
+        - BearerAuth:
+            - "titles:w"
+      requestBody:
+        description: titleId to translate and language id of language to translate it to
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TitlesTranslateRequest'
+      responses:
+        '200':
+          description: new translates response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Translates'
         default:
           description: unexpected error
           content:
@@ -284,6 +392,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+
 components:
   schemas:
     PatchRequest:
@@ -332,7 +441,6 @@ components:
         - titleId
         - ogLanguageId
         - newLanguageId
-        - flipped
       properties:
         name:
           type: string
@@ -346,7 +454,6 @@ components:
           example: example@email.com
           pattern: (?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])
           description: Email of user
-
         password:
           type: string
           example: pa55w@rd
@@ -361,18 +468,14 @@ components:
           example: -1
         ogLanguageId:
           type: integer
-          format: int64
+          format: int16
           description: Id of native language
           example: -1
         newLanguageId:
           type: integer
-          format: int64
+          format: int16
           description: Id of language to learn
           example: -1
-        flipped:
-          type: boolean
-          description: switch between learning from or to native language
-          example: false
     Title:
       allOf:
         - $ref: '#/components/schemas/NewTitle'
@@ -386,24 +489,19 @@ components:
     NewTitle:
       required:
         - title
-        - numSubs
-        - languageId
         - ogLanguageId
+        - filename
       properties:
         title:
           type: string
           description: Name of the title
-        numSubs:
-          type: integer
-          format: int32
-          description: Number of phrases
-        languageId:
-          type: integer
-          format: int64
-          description: Language id of title
+        filename:
+          type: string
+          format: binary
+          description: the file to upload
         ogLanguageId:
           type: integer
-          format: int64
+          format: int16
           description: Language id of title
     UserLogin:
       required:
@@ -419,18 +517,31 @@ components:
           format: password
           description: Password of user
           example: pa55w@rd
+    Phrase:
+      required:
+        - id
+        - titleId
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: id of phrase
+        titleId:
+          type: integer
+          format: int64
+          description: id of movie
     NewUserPermission:
       required:
-        - user_id
-        - permission_id
+        - userId
+        - permissionId
       properties:
-        user_id:
+        userId:
           type: integer
           format: int64
           description: User id of user
-        permission_id:
+        permissionId:
           type: integer
-          format: int64
+          format: int16
           description: Permission id of permission
     UserPermissionResponse:
       allOf:
@@ -440,8 +551,36 @@ components:
           properties:
             id:
               type: integer
-              format: int64
+              format: int16
               description: Unique id of the user permission
+    UsersPhrases:
+      required:
+        - userId
+        - titleId
+        - phraseId
+        - languageId
+        - phraseCorrect
+      properties:
+        userId:
+          type: integer
+          format: int64
+          description: id of user
+        titleId:
+          type: integer
+          format: int64
+          description: id of title
+        phraseId:
+          type: integer
+          format: int64
+          description: id of phrase
+        languageId:
+          type: integer
+          format: int16
+          description: id of language
+        phraseCorrect:
+          type: integer
+          format: int16
+          description: id of language
     UserLoginResponse:
       required:
         - jwt
@@ -449,6 +588,41 @@ components:
         jwt:
           type: string
           description: token of user
+    TitlesTranslateRequest:
+      required:
+        - titleId
+        - newLanguageId
+        - oldLanguageId
+      properties:
+        titleId:
+          type: integer
+          format: int64
+          description: title id of title to translate from
+        newLanguageId:
+          type: integer
+          format: int16
+          description: id of language to translate to
+        oldLanguageId:
+          type: integer
+          format: int16
+          description: id of language to translate from
+    Translates:
+      required:
+        - phraseId
+        - languageId
+        - phrase
+        - phraseHint
+      properties:
+        phraseId:
+          type: integer
+          format: int64
+        languageId:
+          type: integer
+          format: int16
+        phrase:
+          type: string
+        phraseHint:
+          type: string
     Error:
       required:
         - code

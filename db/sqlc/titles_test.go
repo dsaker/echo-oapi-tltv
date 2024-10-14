@@ -11,8 +11,7 @@ func createRandomTitle(t *testing.T) Title {
 
 	args := InsertTitleParams{
 		Title:        util.RandomString(8),
-		NumSubs:      util.RandomInt32(100, 1000),
-		LanguageID:   util.ValidNewLanguageId,
+		NumSubs:      util.RandomInt16(),
 		OgLanguageID: util.ValidOgLanguageId,
 	}
 
@@ -22,7 +21,6 @@ func createRandomTitle(t *testing.T) Title {
 
 	require.Equal(t, args.Title, title.Title)
 	require.Equal(t, args.NumSubs, title.NumSubs)
-	require.Equal(t, args.LanguageID, title.LanguageID)
 
 	require.NotZero(t, title.ID)
 

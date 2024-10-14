@@ -21,8 +21,8 @@ type userResponse struct {
 	Name          string    `json:"name"`
 	Email         string    `json:"email"`
 	Flipped       bool      `json:"flipped"`
-	OgLanguageID  int64     `json:"og_language_id"`
-	NewLanguageID int64     `json:"new_language_id"`
+	OgLanguageID  int16     `json:"og_language_id"`
+	NewLanguageID int16     `json:"new_language_id"`
 	Created       time.Time `json:"created"`
 }
 
@@ -31,14 +31,13 @@ func newUserResponse(user db.User) userResponse {
 		TitleID:       user.TitleID,
 		Name:          user.Name,
 		Email:         user.Email,
-		Flipped:       user.Flipped,
 		OgLanguageID:  user.OgLanguageID,
 		NewLanguageID: user.NewLanguageID,
 		Created:       user.Created,
 	}
 }
 
-func (p *Server) CreateUser(ctx echo.Context) error {
+func (s *Server) CreateUser(ctx echo.Context) error {
 	// We expect a NewUser object in the request body.
 	var newUser NewUser
 	err := ctx.Bind(&newUser)
@@ -47,22 +46,21 @@ func (p *Server) CreateUser(ctx echo.Context) error {
 	}
 
 	// We're always asynchronous, so lock unsafe operations below
-	p.Lock()
-	defer p.Unlock()
+	s.Lock()
+	defer s.Unlock()
 
 	password, err := bcrypt.GenerateFromPassword([]byte(newUser.Password), 14)
 	if err != nil {
 		return ctx.String(http.StatusBadRequest, err.Error())
 	}
 
-	user, err := p.queries.InsertUser(
+	user, err := s.queries.InsertUser(
 		ctx.Request().Context(),
 		db.InsertUserParams{
 			Name:           newUser.Name,
 			Email:          newUser.Email,
 			HashedPassword: string(password),
 			TitleID:        newUser.TitleId,
-			Flipped:        newUser.Flipped,
 			OgLanguageID:   newUser.OgLanguageId,
 			NewLanguageID:  newUser.NewLanguageId,
 		})
@@ -81,12 +79,12 @@ func (p *Server) CreateUser(ctx echo.Context) error {
 		return ctx.String(http.StatusInternalServerError, err.Error())
 	}
 
-	permission, err := p.queries.SelectPermissionByCode(ctx.Request().Context(), db.ReadTitlesCode)
+	permission, err := s.queries.SelectPermissionByCode(ctx.Request().Context(), db.ReadTitlesCode)
 	if err != nil {
 		ctx.Logger().Error(err)
 		return ctx.String(http.StatusInternalServerError, err.Error())
 	}
-	_, err = p.queries.InsertUserPermission(
+	_, err = s.queries.InsertUserPermission(
 		ctx.Request().Context(), db.InsertUserPermissionParams{
 			UserID:       user.ID,
 			PermissionID: permission.ID,
@@ -101,13 +99,13 @@ func (p *Server) CreateUser(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, rsp)
 }
 
-func (p *Server) DeleteUser(ctx echo.Context, id int64) error {
+func (s *Server) DeleteUser(ctx echo.Context, id int64) error {
 	err := token.CheckJWTUserIDFromRequest(ctx, id)
 	if err != nil {
 		return ctx.String(http.StatusForbidden, "Invalid user ID")
 	}
 
-	err = p.queries.DeleteUserById(ctx.Request().Context(), id)
+	err = s.queries.DeleteUserById(ctx.Request().Context(), id)
 	if err != nil {
 		return ctx.String(http.StatusBadRequest, fmt.Sprintf("Error deleting user: %s", err))
 	}
@@ -115,13 +113,13 @@ func (p *Server) DeleteUser(ctx echo.Context, id int64) error {
 	return ctx.NoContent(http.StatusNoContent)
 }
 
-func (p *Server) FindUserByID(ctx echo.Context, id int64) error {
+func (s *Server) FindUserByID(ctx echo.Context, id int64) error {
 	err := token.CheckJWTUserIDFromRequest(ctx, id)
 	if err != nil {
 		return ctx.String(http.StatusForbidden, err.Error())
 	}
 
-	user, err := p.queries.SelectUserById(ctx.Request().Context(), id)
+	user, err := s.queries.SelectUserById(ctx.Request().Context(), id)
 	if err != nil {
 		return ctx.String(http.StatusBadRequest, fmt.Sprintf("Error selecting user by id: %s", err))
 	}
@@ -130,7 +128,7 @@ func (p *Server) FindUserByID(ctx echo.Context, id int64) error {
 	return ctx.JSON(http.StatusOK, rsp)
 }
 
-func (p *Server) UpdateUser(ctx echo.Context, id int64) error {
+func (s *Server) UpdateUser(ctx echo.Context, id int64) error {
 
 	err := token.CheckJWTUserIDFromRequest(ctx, id)
 	if err != nil {
@@ -147,14 +145,13 @@ func (p *Server) UpdateUser(ctx echo.Context, id int64) error {
 		return ctx.String(http.StatusBadRequest, err.Error())
 	}
 
-	user, err := p.queries.SelectUserById(ctx.Request().Context(), id)
+	user, err := s.queries.SelectUserById(ctx.Request().Context(), id)
 	if err != nil {
 		return ctx.String(http.StatusBadRequest, fmt.Sprintf("Error selecting user by id: %s", err))
 	}
 
 	current := NewUser{
 		Email:         user.Email,
-		Flipped:       user.Flipped,
 		NewLanguageId: user.NewLanguageID,
 		OgLanguageId:  user.OgLanguageID,
 		Password:      user.HashedPassword,
@@ -187,12 +184,11 @@ func (p *Server) UpdateUser(ctx echo.Context, id int64) error {
 		modified.Password = string(password)
 	}
 
-	updatedUser, err := p.queries.UpdateUserById(
+	updatedUser, err := s.queries.UpdateUserById(
 		ctx.Request().Context(),
 		db.UpdateUserByIdParams{
 			TitleID:        modified.TitleId,
 			Email:          modified.Email,
-			Flipped:        modified.Flipped,
 			OgLanguageID:   modified.OgLanguageId,
 			NewLanguageID:  modified.NewLanguageId,
 			HashedPassword: modified.Password,
@@ -207,7 +203,7 @@ func (p *Server) UpdateUser(ctx echo.Context, id int64) error {
 	return ctx.JSON(http.StatusOK, rsp)
 }
 
-func (p *Server) LoginUser(ctx echo.Context) error {
+func (s *Server) LoginUser(ctx echo.Context) error {
 
 	// We expect a NewUser object in the request body.
 	var userLogin UserLogin
@@ -216,7 +212,7 @@ func (p *Server) LoginUser(ctx echo.Context) error {
 		return ctx.String(http.StatusBadRequest, err.Error())
 	}
 
-	user, err := p.queries.SelectUserByName(ctx.Request().Context(), userLogin.Username)
+	user, err := s.queries.SelectUserByName(ctx.Request().Context(), userLogin.Username)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ctx.String(http.StatusUnauthorized, "invalid username or password")
@@ -230,7 +226,7 @@ func (p *Server) LoginUser(ctx echo.Context) error {
 		return ctx.String(http.StatusUnauthorized, "invalid username or password")
 	}
 
-	permissions, err := p.queries.SelectUserPermissions(ctx.Request().Context(), user.ID)
+	permissions, err := s.queries.SelectUserPermissions(ctx.Request().Context(), user.ID)
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
 			ctx.Logger().Error(err)
@@ -238,7 +234,7 @@ func (p *Server) LoginUser(ctx echo.Context) error {
 		}
 	}
 
-	jwsToken, err := p.fa.CreateJWSWithClaims(permissions, user)
+	jwsToken, err := s.fa.CreateJWSWithClaims(permissions, user)
 	if err != nil {
 		ctx.Logger().Error(err)
 		return ctx.String(http.StatusInternalServerError, err.Error())

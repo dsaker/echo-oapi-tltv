@@ -12,17 +12,27 @@ type Querier interface {
 	DeleteTitleById(ctx context.Context, id int64) error
 	DeleteUserById(ctx context.Context, id int64) error
 	DeleteUserPermissionById(ctx context.Context, arg DeleteUserPermissionByIdParams) error
+	InsertPhrases(ctx context.Context, titleID int64) (Phrase, error)
 	InsertTitle(ctx context.Context, arg InsertTitleParams) (Title, error)
+	InsertTranslates(ctx context.Context, arg InsertTranslatesParams) (Translate, error)
 	InsertUser(ctx context.Context, arg InsertUserParams) (User, error)
 	InsertUserPermission(ctx context.Context, arg InsertUserPermissionParams) (UsersPermission, error)
 	ListTitles(ctx context.Context, arg ListTitlesParams) ([]ListTitlesRow, error)
-	ListTitlesByLanguage(ctx context.Context, arg ListTitlesByLanguageParams) ([]ListTitlesByLanguageRow, error)
+	ListTitlesByOgLanguage(ctx context.Context, arg ListTitlesByOgLanguageParams) ([]ListTitlesByOgLanguageRow, error)
+	SelectExistsTranslates(ctx context.Context, arg SelectExistsTranslatesParams) (bool, error)
+	SelectLanguagesById(ctx context.Context, id int16) (Language, error)
 	SelectPermissionByCode(ctx context.Context, code string) (Permission, error)
+	SelectPhrasesFromTranslates(ctx context.Context, arg SelectPhrasesFromTranslatesParams) ([]SelectPhrasesFromTranslatesRow, error)
+	SelectPhrasesFromTranslatesWithCorrect(ctx context.Context, arg SelectPhrasesFromTranslatesWithCorrectParams) ([]SelectPhrasesFromTranslatesWithCorrectRow, error)
 	SelectTitleById(ctx context.Context, id int64) (Title, error)
+	SelectTranslatesByTitleIdLangId(ctx context.Context, arg SelectTranslatesByTitleIdLangIdParams) ([]SelectTranslatesByTitleIdLangIdRow, error)
 	SelectUserById(ctx context.Context, id int64) (User, error)
 	SelectUserByName(ctx context.Context, name string) (User, error)
 	SelectUserPermissions(ctx context.Context, userID int64) ([]string, error)
+	SelectUsersPhrasesByCorrect(ctx context.Context, arg SelectUsersPhrasesByCorrectParams) ([]int64, error)
+	SelectUsersPhrasesByIds(ctx context.Context, arg SelectUsersPhrasesByIdsParams) (UsersPhrase, error)
 	UpdateUserById(ctx context.Context, arg UpdateUserByIdParams) (User, error)
+	UpdateUsersPhrasesByThreeIds(ctx context.Context, arg UpdateUsersPhrasesByThreeIdsParams) (UsersPhrase, error)
 }
 
 var _ Querier = (*Queries)(nil)

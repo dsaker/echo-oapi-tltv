@@ -2,6 +2,7 @@ package token
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/getkin/kin-openapi/openapi3filter"
@@ -11,6 +12,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	db "talkliketv.click/tltv/db/sqlc"
 )
 
 const JWTClaimsContextKey = "jwt_claims"
@@ -26,7 +28,7 @@ var (
 	ErrInvalidAuthHeader = errors.New("authorization header is malformed")
 	ErrClaimsInvalid     = errors.New("provided claims do not match expected scopes")
 	ErrUnauthorizedUser  = errors.New("provided id does not match user id")
-	ErrInvalidToken      = errors.New("provided token is invalid")
+	ErrInvalidToken      = errors.New("provided token is invalid. please login again")
 )
 
 // GetJWSFromRequest extracts a JWS string from an Authorization: Bearer <jws> header
@@ -82,16 +84,22 @@ func Authenticate(v JWSValidator, ctx context.Context, input *openapi3filter.Aut
 
 	// Set the property on the echo context so the handler is able to
 	// access the claims data we generate in here.
-	userId, found := token.Get(jwt.SubjectKey)
+	user, found := token.Get(jwt.SubjectKey)
 	if !found {
+		return ErrInvalidToken
+	}
+
+	var dbUser db.User
+	err = json.Unmarshal([]byte(user.(string)), &dbUser)
+	if err != nil {
 		return ErrInvalidToken
 	}
 
 	// Set the property on the echo context so the handler is able to
 	// access the claims data we generate in here.
 	eCtx := mw.GetEchoContext(ctx)
-	eCtx.Set(UserIdContextKey, userId)
-	eCtx.Set(JWTClaimsContextKey, token)
+	eCtx.Set(UserContextKey, user)
+	eCtx.Set(UserIdContextKey, dbUser.ID)
 
 	return nil
 }
@@ -146,13 +154,21 @@ func CheckTokenClaims(expectedClaims []string, t jwt.Token) error {
 	return nil
 }
 
-func CheckJWTUserIDFromRequest(eCtx echo.Context, id int64) error {
-	jwtUserId := eCtx.Get(UserIdContextKey)
-	if jwtUserId == nil {
-		return errors.New("CheckJWTUserIDFromRequest: user id not found in context: Please login again")
+func GetValueFromContext(eCtx echo.Context, key string) (string, error) {
+	value := eCtx.Get(key)
+	if value == nil {
+		return "", errors.New(fmt.Sprintf("GetValueFromContext: %s not found in context: Please login again", key))
 	}
 
-	i, err := strconv.ParseInt(jwtUserId.(string), 10, 64)
+	return value.(string), nil
+}
+
+func CheckJWTUserIDFromRequest(eCtx echo.Context, id int64) error {
+	value, err := GetValueFromContext(eCtx, UserIdContextKey)
+	if err != nil {
+		return err
+	}
+	i, err := strconv.ParseInt(value, 10, 64)
 	if err != nil {
 		return err
 	}
@@ -160,4 +176,19 @@ func CheckJWTUserIDFromRequest(eCtx echo.Context, id int64) error {
 		return ErrUnauthorizedUser
 	}
 	return nil
+}
+
+func GetUserFromContext(eCtx echo.Context) (*db.User, error) {
+	user, err := GetValueFromContext(eCtx, UserContextKey)
+	if err != nil {
+		return nil, ErrInvalidToken
+	}
+
+	var dbUser db.User
+	err = json.Unmarshal([]byte(user), &dbUser)
+	if err != nil {
+		return nil, ErrInvalidToken
+	}
+
+	return &dbUser, nil
 }

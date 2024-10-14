@@ -5,36 +5,37 @@
 package db
 
 import (
-	"database/sql"
 	"time"
 )
 
 type Language struct {
-	ID       int64  `json:"id"`
+	ID       int16  `json:"id"`
 	Language string `json:"language"`
 	Tag      string `json:"tag"`
 }
 
 type Permission struct {
-	ID   int64  `json:"id"`
+	ID   int16  `json:"id"`
 	Code string `json:"code"`
 }
 
 type Phrase struct {
-	ID             int64  `json:"id"`
-	TitleID        int64  `json:"title_id"`
-	Phrase         string `json:"phrase"`
-	Translates     string `json:"translates"`
-	PhraseHint     string `json:"phrase_hint"`
-	TranslatesHint string `json:"translates_hint"`
+	ID      int64 `json:"id"`
+	TitleID int64 `json:"title_id"`
 }
 
 type Title struct {
 	ID           int64  `json:"id"`
 	Title        string `json:"title"`
-	NumSubs      int32  `json:"num_subs"`
-	LanguageID   int64  `json:"language_id"`
-	OgLanguageID int64  `json:"og_language_id"`
+	NumSubs      int16  `json:"num_subs"`
+	OgLanguageID int16  `json:"og_language_id"`
+}
+
+type Translate struct {
+	PhraseID   int64  `json:"phrase_id"`
+	LanguageID int16  `json:"language_id"`
+	Phrase     string `json:"phrase"`
+	PhraseHint string `json:"phrase_hint"`
 }
 
 type User struct {
@@ -43,21 +44,20 @@ type User struct {
 	Name           string    `json:"name"`
 	Email          string    `json:"email"`
 	HashedPassword string    `json:"hashed_password"`
-	Flipped        bool      `json:"flipped"`
-	OgLanguageID   int64     `json:"og_language_id"`
-	NewLanguageID  int64     `json:"new_language_id"`
+	OgLanguageID   int16     `json:"og_language_id"`
+	NewLanguageID  int16     `json:"new_language_id"`
 	Created        time.Time `json:"created"`
 }
 
 type UsersPermission struct {
 	UserID       int64 `json:"user_id"`
-	PermissionID int64 `json:"permission_id"`
+	PermissionID int16 `json:"permission_id"`
 }
 
 type UsersPhrase struct {
-	UserID         int64         `json:"user_id"`
-	PhraseID       int64         `json:"phrase_id"`
-	TitleID        int64         `json:"title_id"`
-	PhraseCorrect  sql.NullInt64 `json:"phrase_correct"`
-	FlippedCorrect sql.NullInt64 `json:"flipped_correct"`
+	UserID        int64 `json:"user_id"`
+	TitleID       int64 `json:"title_id"`
+	PhraseID      int64 `json:"phrase_id"`
+	LanguageID    int16 `json:"language_id"`
+	PhraseCorrect int16 `json:"phrase_correct"`
 }

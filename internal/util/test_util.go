@@ -5,4 +5,5 @@ const (
 	ValidOgLanguageId  = -1
 	ValidNewLanguageId = -1
 	ValidPermissionId  = 1
+	InvalidUserId      = -2
 )

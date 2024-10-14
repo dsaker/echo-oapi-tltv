@@ -12,6 +12,7 @@ import (
 	"strconv"
 	mockdb "talkliketv.click/tltv/db/mock"
 	db "talkliketv.click/tltv/db/sqlc"
+	mock "talkliketv.click/tltv/internal/mock"
 	"talkliketv.click/tltv/internal/util"
 	"testing"
 )
@@ -53,13 +54,13 @@ func TestGetUser(t *testing.T) {
 			name:   "get user1",
 			user:   user1,
 			userId: user1.ID,
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 				store.EXPECT().
 					SelectUserById(gomock.Any(), user1.ID).
 					Times(1).
 					Return(user1, nil)
 			},
-			checkRecResponse: func(rec *httptest.ResponseRecorder) {
+			checkRecorder: func(rec *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusOK, rec.Code)
 				var gotUser db.User
 				err := json.Unmarshal([]byte(rec.Body.String()), &gotUser)
@@ -71,9 +72,9 @@ func TestGetUser(t *testing.T) {
 			name:   "Id's don't match",
 			user:   user1,
 			userId: user2.ID,
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 			},
-			checkRecResponse: func(rec *httptest.ResponseRecorder) {
+			checkRecorder: func(rec *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusForbidden, rec.Code)
 				require.Contains(t, rec.Body.String(), "provided id does not match user id")
 			},
@@ -82,13 +83,13 @@ func TestGetUser(t *testing.T) {
 			name:   "User does not exist",
 			user:   user2,
 			userId: user2.ID,
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 				store.EXPECT().
 					SelectUserById(gomock.Any(), user2.ID).
 					Times(1).
 					Return(db.User{}, sql.ErrNoRows)
 			},
-			checkRecResponse: func(rec *httptest.ResponseRecorder) {
+			checkRecorder: func(rec *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, rec.Code)
 				require.Contains(t, rec.Body.String(), "Error selecting user by id: sql: no rows in result set")
 			},
@@ -111,7 +112,7 @@ func TestGetUser(t *testing.T) {
 
 			err = srv.FindUserByID(c, tc.userId)
 			require.NoError(t, err)
-			tc.checkRecResponse(rec)
+			tc.checkRecorder(rec)
 		})
 	}
 }
@@ -125,13 +126,13 @@ func TestDeleteUser(t *testing.T) {
 			name:   "delete user1",
 			user:   user1,
 			userId: user1.ID,
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 				store.EXPECT().
 					DeleteUserById(gomock.Any(), user1.ID).
 					Times(1).
 					Return(nil)
 			},
-			checkRecResponse: func(rec *httptest.ResponseRecorder) {
+			checkRecorder: func(rec *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusNoContent, rec.Code)
 			},
 		},
@@ -139,9 +140,9 @@ func TestDeleteUser(t *testing.T) {
 			name:   "Id's don't match",
 			user:   user1,
 			userId: user2.ID,
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 			},
-			checkRecResponse: func(rec *httptest.ResponseRecorder) {
+			checkRecorder: func(rec *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusForbidden, rec.Code)
 				require.Contains(t, rec.Body.String(), "Invalid user ID")
 			},
@@ -150,13 +151,13 @@ func TestDeleteUser(t *testing.T) {
 			name:   "User does not exist",
 			user:   user2,
 			userId: user2.ID,
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 				store.EXPECT().
 					DeleteUserById(gomock.Any(), user2.ID).
 					Times(1).
 					Return(sql.ErrNoRows)
 			},
-			checkRecResponse: func(rec *httptest.ResponseRecorder) {
+			checkRecorder: func(rec *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, rec.Code)
 				require.Contains(t, rec.Body.String(), "Error deleting user: sql: no rows in result set")
 			},
@@ -178,7 +179,7 @@ func TestDeleteUser(t *testing.T) {
 
 			err = srv.DeleteUser(c, tc.userId)
 			require.NoError(t, err)
-			tc.checkRecResponse(rec)
+			tc.checkRecorder(rec)
 		})
 	}
 }
@@ -190,20 +191,18 @@ func TestCreateUser(t *testing.T) {
 			name: "Create User",
 			body: map[string]any{
 				"email":         user.Email,
-				"flipped":       user.Flipped,
 				"name":          user.Name,
 				"newLanguageId": user.NewLanguageID,
 				"ogLanguageId":  user.OgLanguageID,
 				"password":      password,
 				"titleId":       user.TitleID,
 			},
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 				arg := db.InsertUserParams{
 					Name:           user.Name,
 					Email:          user.Email,
 					HashedPassword: password,
 					TitleID:        user.TitleID,
-					Flipped:        user.Flipped,
 					OgLanguageID:   user.OgLanguageID,
 					NewLanguageID:  user.NewLanguageID,
 				}
@@ -224,7 +223,7 @@ func TestCreateUser(t *testing.T) {
 					Times(1).
 					Return(db.UsersPermission{UserID: user.ID, PermissionID: util.ValidPermissionId}, nil)
 			},
-			checkRecResponse: func(rec *httptest.ResponseRecorder) {
+			checkRecorder: func(rec *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusOK, rec.Code)
 
 				var gotUser db.User
@@ -237,20 +236,19 @@ func TestCreateUser(t *testing.T) {
 			name: "Internal Server",
 			body: map[string]any{
 				"email":         user.Email,
-				"flipped":       user.Flipped,
 				"name":          user.Name,
 				"newLanguageId": user.NewLanguageID,
 				"ogLanguageId":  user.OgLanguageID,
 				"password":      password,
 				"titleId":       user.TitleID,
 			},
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 				store.EXPECT().
 					InsertUser(gomock.Any(), gomock.Any()).
 					Times(1).
 					Return(db.User{}, sql.ErrConnDone)
 			},
-			checkRecResponse: func(rec *httptest.ResponseRecorder) {
+			checkRecorder: func(rec *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, rec.Code)
 				require.Contains(t, rec.Body.String(), "sql: connection is already closed")
 			},
@@ -259,20 +257,19 @@ func TestCreateUser(t *testing.T) {
 			name: "Duplicate Username",
 			body: map[string]any{
 				"email":         user.Email,
-				"flipped":       user.Flipped,
 				"name":          user.Name,
 				"newLanguageId": user.NewLanguageID,
 				"ogLanguageId":  user.OgLanguageID,
 				"password":      password,
 				"titleId":       user.TitleID,
 			},
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 				store.EXPECT().
 					InsertUser(gomock.Any(), gomock.Any()).
 					Times(1).
 					Return(db.User{}, db.ErrUniqueViolation)
 			},
-			checkRecResponse: func(rec *httptest.ResponseRecorder) {
+			checkRecorder: func(rec *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, rec.Code)
 				require.Contains(t, rec.Body.String(), "duplicate key violation")
 			},
@@ -294,7 +291,7 @@ func TestCreateUser(t *testing.T) {
 
 			err = srv.CreateUser(c)
 			require.NoError(t, err)
-			tc.checkRecResponse(rec)
+			tc.checkRecorder(rec)
 		})
 	}
 }
@@ -306,7 +303,6 @@ func TestUpdateUser(t *testing.T) {
 	updateUserParams := db.UpdateUserByIdParams{
 		Email:          user1.Email,
 		TitleID:        user1.TitleID,
-		Flipped:        user1.Flipped,
 		OgLanguageID:   user1.OgLanguageID,
 		NewLanguageID:  user1.NewLanguageID,
 		HashedPassword: user1.HashedPassword,
@@ -318,14 +314,14 @@ func TestUpdateUser(t *testing.T) {
 			name:   "update user1 email",
 			user:   user1,
 			userId: user1.ID,
-			stringBody: `[
+			body: `[
 			{
 				"op": "replace",
 				"path": "/email",
 				"value": "newemail2@email.com"
 			}
 		]`,
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 				userCopy := user1
 				paramsCopy := updateUserParams
 				paramsCopy.Email = "newemail2@email.com"
@@ -339,7 +335,7 @@ func TestUpdateUser(t *testing.T) {
 					Times(1).
 					Return(userCopy, nil)
 			},
-			checkRecResponse: func(rec *httptest.ResponseRecorder) {
+			checkRecorder: func(rec *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusOK, rec.Code)
 				var gotUser db.User
 				err := json.Unmarshal([]byte(rec.Body.String()), &gotUser)
@@ -351,16 +347,16 @@ func TestUpdateUser(t *testing.T) {
 			name:   "Id does not match",
 			user:   user1,
 			userId: user2.ID,
-			stringBody: `[
+			body: `[
 			{
 				"op": "replace",
 				"path": "/email",
 				"value": "newemail2@email.com"
 			}
 		]`,
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 			},
-			checkRecResponse: func(rec *httptest.ResponseRecorder) {
+			checkRecorder: func(rec *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusForbidden, rec.Code)
 				require.Contains(t, rec.Body.String(), "Invalid user ID")
 			},
@@ -369,16 +365,16 @@ func TestUpdateUser(t *testing.T) {
 			name:   "Invalid format for PatchUser",
 			user:   user1,
 			userId: user1.ID,
-			stringBody: `[
+			body: `[
 			{
 				"wrong": "replace",
 				"path": "/email",
 				"value": "newemail2@email.com"
 			}
 		]`,
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 			},
-			checkRecResponse: func(rec *httptest.ResponseRecorder) {
+			checkRecorder: func(rec *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, rec.Code)
 				require.Contains(t, rec.Body.String(), "invalid operation {\"path\":\"/email\",\"value\":\"newemail2@email.com\",\"wrong\":\"replace\"}: unsupported operation")
 			},
@@ -387,20 +383,20 @@ func TestUpdateUser(t *testing.T) {
 			name:   "User does not exist",
 			user:   user2,
 			userId: user2.ID,
-			stringBody: `[
+			body: `[
 			{
 				"op": "replace",
 				"path": "/email",
 				"value": "newemail2@email.com"
 			}
 		]`,
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 				store.EXPECT().
 					SelectUserById(gomock.Any(), user2.ID).
 					Times(1).
 					Return(db.User{}, sql.ErrNoRows)
 			},
-			checkRecResponse: func(rec *httptest.ResponseRecorder) {
+			checkRecorder: func(rec *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, rec.Code)
 				require.Contains(t, rec.Body.String(), "Error selecting user by id: sql: no rows in result set")
 			},
@@ -415,10 +411,10 @@ func TestUpdateUser(t *testing.T) {
 			defer ctrl.Finish()
 
 			urlPath := usersBasePath + "/" + strconv.FormatInt(tc.user.ID, 10)
-			srv, c, rec := setupHandlerTest(t, ctrl, tc, urlPath, tc.stringBody, http.MethodPut)
+			srv, c, rec := setupHandlerTest(t, ctrl, tc, urlPath, tc.body.(string), http.MethodPatch)
 			err := srv.UpdateUser(c, tc.userId)
 			require.NoError(t, err)
-			tc.checkRecResponse(rec)
+			tc.checkRecorder(rec)
 		})
 	}
 }
@@ -434,7 +430,7 @@ func TestLoginUser(t *testing.T) {
 				"username": user.Name,
 				"password": password,
 			},
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 				store.EXPECT().
 					SelectUserByName(gomock.Any(), gomock.Any()).
 					Times(1).
@@ -444,7 +440,7 @@ func TestLoginUser(t *testing.T) {
 					Times(1).
 					Return(permissions, nil)
 			},
-			checkRecResponse: func(rec *httptest.ResponseRecorder) {
+			checkRecorder: func(rec *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusOK, rec.Code)
 			},
 		},
@@ -454,13 +450,13 @@ func TestLoginUser(t *testing.T) {
 				"username": "NotFound",
 				"password": password,
 			},
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 				store.EXPECT().
 					SelectUserByName(gomock.Any(), gomock.Any()).
 					Times(1).
 					Return(db.User{}, sql.ErrNoRows)
 			},
-			checkRecResponse: func(rec *httptest.ResponseRecorder) {
+			checkRecorder: func(rec *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusUnauthorized, rec.Code)
 				require.Contains(t, rec.Body.String(), "invalid username or password")
 			},
@@ -471,13 +467,13 @@ func TestLoginUser(t *testing.T) {
 				"username": user.Name,
 				"password": "incorrect",
 			},
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 				store.EXPECT().
 					SelectUserByName(gomock.Any(), gomock.Eq(user.Name)).
 					Times(1).
 					Return(user, nil)
 			},
-			checkRecResponse: func(rec *httptest.ResponseRecorder) {
+			checkRecorder: func(rec *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusUnauthorized, rec.Code)
 				require.Contains(t, rec.Body.String(), "invalid username or password")
 			},
@@ -488,13 +484,13 @@ func TestLoginUser(t *testing.T) {
 				"username": user.Name,
 				"password": password,
 			},
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 				store.EXPECT().
 					SelectUserByName(gomock.Any(), gomock.Any()).
 					Times(1).
 					Return(db.User{}, sql.ErrConnDone)
 			},
-			checkRecResponse: func(rec *httptest.ResponseRecorder) {
+			checkRecorder: func(rec *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, rec.Code)
 				require.Contains(t, rec.Body.String(), "sql: connection is already closed")
 			},
@@ -515,7 +511,7 @@ func TestLoginUser(t *testing.T) {
 
 			err = srv.LoginUser(c)
 			require.NoError(t, err)
-			tc.checkRecResponse(rec)
+			tc.checkRecorder(rec)
 		})
 	}
 }
@@ -523,27 +519,9 @@ func TestLoginUser(t *testing.T) {
 func TestCreateUserMiddleware(t *testing.T) {
 	user, password := randomUser(t)
 	testCases := []testCase{
-		//{
-		//	name: "Invalid Username",
-		//	body: map[string]any{
-		//		"name":          "invalid-user#1",
-		//		"email":         user.Email,
-		//		"flipped":       user.Flipped,
-		//		"newLanguageId": user.NewLanguageID,
-		//		"ogLanguageId":  user.OgLanguageID,
-		//		"password":      password,
-		//		"titleId":       user.TitleID,
-		//	},
-		//	buildStubs: func(store *mockdb.MockQuerier) {
-		//	},
-		//	checkRecResponse: func(res *http.Response) {
-		//		require.Equal(t, http.StatusBadRequest, res.StatusCode)
-		//	},
-		//},
 		{
 			name: "InvalidEmail",
 			body: map[string]any{
-				"flipped":       user.Flipped,
 				"name":          user.Name,
 				"newLanguageId": user.NewLanguageID,
 				"ogLanguageId":  user.OgLanguageID,
@@ -551,9 +529,9 @@ func TestCreateUserMiddleware(t *testing.T) {
 				"titleId":       user.TitleID,
 				"email":         "invalid-email",
 			},
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 			},
-			checkResResponse: func(res *http.Response) {
+			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)
 				body := readBody(t, res)
 				require.Contains(t, body, "string doesn't match the regular expression ")
@@ -562,7 +540,6 @@ func TestCreateUserMiddleware(t *testing.T) {
 		{
 			name: "TooShortPassword",
 			body: map[string]any{
-				"flipped":       user.Flipped,
 				"name":          user.Name,
 				"newLanguageId": user.NewLanguageID,
 				"ogLanguageId":  user.OgLanguageID,
@@ -570,9 +547,9 @@ func TestCreateUserMiddleware(t *testing.T) {
 				"titleId":       user.TitleID,
 				"email":         user.Email,
 			},
-			buildStubs: func(store *mockdb.MockQuerier) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 			},
-			checkResResponse: func(res *http.Response) {
+			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)
 				body := readBody(t, res)
 				require.Contains(t, body, "minimum string length is 8")
@@ -586,25 +563,17 @@ func TestCreateUserMiddleware(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
-
-			store := mockdb.NewMockQuerier(ctrl)
-			tc.buildStubs(store)
-
-			e, _ := NewServer(testCfg, store)
-
-			// Marshal body data to JSON
 			data, err := json.Marshal(tc.body)
 			require.NoError(t, err)
 
-			ts := httptest.NewServer(e)
 			urlPath := "/v1/users"
-
-			req := serverRequest(t, data, ts, urlPath, http.MethodPost, "")
+			ts, _ := setupServerTest(t, ctrl, tc)
+			req := jsonRequest(t, data, ts, urlPath, http.MethodPost, "")
 
 			res, err := ts.Client().Do(req)
 			require.NoError(t, err)
 
-			tc.checkResResponse(res)
+			tc.checkResponse(res)
 		})
 	}
 }

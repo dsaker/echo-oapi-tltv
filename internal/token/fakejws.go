@@ -2,13 +2,13 @@ package token
 
 import (
 	"crypto/ecdsa"
+	"encoding/json"
 	"fmt"
 	"github.com/lestrrat-go/jwx/jwa"
 	"github.com/lestrrat-go/jwx/jwk"
 	"github.com/lestrrat-go/jwx/jws"
 	"github.com/lestrrat-go/jwx/jwt"
 	"github.com/oapi-codegen/oapi-codegen/v2/pkg/ecdsafile"
-	"strconv"
 	db "talkliketv.click/tltv/db/sqlc"
 	"time"
 )
@@ -36,6 +36,7 @@ const (
 	PermissionsClaim = "perm"
 	Expiration       = "exp"
 	IssuedAt         = "iat"
+	UserContextKey   = "user"
 	UserIdContextKey = "userid"
 )
 
@@ -125,7 +126,11 @@ func (f *FakeAuthenticator) CreateJWSWithClaims(claims []string, user db.User) (
 	if err != nil {
 		return nil, fmt.Errorf("setting issued at: %w", err)
 	}
-	err = t.Set(jwt.SubjectKey, strconv.FormatInt(user.ID, 10))
+	jsonUser, err := json.Marshal(user)
+	if err != nil {
+		return nil, fmt.Errorf("marshalling user: %w", err)
+	}
+	err = t.Set(jwt.SubjectKey, string(jsonUser))
 	if err != nil {
 		return nil, fmt.Errorf("setting subject key: %w", err)
 	}

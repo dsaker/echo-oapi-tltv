@@ -2,6 +2,7 @@ package util
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 	"strings"
 )
@@ -9,13 +10,18 @@ import (
 const alphabet = "abcdefghijklmnopqrstuvwxyz"
 
 // RandomInt64 generates a random integer between min and max
-func RandomInt64(min, max int64) int64 {
-	return min + rand.Int63n(max-min+1)
+func RandomInt64() int64 {
+	return rand.Int63n(math.MaxInt64 - 1)
 }
 
 // RandomInt32 generates a random integer between min and max
-func RandomInt32(min, max int32) int32 {
-	return min + rand.Int31n(max-min+1)
+func RandomInt32() int32 {
+	return rand.Int31n(math.MaxInt32 - 1)
+}
+
+// RandomInt16 generates a random integer between min and max
+func RandomInt16() int16 {
+	return int16(rand.Int())
 }
 
 // RandomString generates a random string of length n
@@ -32,8 +38,8 @@ func RandomString(n int) string {
 }
 
 // RandomName generates a random user name
-func RandomName() string {
-	return RandomString(6)
+func RandomName(n int) string {
+	return RandomString(n)
 }
 
 // RandomEmail generates a random email
