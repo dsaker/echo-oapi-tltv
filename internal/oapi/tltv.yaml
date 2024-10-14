@@ -521,8 +521,6 @@ components:
       required:
         - id
         - titleId
-        - phrase
-        - phraseHint
       properties:
         id:
           type: integer
@@ -532,12 +530,6 @@ components:
           type: integer
           format: int64
           description: id of movie
-        phrase:
-          type: string
-          description: the phrase in native language
-        translates:
-          type: string
-          description: the text that phrase translates to
     NewUserPermission:
       required:
         - userId

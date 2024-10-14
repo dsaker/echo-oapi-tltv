@@ -98,7 +98,7 @@ func randomUser(t *testing.T) (user db.User, password string) {
 	return
 }
 
-func randomPhrase() (title Phrase) {
+func randomPhrase() Phrase {
 	return Phrase{
 		Id:      util.RandomInt64(),
 		TitleId: util.RandomInt64(),

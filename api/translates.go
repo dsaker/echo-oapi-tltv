@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"github.com/labstack/echo/v4"
 	"golang.org/x/text/language"
-	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -87,26 +86,27 @@ func (t *Translate) TextToSpeech(eCtx echo.Context, translatesSlice []db.Transla
 	newCtx, cancel := context.WithCancel(context.Background())
 	defer cancel() // Make sure it's called to release resources even if no errors
 
-	for i, nextSpeech := range translatesSlice {
+	for i, nextText := range translatesSlice {
 		// added intermittent sleep to fix TLS handshake errors on the client side
 		if i%50 == 0 && i != 0 {
 			time.Sleep(1 * time.Second)
 		}
 		wg.Add(1)
 		//get responses concurrently with go routines
-		go getSpeech(eCtx, newCtx, cancel, nextSpeech, &wg, basepath, tag)
+		go getSpeech(eCtx, newCtx, cancel, nextText, &wg, basepath, tag)
 	}
 	wg.Wait()
 
 	if newCtx.Err() != nil {
 		eCtx.Logger().Error(newCtx.Err())
-		return eCtx.String(http.StatusInternalServerError, newCtx.Err().Error())
+		return newCtx.Err()
 	}
 
 	return nil
 }
 
-func getSpeech(eCtx echo.Context,
+func getSpeech(
+	eCtx echo.Context,
 	ctx context.Context,
 	cancel context.CancelFunc,
 	translate db.Translate,
@@ -152,7 +152,7 @@ func getSpeech(eCtx echo.Context,
 			return
 		}
 
-		// The resp's AudioContent is binary.
+		// The resp AudioContent is binary.
 		filename := basepath + strconv.FormatInt(translate.PhraseID, 10) + ".mp3"
 		err = os.WriteFile(filename, resp.AudioContent, 0644)
 		if err != nil {
@@ -168,7 +168,7 @@ func (t *Translate) TranslatePhrases(eCtx echo.Context, ts []db.SelectTranslates
 
 	// concurrently get all the responses from Google Translate
 	var wg sync.WaitGroup
-	responses := make([]util.TranslatesReturn, len(ts)) // string array to hold all the responses
+	responses := make([]util.TranslatesReturn, len(ts)) // create string slice to hold all the responses
 	// create context with cancel, so you can cancel all other requests after any error
 	newCtx, cancel := context.WithCancel(context.Background())
 	defer cancel() // Make sure it's called to release resources even if no errors
@@ -186,7 +186,7 @@ func (t *Translate) TranslatePhrases(eCtx echo.Context, ts []db.SelectTranslates
 
 	if newCtx.Err() != nil {
 		eCtx.Logger().Error(newCtx.Err())
-		return nil, eCtx.String(http.StatusInternalServerError, newCtx.Err().Error())
+		return nil, newCtx.Err()
 	}
 
 	return responses, nil

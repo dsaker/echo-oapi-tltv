@@ -159,7 +159,7 @@ func TestAddTitle(t *testing.T) {
 			user: user,
 			multipartBody: func(t *testing.T) (*bytes.Buffer, *multipart.Writer) {
 				data := []byte("This is the first sentence.\nThis is the second sentence.\n")
-				err := os.WriteFile(filename, data, 0644)
+				err := os.WriteFile(filename, data, 0777)
 				file, err := os.Open(filename)
 				body := new(bytes.Buffer)
 				writer := multipart.NewWriter(body)
@@ -238,8 +238,7 @@ func TestAddTitle(t *testing.T) {
 					require.NoError(t, err)
 				}
 				writer.Flush()
-				//data := []byte("This is the first sentence.\nThis is the second sentence.\n")
-				//err = os.WriteFile(filename, data, 0644)
+
 				multiFile, err := os.Open(filename)
 				body := new(bytes.Buffer)
 				multiWriter := multipart.NewWriter(body)
@@ -468,7 +467,9 @@ func TestTranslateTitle(t *testing.T) {
 	title := randomTitle()
 	newLanguage := randomLanguage()
 	phrase1 := randomPhrase()
+	translate1 := randomTranslate(phrase1, newLanguage.ID)
 	phrase2 := randomPhrase()
+	translate2 := randomTranslate(phrase2, newLanguage.ID)
 
 	translateTitleBody := TitlesTranslateRequest{
 		TitleId:       title.ID,
@@ -487,11 +488,11 @@ func TestTranslateTitle(t *testing.T) {
 	}
 
 	selectTranslatesByTitleIdLangIdRow1 := db.SelectTranslatesByTitleIdLangIdRow{
-		Phrase:   phrase1.Phrase,
+		Phrase:   translate1.Phrase,
 		PhraseID: phrase1.Id,
 	}
 	selectTranslatesByTitleIdLangIdRow2 := db.SelectTranslatesByTitleIdLangIdRow{
-		Phrase:   phrase2.Phrase,
+		Phrase:   translate2.Phrase,
 		PhraseID: phrase2.Id,
 	}
 	selectTranslatesByTitleIdLangIdRows := []db.SelectTranslatesByTitleIdLangIdRow{

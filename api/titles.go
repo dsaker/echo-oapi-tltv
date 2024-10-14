@@ -104,6 +104,7 @@ func addTitleHelper(eCtx echo.Context, s *Server, slice []string, t db.Title, ta
 	// insert phrases into db as translates object of OgLanguage
 	translatesSlice, err := s.translates.InsertNewPhrases(eCtx, t, s.queries, slice)
 	if err != nil {
+		eCtx.Logger().Error(err)
 		return eCtx.String(http.StatusInternalServerError, err.Error())
 	}
 
@@ -111,12 +112,14 @@ func addTitleHelper(eCtx echo.Context, s *Server, slice []string, t db.Title, ta
 	audioBasePath := s.config.TTSBasePath +
 		strconv.Itoa(int(t.ID)) + "/" +
 		strconv.Itoa(int(t.OgLanguageID)) + "/"
-	err = os.MkdirAll(audioBasePath, os.ModePerm)
+	// TODO change permission
+	err = os.MkdirAll(audioBasePath, 0777)
 	if err != nil {
+		eCtx.Logger().Error(err)
 		return eCtx.String(http.StatusInternalServerError, err.Error())
 	}
 
-	// get
+	// TODO
 	err = s.translates.TextToSpeech(eCtx, translatesSlice, audioBasePath, tag)
 	if err != nil {
 		eCtx.Logger().Error(err)
