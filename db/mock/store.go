@@ -152,6 +152,21 @@ func (mr *MockQuerierMockRecorder) InsertUserPermission(arg0, arg1 interface{}) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertUserPermission", reflect.TypeOf((*MockQuerier)(nil).InsertUserPermission), arg0, arg1)
 }
 
+// ListLanguages mocks base method.
+func (m *MockQuerier) ListLanguages(arg0 context.Context) ([]db.Language, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListLanguages", arg0)
+	ret0, _ := ret[0].([]db.Language)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListLanguages indicates an expected call of ListLanguages.
+func (mr *MockQuerierMockRecorder) ListLanguages(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListLanguages", reflect.TypeOf((*MockQuerier)(nil).ListLanguages), arg0)
+}
+
 // ListTitles mocks base method.
 func (m *MockQuerier) ListTitles(arg0 context.Context, arg1 db.ListTitlesParams) ([]db.ListTitlesRow, error) {
 	m.ctrl.T.Helper()

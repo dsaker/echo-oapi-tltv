@@ -24,11 +24,11 @@ const (
 	BearerAuthScopes = "BearerAuth.Scopes"
 )
 
-// Defines values for JSONPatchRequestAddReplaceTestOp.
+// Defines values for PatchRequestAddReplaceTestOp.
 const (
-	Add     JSONPatchRequestAddReplaceTestOp = "add"
-	Replace JSONPatchRequestAddReplaceTestOp = "replace"
-	Test    JSONPatchRequestAddReplaceTestOp = "test"
+	Add     PatchRequestAddReplaceTestOp = "add"
+	Replace PatchRequestAddReplaceTestOp = "replace"
+	Test    PatchRequestAddReplaceTestOp = "test"
 )
 
 // Error defines model for Error.
@@ -40,20 +40,17 @@ type Error struct {
 	Message string `json:"message"`
 }
 
-// JSONPatchRequestAddReplaceTest defines model for JSONPatchRequestAddReplaceTest.
-type JSONPatchRequestAddReplaceTest struct {
-	// Op The operation to perform.
-	Op JSONPatchRequestAddReplaceTestOp `json:"op"`
+// Language defines model for Language.
+type Language struct {
+	// Id id of language
+	Id int16 `json:"id"`
 
-	// Path A JSON Pointer path.
-	Path string `json:"path"`
+	// Language string of language
+	Language string `json:"language"`
 
-	// Value The value to add, replace or test.
-	Value interface{} `json:"value"`
+	// Tag language tag used for google language methods
+	Tag string `json:"tag"`
 }
-
-// JSONPatchRequestAddReplaceTestOp The operation to perform.
-type JSONPatchRequestAddReplaceTestOp string
 
 // NewTitle defines model for NewTitle.
 type NewTitle struct {
@@ -104,6 +101,21 @@ type PatchRequest = []PatchRequest_Item
 type PatchRequest_Item struct {
 	union json.RawMessage
 }
+
+// PatchRequestAddReplaceTest defines model for PatchRequestAddReplaceTest.
+type PatchRequestAddReplaceTest struct {
+	// Op The operation to perform.
+	Op PatchRequestAddReplaceTestOp `json:"op"`
+
+	// Path A JSON Pointer path.
+	Path string `json:"path"`
+
+	// Value The value to add, replace or test.
+	Value interface{} `json:"value"`
+}
+
+// PatchRequestAddReplaceTestOp The operation to perform.
+type PatchRequestAddReplaceTestOp string
 
 // Phrase defines model for Phrase.
 type Phrase struct {
@@ -218,6 +230,20 @@ type UsersPhrases struct {
 	UserId int64 `json:"userId"`
 }
 
+// AudioFromFileMultipartBody defines parameters for AudioFromFile.
+type AudioFromFileMultipartBody struct {
+	FilePath   openapi_types.File `json:"filePath"`
+	LanguageId *string            `json:"languageId,omitempty"`
+	TitleName  *string            `json:"titleName,omitempty"`
+}
+
+// AudioFromTitleJSONBody defines parameters for AudioFromTitle.
+type AudioFromTitleJSONBody struct {
+	FilePath   *openapi_types.File `json:"filePath,omitempty"`
+	LanguageId *string             `json:"languageId,omitempty"`
+	TitleId    int64               `json:"titleId"`
+}
+
 // GetPhrasesParams defines parameters for GetPhrases.
 type GetPhrasesParams struct {
 	// Limit maximum number of results to return
@@ -240,11 +266,17 @@ type AddTitleMultipartBody struct {
 	TitleName  string             `json:"titleName"`
 }
 
+// AudioFromFileMultipartRequestBody defines body for AudioFromFile for multipart/form-data ContentType.
+type AudioFromFileMultipartRequestBody AudioFromFileMultipartBody
+
+// AudioFromTitleJSONRequestBody defines body for AudioFromTitle for application/json ContentType.
+type AudioFromTitleJSONRequestBody AudioFromTitleJSONBody
+
 // AddTitleMultipartRequestBody defines body for AddTitle for multipart/form-data ContentType.
 type AddTitleMultipartRequestBody AddTitleMultipartBody
 
-// TranslateTitleJSONRequestBody defines body for TranslateTitle for application/json ContentType.
-type TranslateTitleJSONRequestBody = TitlesTranslateRequest
+// TitlesTranslateJSONRequestBody defines body for TitlesTranslate for application/json ContentType.
+type TitlesTranslateJSONRequestBody = TitlesTranslateRequest
 
 // CreateUserJSONRequestBody defines body for CreateUser for application/json ContentType.
 type CreateUserJSONRequestBody = NewUser
@@ -261,22 +293,22 @@ type AddUserPermissionJSONRequestBody = NewUserPermission
 // UpdateUsersPhrasesApplicationJSONPatchPlusJSONRequestBody defines body for UpdateUsersPhrases for application/json-patch+json ContentType.
 type UpdateUsersPhrasesApplicationJSONPatchPlusJSONRequestBody = PatchRequest
 
-// AsJSONPatchRequestAddReplaceTest returns the union data inside the PatchRequest_Item as a JSONPatchRequestAddReplaceTest
-func (t PatchRequest_Item) AsJSONPatchRequestAddReplaceTest() (JSONPatchRequestAddReplaceTest, error) {
-	var body JSONPatchRequestAddReplaceTest
+// AsPatchRequestAddReplaceTest returns the union data inside the PatchRequest_Item as a PatchRequestAddReplaceTest
+func (t PatchRequest_Item) AsPatchRequestAddReplaceTest() (PatchRequestAddReplaceTest, error) {
+	var body PatchRequestAddReplaceTest
 	err := json.Unmarshal(t.union, &body)
 	return body, err
 }
 
-// FromJSONPatchRequestAddReplaceTest overwrites any union data inside the PatchRequest_Item as the provided JSONPatchRequestAddReplaceTest
-func (t *PatchRequest_Item) FromJSONPatchRequestAddReplaceTest(v JSONPatchRequestAddReplaceTest) error {
+// FromPatchRequestAddReplaceTest overwrites any union data inside the PatchRequest_Item as the provided PatchRequestAddReplaceTest
+func (t *PatchRequest_Item) FromPatchRequestAddReplaceTest(v PatchRequestAddReplaceTest) error {
 	b, err := json.Marshal(v)
 	t.union = b
 	return err
 }
 
-// MergeJSONPatchRequestAddReplaceTest performs a merge with any union data inside the PatchRequest_Item, using the provided JSONPatchRequestAddReplaceTest
-func (t *PatchRequest_Item) MergeJSONPatchRequestAddReplaceTest(v JSONPatchRequestAddReplaceTest) error {
+// MergePatchRequestAddReplaceTest performs a merge with any union data inside the PatchRequest_Item, using the provided PatchRequestAddReplaceTest
+func (t *PatchRequest_Item) MergePatchRequestAddReplaceTest(v PatchRequestAddReplaceTest) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -299,6 +331,15 @@ func (t *PatchRequest_Item) UnmarshalJSON(b []byte) error {
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+
+	// (POST /audiofromfile)
+	AudioFromFile(ctx echo.Context) error
+
+	// (POST /audiofromtitle)
+	AudioFromTitle(ctx echo.Context) error
+	// Returns list of all available languages
+	// (GET /languages)
+	GetLanguages(ctx echo.Context) error
 	// Returns phrases by title_id
 	// (GET /phrases)
 	GetPhrases(ctx echo.Context, params GetPhrasesParams) error
@@ -310,7 +351,7 @@ type ServerInterface interface {
 	AddTitle(ctx echo.Context) error
 
 	// (POST /titles/translate)
-	TranslateTitle(ctx echo.Context) error
+	TitlesTranslate(ctx echo.Context) error
 	// Deletes a title by ID
 	// (DELETE /titles/{id})
 	DeleteTitle(ctx echo.Context, id int64) error
@@ -343,6 +384,39 @@ type ServerInterface interface {
 // ServerInterfaceWrapper converts echo contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler ServerInterface
+}
+
+// AudioFromFile converts echo context to params.
+func (w *ServerInterfaceWrapper) AudioFromFile(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BearerAuthScopes, []string{"titles:w"})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.AudioFromFile(ctx)
+	return err
+}
+
+// AudioFromTitle converts echo context to params.
+func (w *ServerInterfaceWrapper) AudioFromTitle(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BearerAuthScopes, []string{"titles:w"})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.AudioFromTitle(ctx)
+	return err
+}
+
+// GetLanguages converts echo context to params.
+func (w *ServerInterfaceWrapper) GetLanguages(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetLanguages(ctx)
+	return err
 }
 
 // GetPhrases converts echo context to params.
@@ -403,14 +477,14 @@ func (w *ServerInterfaceWrapper) AddTitle(ctx echo.Context) error {
 	return err
 }
 
-// TranslateTitle converts echo context to params.
-func (w *ServerInterfaceWrapper) TranslateTitle(ctx echo.Context) error {
+// TitlesTranslate converts echo context to params.
+func (w *ServerInterfaceWrapper) TitlesTranslate(ctx echo.Context) error {
 	var err error
 
 	ctx.Set(BearerAuthScopes, []string{"titles:w"})
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.TranslateTitle(ctx)
+	err = w.Handler.TitlesTranslate(ctx)
 	return err
 }
 
@@ -587,10 +661,13 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
+	router.POST(baseURL+"/audiofromfile", wrapper.AudioFromFile)
+	router.POST(baseURL+"/audiofromtitle", wrapper.AudioFromTitle)
+	router.GET(baseURL+"/languages", wrapper.GetLanguages)
 	router.GET(baseURL+"/phrases", wrapper.GetPhrases)
 	router.GET(baseURL+"/titles", wrapper.FindTitles)
 	router.POST(baseURL+"/titles", wrapper.AddTitle)
-	router.POST(baseURL+"/titles/translate", wrapper.TranslateTitle)
+	router.POST(baseURL+"/titles/translate", wrapper.TitlesTranslate)
 	router.DELETE(baseURL+"/titles/:id", wrapper.DeleteTitle)
 	router.GET(baseURL+"/titles/:id", wrapper.FindTitleByID)
 	router.POST(baseURL+"/users", wrapper.CreateUser)
@@ -606,49 +683,54 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"FYH/CwAA//8Uzjra3zQAAA==",
+	"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",
+	"DMQ0PgAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

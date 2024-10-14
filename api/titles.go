@@ -112,7 +112,7 @@ func addTitleHelper(eCtx echo.Context, s *Server, slice []string, t db.Title, ta
 	audioBasePath := s.config.TTSBasePath +
 		strconv.Itoa(int(t.ID)) + "/" +
 		strconv.Itoa(int(t.OgLanguageID)) + "/"
-	// TODO change permission
+	// TODO change permission or make permission configurable. Can't test if set to 0644
 	err = os.MkdirAll(audioBasePath, 0777)
 	if err != nil {
 		eCtx.Logger().Error(err)
@@ -149,7 +149,7 @@ func (s *Server) DeleteTitle(ctx echo.Context, id int64) error {
 	return ctx.NoContent(http.StatusNoContent)
 }
 
-func (s *Server) TranslateTitle(eCtx echo.Context) error {
+func (s *Server) TitlesTranslate(eCtx echo.Context) error {
 
 	var newTranslateTitle TitlesTranslateRequest
 	err := eCtx.Bind(&newTranslateTitle)

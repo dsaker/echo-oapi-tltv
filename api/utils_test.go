@@ -39,6 +39,7 @@ const (
 	usersPermissionBasePath = "/v1/userspermissions"
 	phrasesBasePath         = "/v1/phrases"
 	usersPhrasesBasePath    = "/v1/usersphrases"
+	languagesBasePath       = "/v1/languages"
 	validLanguageId         = 27
 )
 

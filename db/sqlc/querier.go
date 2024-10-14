@@ -17,6 +17,7 @@ type Querier interface {
 	InsertTranslates(ctx context.Context, arg InsertTranslatesParams) (Translate, error)
 	InsertUser(ctx context.Context, arg InsertUserParams) (User, error)
 	InsertUserPermission(ctx context.Context, arg InsertUserPermissionParams) (UsersPermission, error)
+	ListLanguages(ctx context.Context) ([]Language, error)
 	ListTitles(ctx context.Context, arg ListTitlesParams) ([]ListTitlesRow, error)
 	ListTitlesByOgLanguage(ctx context.Context, arg ListTitlesByOgLanguageParams) ([]ListTitlesByOgLanguageRow, error)
 	SelectExistsTranslates(ctx context.Context, arg SelectExistsTranslatesParams) (bool, error)

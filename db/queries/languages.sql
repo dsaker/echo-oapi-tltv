@@ -1,2 +1,5 @@
 -- name: SelectLanguagesById :one
-select * from languages where id = $1;
+SELECT * FROM languages WHERE id = $1;
+
+-- name: ListLanguages :many
+SELECT * FROM languages;
