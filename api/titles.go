@@ -6,14 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"github.com/labstack/echo/v4"
-	"golang.org/x/text/language"
 	"net/http"
 	"os"
 	"strconv"
 	db "talkliketv.click/tltv/db/sqlc"
 )
 
-// FindTitles implements all the handlers in the ServerInterface
+// FindTitles returns the number of titles set by the Limit and Similarity params
 func (s *Server) FindTitles(ctx echo.Context, params FindTitlesParams) error {
 
 	titles, err := s.queries.ListTitles(
@@ -31,6 +30,9 @@ func (s *Server) FindTitles(ctx echo.Context, params FindTitlesParams) error {
 	return ctx.JSON(http.StatusOK, titles)
 }
 
+// AddTitle takes your uploaded file, filename, and title and adds it to the database,
+// along with adding the phrases in the original language and getting the text-to-speech
+// and saving it to the file path set in config.TTSBasePath
 func (s *Server) AddTitle(eCtx echo.Context) error {
 
 	// get lang id and title from multipart form
@@ -91,6 +93,7 @@ func (s *Server) AddTitle(eCtx echo.Context) error {
 	// use helper function so you can roll back InsertTitle in case of any error
 	err = addTitleHelper(eCtx, s, stringsSlice, title, langModel.Tag)
 	if err != nil {
+		// TODO delete directory
 		err = s.queries.DeleteTitleById(eCtx.Request().Context(), title.ID)
 		eCtx.Logger().Error(err)
 		return eCtx.String(http.StatusInternalServerError, err.Error())
@@ -104,26 +107,22 @@ func addTitleHelper(eCtx echo.Context, s *Server, slice []string, t db.Title, ta
 	// insert phrases into db as translates object of OgLanguage
 	translatesSlice, err := s.translates.InsertNewPhrases(eCtx, t, s.queries, slice)
 	if err != nil {
-		eCtx.Logger().Error(err)
-		return eCtx.String(http.StatusInternalServerError, err.Error())
+		return err
 	}
 
 	//create base path for storing mp3 audio files
 	audioBasePath := s.config.TTSBasePath +
 		strconv.Itoa(int(t.ID)) + "/" +
 		strconv.Itoa(int(t.OgLanguageID)) + "/"
-	// TODO change permission or make permission configurable. Can't test if set to 0644
+	// TODO change permission or make permission configurable. Can't run tests if set to 0644
 	err = os.MkdirAll(audioBasePath, 0777)
 	if err != nil {
-		eCtx.Logger().Error(err)
-		return eCtx.String(http.StatusInternalServerError, err.Error())
+		return err
 	}
 
-	// TODO
 	err = s.translates.TextToSpeech(eCtx, translatesSlice, audioBasePath, tag)
 	if err != nil {
-		eCtx.Logger().Error(err)
-		return eCtx.String(http.StatusInternalServerError, err.Error())
+		return err
 	}
 
 	return nil
@@ -188,12 +187,6 @@ func (s *Server) TitlesTranslate(eCtx echo.Context) error {
 		return eCtx.String(http.StatusInternalServerError, err.Error())
 	}
 
-	// get language tag to translate to
-	langTag, err := language.Parse(dbLang.Tag)
-	if err != nil {
-		return eCtx.String(http.StatusBadRequest, err.Error())
-	}
-
 	// We're always asynchronous, so lock unsafe operations below
 	s.Lock()
 	defer s.Unlock()
@@ -211,7 +204,7 @@ func (s *Server) TitlesTranslate(eCtx echo.Context) error {
 	}
 
 	// get the translates from the phrases
-	newTranslates, err := s.translates.TranslatePhrases(eCtx, phrasesToTranslate, langTag)
+	newTranslates, err := s.translates.TranslatePhrases(eCtx, phrasesToTranslate, dbLang)
 	if err != nil {
 		eCtx.Logger().Error(err)
 		return eCtx.String(http.StatusInternalServerError, err.Error())

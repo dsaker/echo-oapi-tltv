@@ -487,15 +487,15 @@ func TestTranslateTitle(t *testing.T) {
 		ID:         title.ID,
 	}
 
-	selectTranslatesByTitleIdLangIdRow1 := db.SelectTranslatesByTitleIdLangIdRow{
+	selectTranslatesByTitleIdLangIdRow1 := db.Translate{
 		Phrase:   translate1.Phrase,
 		PhraseID: phrase1.Id,
 	}
-	selectTranslatesByTitleIdLangIdRow2 := db.SelectTranslatesByTitleIdLangIdRow{
+	selectTranslatesByTitleIdLangIdRow2 := db.Translate{
 		Phrase:   translate2.Phrase,
 		PhraseID: phrase2.Id,
 	}
-	selectTranslatesByTitleIdLangIdRows := []db.SelectTranslatesByTitleIdLangIdRow{
+	selectTranslatesByTitleIdLangIdRows := []db.Translate{
 		selectTranslatesByTitleIdLangIdRow1, selectTranslatesByTitleIdLangIdRow2}
 
 	langTag := language.English

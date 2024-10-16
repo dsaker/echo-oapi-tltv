@@ -22,7 +22,7 @@ import (
 type TranslateX interface {
 	InsertNewPhrases(echo.Context, db.Title, db.Querier, []string) ([]db.Translate, error)
 	TextToSpeech(echo.Context, []db.Translate, string, string) error
-	TranslatePhrases(echo.Context, []db.SelectTranslatesByTitleIdLangIdRow, language.Tag) ([]util.TranslatesReturn, error)
+	TranslatePhrases(echo.Context, []db.Translate, db.Language) ([]util.TranslatesReturn, error)
 	InsertTranslates(echo.Context, db.Querier, int16, []util.TranslatesReturn) ([]db.Translate, error)
 }
 
@@ -164,7 +164,13 @@ func getSpeech(
 	}
 }
 
-func (t *Translate) TranslatePhrases(eCtx echo.Context, ts []db.SelectTranslatesByTitleIdLangIdRow, tag language.Tag) ([]util.TranslatesReturn, error) {
+func (t *Translate) TranslatePhrases(eCtx echo.Context, ts []db.Translate, dbLang db.Language) ([]util.TranslatesReturn, error) {
+
+	// get language tag to translate to
+	langTag, err := language.Parse(dbLang.Tag)
+	if err != nil {
+		return nil, err
+	}
 
 	// concurrently get all the responses from Google Translate
 	var wg sync.WaitGroup
@@ -180,7 +186,7 @@ func (t *Translate) TranslatePhrases(eCtx echo.Context, ts []db.SelectTranslates
 		}
 		wg.Add(1)
 		//get responses concurrently with go routines
-		go getTranslate(eCtx, newCtx, cancel, tag, nextTranslate, responses, i, &wg)
+		go getTranslate(eCtx, newCtx, cancel, langTag, nextTranslate, responses, i, &wg)
 	}
 	wg.Wait()
 
@@ -196,7 +202,7 @@ func getTranslate(eCtx echo.Context,
 	ctx context.Context,
 	cancel context.CancelFunc,
 	lang language.Tag,
-	phrase db.SelectTranslatesByTitleIdLangIdRow,
+	phrase db.Translate,
 	responses []util.TranslatesReturn,
 	i int,
 	wg *sync.WaitGroup) {

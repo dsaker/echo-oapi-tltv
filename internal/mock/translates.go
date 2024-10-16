@@ -9,7 +9,6 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	echo "github.com/labstack/echo/v4"
-	language "golang.org/x/text/language"
 	db "talkliketv.click/tltv/db/sqlc"
 	util "talkliketv.click/tltv/internal/util"
 )
@@ -82,7 +81,7 @@ func (mr *MockTranslateXMockRecorder) TextToSpeech(arg0, arg1, arg2, arg3 interf
 }
 
 // TranslatePhrases mocks base method.
-func (m *MockTranslateX) TranslatePhrases(arg0 echo.Context, arg1 []db.SelectTranslatesByTitleIdLangIdRow, arg2 language.Tag) ([]util.TranslatesReturn, error) {
+func (m *MockTranslateX) TranslatePhrases(arg0 echo.Context, arg1 []db.Translate, arg2 db.Language) ([]util.TranslatesReturn, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "TranslatePhrases", arg0, arg1, arg2)
 	ret0, _ := ret[0].([]util.TranslatesReturn)

@@ -251,7 +251,7 @@ func TestTranslatePhrases(t *testing.T) {
 	newLanguage := language.Spanish
 	randomPhrase1 := randomPhrase()
 	text1 := "This is sentence one."
-	translate1 := db.SelectTranslatesByTitleIdLangIdRow{
+	translate1 := db.Translate{
 		PhraseID: randomPhrase1.Id,
 		Phrase:   text1,
 	}
@@ -287,7 +287,7 @@ func TestTranslatePhrases(t *testing.T) {
 			c := e.NewContext(req, rec)
 
 			translate := Translate{}
-			translatesRow, err := translate.TranslatePhrases(c, []db.SelectTranslatesByTitleIdLangIdRow{translate1}, newLanguage)
+			translatesRow, err := translate.TranslatePhrases(c, []db.Translate{translate1}, newLanguage)
 			tc.checkTranslateRow(translatesRow, err)
 		})
 	}

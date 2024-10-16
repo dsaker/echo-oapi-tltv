@@ -65,7 +65,7 @@ func (s *Server) UpdateUsersPhrases(ctx echo.Context, phraseId int64, languageId
 			PhraseID:   phraseId,
 		})
 	if err != nil {
-		return ctx.String(http.StatusBadRequest, fmt.Sprintf("Error selecting user phrase by ids: %s", err.Error()))
+		return ctx.String(http.StatusInternalServerError, fmt.Sprintf("Error selecting user phrase by ids: %s", err.Error()))
 	}
 
 	current := UsersPhrases{

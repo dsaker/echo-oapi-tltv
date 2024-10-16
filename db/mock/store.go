@@ -242,6 +242,21 @@ func (mr *MockQuerierMockRecorder) SelectPermissionByCode(arg0, arg1 interface{}
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectPermissionByCode", reflect.TypeOf((*MockQuerier)(nil).SelectPermissionByCode), arg0, arg1)
 }
 
+// SelectPhraseIdsByTitleId mocks base method.
+func (m *MockQuerier) SelectPhraseIdsByTitleId(arg0 context.Context, arg1 int64) ([]int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SelectPhraseIdsByTitleId", arg0, arg1)
+	ret0, _ := ret[0].([]int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SelectPhraseIdsByTitleId indicates an expected call of SelectPhraseIdsByTitleId.
+func (mr *MockQuerierMockRecorder) SelectPhraseIdsByTitleId(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectPhraseIdsByTitleId", reflect.TypeOf((*MockQuerier)(nil).SelectPhraseIdsByTitleId), arg0, arg1)
+}
+
 // SelectPhrasesFromTranslates mocks base method.
 func (m *MockQuerier) SelectPhrasesFromTranslates(arg0 context.Context, arg1 db.SelectPhrasesFromTranslatesParams) ([]db.SelectPhrasesFromTranslatesRow, error) {
 	m.ctrl.T.Helper()
@@ -288,10 +303,10 @@ func (mr *MockQuerierMockRecorder) SelectTitleById(arg0, arg1 interface{}) *gomo
 }
 
 // SelectTranslatesByTitleIdLangId mocks base method.
-func (m *MockQuerier) SelectTranslatesByTitleIdLangId(arg0 context.Context, arg1 db.SelectTranslatesByTitleIdLangIdParams) ([]db.SelectTranslatesByTitleIdLangIdRow, error) {
+func (m *MockQuerier) SelectTranslatesByTitleIdLangId(arg0 context.Context, arg1 db.SelectTranslatesByTitleIdLangIdParams) ([]db.Translate, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SelectTranslatesByTitleIdLangId", arg0, arg1)
-	ret0, _ := ret[0].([]db.SelectTranslatesByTitleIdLangIdRow)
+	ret0, _ := ret[0].([]db.Translate)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

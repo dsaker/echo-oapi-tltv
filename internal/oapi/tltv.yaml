@@ -476,11 +476,12 @@ paths:
                 titleId:
                   type: integer
                   format: int64
-                languageId:
-                  type: string
-                filePath:
-                  type: string
-                  format: binary
+                fromLanguageId:
+                  type: integer
+                  format: int16
+                toLanguageId:
+                  type: integer
+                  format: int16
       responses:
         '200':
           description: audio from file response
