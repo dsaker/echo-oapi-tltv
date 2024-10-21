@@ -174,18 +174,11 @@ func TestAddTitle(t *testing.T) {
 			},
 			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 				store.EXPECT().
-					SelectLanguagesById(gomock.Any(), title.OgLanguageID).
-					Times(1).Return(validLanguageModel, nil)
-				store.EXPECT().
 					InsertTitle(gomock.Any(), insertTitle).
 					Times(1).Return(title, nil)
 				text.EXPECT().
 					InsertNewPhrases(gomock.Any(), title, store, stringsSlice).
 					Times(1).Return(dbTranslates, nil)
-				text.EXPECT().
-					TextToSpeech(gomock.Any(), dbTranslates, audioBasePath, validLanguageModel.Tag).
-					Times(1).Return(nil)
-
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusOK, res.StatusCode)
@@ -280,8 +273,8 @@ func TestAddTitle(t *testing.T) {
 			},
 			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
 				store.EXPECT().
-					SelectLanguagesById(gomock.Any(), title.OgLanguageID).
-					Times(1).Return(db.Language{}, sql.ErrConnDone)
+					InsertTitle(gomock.Any(), insertTitle).
+					Times(1).Return(db.Title{}, sql.ErrConnDone)
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusInternalServerError, res.StatusCode)

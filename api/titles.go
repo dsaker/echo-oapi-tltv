@@ -59,16 +59,6 @@ func (s *Server) AddTitle(eCtx echo.Context) error {
 	}
 	defer src.Close()
 
-	//Get language model from id
-	langModel, err := s.queries.SelectLanguagesById(eCtx.Request().Context(), int16(langIdInt16))
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return eCtx.String(http.StatusBadRequest, err.Error())
-		}
-		eCtx.Logger().Error(err)
-		return eCtx.String(http.StatusInternalServerError, err.Error())
-	}
-
 	// Create strings slice and count number of lines form titles model
 	scanner := bufio.NewScanner(src)
 	var stringsSlice []string
@@ -89,13 +79,14 @@ func (s *Server) AddTitle(eCtx echo.Context) error {
 			NumSubs:      int16(numLines),
 			OgLanguageID: int16(langIdInt16),
 		})
-
-	// use helper function so you can roll back InsertTitle in case of any error
-	err = addTitleHelper(eCtx, s, stringsSlice, title, langModel.Tag)
 	if err != nil {
-		// TODO delete directory
+		return eCtx.String(http.StatusInternalServerError, err.Error())
+	}
+
+	// insert phrases into db as translates object of OgLanguage
+	_, err = s.translates.InsertNewPhrases(eCtx, title, s.queries, stringsSlice)
+	if err != nil {
 		err = s.queries.DeleteTitleById(eCtx.Request().Context(), title.ID)
-		eCtx.Logger().Error(err)
 		return eCtx.String(http.StatusInternalServerError, err.Error())
 	}
 

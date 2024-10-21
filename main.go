@@ -4,9 +4,13 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"flag"
+	"fmt"
 	"net"
 	"os"
+	"os/exec"
+	"strings"
 	"talkliketv.click/tltv/api"
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/config"
@@ -20,6 +24,16 @@ func main() {
 	flag.Parse()
 
 	logger := jsonlog.New(os.Stdout, jsonlog.LevelInfo)
+
+	// if ffmpeg is not installed and in PATH of host machine fail immediately
+	cmd := exec.Command("ffmpeg", "-version")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		logger.PrintFatal(err, nil)
+	}
+	if !strings.Contains(string(output), "ffmpeg version") {
+		logger.PrintFatal(errors.New(fmt.Sprintf("make sure ffmpeg is installed and in PATH: %s", string(output))), nil)
+	}
 
 	// open db connection. if err fail immediately
 	conn, err := cfg.OpenDB()

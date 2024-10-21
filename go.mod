@@ -16,7 +16,6 @@ require (
 	github.com/go-openapi/runtime v0.28.0
 	github.com/golang/mock v1.6.0
 	github.com/gomiddleware/realip v0.0.0-20170621024415-b44d216910fd
-	github.com/hyacinthus/mp3join v0.0.0-20190710105654-d46eaeeb9552
 	github.com/labstack/echo/v4 v4.12.0
 	github.com/lestrrat-go/jwx v1.2.30
 	github.com/lib/pq v1.10.9

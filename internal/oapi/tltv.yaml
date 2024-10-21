@@ -2,7 +2,15 @@ openapi: "3.0.0"
 info:
   version: 1.0.0
   title: TalkLikeTv
-  description: TalkLikeTV is a language learning application designed to learn from the subtitles of TV shows
+  description: >
+    TalkLikeTV is a language learning application designed to help users overcome the plateau 
+    often encountered with other language apps. It offers a personalized learning experience 
+    by allowing users to choose the specific phrases they want to focus on. Users can upload 
+    a text file with phrases in paragraph form, one phrase per line, or even an SRT file, and 
+    the application will generate a set of MP3 audio files to facilitate learning through listening. 
+    Additionally, a web application is in development, where users will soon be able to log 
+    in and enhance their language skills through reading and translating from their native 
+    language to the target language.
   contact:
     name: Dusty Saker
     email: dustywayne@comcast.net
@@ -420,7 +428,9 @@ paths:
         - BearerAuth:
             - "titles:w"
       requestBody:
-        description: fromLanguageId is your native tongue. toLanguageId is the language you want to learn
+        description: >
+          fromLanguageId is your native tongue. toLanguageId is the language you want to learn. 
+          Use GET /languages for a list of language ids.
         required: true
         content:
           multipart/form-data:

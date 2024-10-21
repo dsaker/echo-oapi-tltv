@@ -248,7 +248,7 @@ func TestTranslatePhrases(t *testing.T) {
 	title := randomTitle()
 	title.OgLanguageID = 27
 
-	newLanguage := language.Spanish
+	newLanguage := randomLanguage()
 	randomPhrase1 := randomPhrase()
 	text1 := "This is sentence one."
 	translate1 := db.Translate{

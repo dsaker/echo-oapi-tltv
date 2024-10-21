@@ -1,17 +1,31 @@
 package api
 
 import (
-	"bytes"
 	"database/sql"
 	"errors"
-	"github.com/hyacinthus/mp3join"
+	"fmt"
 	"github.com/labstack/echo/v4"
-	"io"
 	"net/http"
 	"os"
+	"slices"
 	"strconv"
 	db "talkliketv.click/tltv/db/sqlc"
+	"talkliketv.click/tltv/internal/audio/pattern"
 )
+
+// Enum value maps for audio pause filepaths.
+type Pause string
+
+var AudioPauseFilePath = map[int32]string{
+	3:  "/Users/dustysaker/go/src/github.com/dsaker/echo-oapi-tltv/internal/silence/3SecSilence.mp3",
+	4:  "/Users/dustysaker/go/src/github.com/dsaker/echo-oapi-tltv/internal/silence/4SecSilence.mp3",
+	5:  "/Users/dustysaker/go/src/github.com/dsaker/echo-oapi-tltv/internal/silence/3SecSilence.mp3",
+	6:  "/Users/dustysaker/go/src/github.com/dsaker/echo-oapi-tltv/internal/silence/3SecSilence.mp3",
+	7:  "/Users/dustysaker/go/src/github.com/dsaker/echo-oapi-tltv/internal/silence/3SecSilence.mp3",
+	8:  "/Users/dustysaker/go/src/github.com/dsaker/echo-oapi-tltv/internal/silence/3SecSilence.mp3",
+	9:  "/Users/dustysaker/go/src/github.com/dsaker/echo-oapi-tltv/internal/silence/3SecSilence.mp3",
+	10: "/Users/dustysaker/go/src/github.com/dsaker/echo-oapi-tltv/internal/silence/3SecSilence.mp3",
+}
 
 func (s *Server) AudioFromFile(ctx echo.Context) error {
 	ctx.Logger().Info("inside AudioFromFile")
@@ -56,8 +70,7 @@ func (s *Server) AudioFromTitle(eCtx echo.Context) error {
 	}
 
 	audioBasePath := s.config.TTSBasePath +
-		strconv.Itoa(int(title.ID)) + "/" +
-		strconv.Itoa(int(audioFromTitleRequest.FromLanguageId)) + "/"
+		strconv.Itoa(int(title.ID)) + "/"
 
 	fromAudioBasePath := audioBasePath + strconv.Itoa(int(audioFromTitleRequest.FromLanguageId)) + "/"
 	toAudioBasePath := audioBasePath + strconv.Itoa(int(audioFromTitleRequest.ToLanguageId)) + "/"
@@ -78,91 +91,111 @@ func (s *Server) AudioFromTitle(eCtx echo.Context) error {
 		return eCtx.String(http.StatusInternalServerError, err.Error())
 	}
 
-	destPath := audioBasePath + "/" + "output.mp3"
-	if err = buildAudioFile(phraseIds, "3", destPath, fromAudioBasePath, toAudioBasePath); err != nil {
+	// get pause audio file for length provided by user
+	// TODO add pause length to configs
+	pausePath, ok := AudioPauseFilePath[4]
+	if !ok {
+		eCtx.Logger().Error(err)
+		return eCtx.String(http.StatusInternalServerError, err.Error())
+	}
+
+	if err = buildAudioFile(eCtx, phraseIds, title, pausePath, fromAudioBasePath, toAudioBasePath); err != nil {
 		eCtx.Logger().Error(err)
 		return eCtx.String(http.StatusInternalServerError, err.Error())
 	}
 	return eCtx.String(http.StatusOK, "OK")
 }
 
-func buildAudioFile(ids []int64, destPath, pauseL, from, to string) error {
+func buildAudioFile(e echo.Context, ids []int64, t db.Title, pause, from, to string) error {
 
-	dir, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-	pause, err := os.ReadFile(dir + "/internal/silence/" + pauseL)
-	if err != nil {
-		return err
-	}
-	pauseReader := bytes.NewReader(pause)
+	//f, err := os.Create("/tmp/" + "input-" + util.RandomString(6))
+	//if err != nil {
+	//	return err
+	//}
+	//defer f.Close()
 
-	// https://github.com/hyacinthus/mp3join/blob/master/joiner.go
-	joiner := mp3join.New()
+	pMap := make(map[int]int64)
 
-	// readers is the input mp3 files
+	// map phrase ids to zero through len(phrase ids) to map correctly to pattern.Pattern
 	for i, pid := range ids {
-		stringPid := strconv.FormatInt(pid, 10)
-		// get from mp3 from directory
-		fiFrom, err := os.ReadFile(from + stringPid)
-		if err != nil {
-			return err
-		}
+		pMap[i] = pid
+	}
 
-		// add one from phrase with pause
-		err = addMp3withPause(fiFrom, pauseReader, joiner)
+	maxP := slices.Max(ids)
+	tmpDirString := "/tmp/" + t.Title
+	err := os.MkdirAll(tmpDirString, os.ModePerm)
+	if err != nil {
+		e.Logger().Error(err)
+		return err
+	}
+	// create chunks of []Audio pattern to split up audio files into ~20 minute lengths
+	chunkedSlice := slices.Chunk(pattern.Pattern, 250)
+	count := 1
+	last := false
+	for chunk := range chunkedSlice {
+		inputString := fmt.Sprintf("%s-input-%d", t.Title, count)
+		count++
+		f, err := os.Create("/tmp/" + inputString)
 		if err != nil {
+			e.Logger().Error(err)
 			return err
 		}
+		defer f.Close()
 
-		fiTo, err := os.ReadFile(to + stringPid)
-		if err != nil {
-			return err
+		for _, audio := range chunk {
+			// if: we have reached the highest phrase id then this will be the last audio block
+			// this will also skip non-existent phrase ids
+			// else if: native language then we add filepath for from audio mp3
+			// else: add audio filepath for language you want to learn
+			phraseId := pMap[audio.Id]
+			if phraseId == maxP {
+				last = true
+			} else if phraseId == 0 && audio.Id > 0 {
+				continue
+			} else if audio.Native == true {
+				_, err = f.WriteString(fmt.Sprintf("file '%s%d'\n", from, phraseId))
+				_, err = f.WriteString(fmt.Sprintf("file '%s'\n", pause))
+				if err != nil {
+					e.Logger().Error(err)
+					return err
+				}
+			} else {
+				_, err = f.WriteString(fmt.Sprintf("file '%s%d'\n", to, phraseId))
+				_, err = f.WriteString(fmt.Sprintf("file '%s'\n", pause))
+				if err != nil {
+					e.Logger().Error(err)
+					return err
+				}
+			}
 		}
-		// add two to phrases with pause
-		err = addMp3withPause(fiTo, pauseReader, joiner)
-		if err != nil {
-			return err
-		}
-		err = addMp3withPause(fiTo, pauseReader, joiner)
-		if err != nil {
-			return err
-		}
-		if i == 30 {
+		if last {
 			break
 		}
 	}
+	//for _, pid := range ids {
+	//	stringPid := strconv.FormatInt(pid, 10)
+	//	_, err = f.WriteString(fmt.Sprintf("file '%s'\n", from+stringPid))
+	//	_, err = f.WriteString(fmt.Sprintf("file '%s'\n", pause))
+	//	_, err = f.WriteString(fmt.Sprintf("file '%s'\n", to+stringPid))
+	//	_, err = f.WriteString(fmt.Sprintf("file '%s'\n", pause))
+	//	_, err = f.WriteString(fmt.Sprintf("file '%s'\n", to+stringPid))
+	//	_, err = f.WriteString(fmt.Sprintf("file '%s'\n", pause))
+	//}
 
-	dest := joiner.Reader()
-	// Create the output file
-	file, err := os.Create(destPath)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
+	// ffmpeg -f concat -safe 0 -i ffmpeg_input.txt -c copy output.mp3
+	//cmd := exec.Command("ffmpeg", "-f", "concat", "-safe", "0", "-i", f.Name(), "-c", "copy", "/tmp/"+t.Title+".mp3")
 
-	// Copy the contents of the reader to the file
-	_, err = io.Copy(file, dest)
-	if err != nil {
-		return err
-	}
-	return nil
-}
+	// Execute the command and get the output
+	//output, err := cmd.CombinedOutput()
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//if strings.Contains(string(output), "Error") {
+	//	return errors.New(string(output))
+	//}
 
-func addMp3withPause(b []byte, p *bytes.Reader, j *mp3join.Joiner) error {
-	// convert to reader and append
-	reader := bytes.NewReader(b)
-	err := j.Append(reader)
-	if err != nil {
-		return err
-	}
-
-	// add pause
-	err = j.Append(p)
-	if err != nil {
-		return err
-	}
+	e.Logger().Info(fmt.Sprintf("Created mp3 audio file: %s", "tmp/"+t.Title+".mp3"))
 
 	return nil
 }
@@ -170,16 +203,25 @@ func addMp3withPause(b []byte, p *bytes.Reader, j *mp3join.Joiner) error {
 func createTTS(eCtx echo.Context, s *Server, lang db.Language, title db.Title, basepath string) error {
 	skip, err := pathExists(basepath)
 	if err != nil {
+		eCtx.Logger().Error(err)
 		return err
 	}
 
 	if !skip {
 		fromTranslates, err := getOrCreateTranslates(eCtx, s, title.ID, lang, title.OgLanguageID)
 		if err != nil {
+			eCtx.Logger().Error(err)
+			return err
+		}
+
+		err = os.MkdirAll(basepath, 0777)
+		if err != nil {
+			eCtx.Logger().Error(err)
 			return err
 		}
 
 		if err = s.translates.TextToSpeech(eCtx, fromTranslates, basepath, lang.Tag); err != nil {
+			eCtx.Logger().Error(err)
 			return err
 		}
 	}
@@ -204,6 +246,7 @@ func getOrCreateTranslates(eCtx echo.Context, s *Server, titleId int64, toLang d
 		}
 		translates, err := s.queries.SelectTranslatesByTitleIdLangId(eCtx.Request().Context(), params)
 		if err != nil {
+			eCtx.Logger().Error(err)
 			return nil, err
 		}
 		return translates, nil
@@ -217,17 +260,20 @@ func getOrCreateTranslates(eCtx echo.Context, s *Server, titleId int64, toLang d
 			ID:         titleId,
 		})
 	if err != nil {
+		eCtx.Logger().Error(err)
 		return nil, err
 	}
 
 	// create translates for title and to language and return
 	translatesReturn, err := s.translates.TranslatePhrases(eCtx, fromTranslates, toLang)
 	if err != nil {
+		eCtx.Logger().Error(err)
 		return nil, err
 	}
 
 	dbTranslates, err := s.translates.InsertTranslates(eCtx, s.queries, toLang.ID, translatesReturn)
 	if err != nil {
+		eCtx.Logger().Error(err)
 		return nil, err
 	}
 	return dbTranslates, nil

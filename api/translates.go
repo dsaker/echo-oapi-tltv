@@ -60,13 +60,15 @@ func (t *Translate) InsertTranslates(eCtx echo.Context, q db.Querier, langId int
 	dbTranslates := make([]db.Translate, len(trr))
 	for i, row := range trr {
 
+		// apostrophe's are replaced with &#39; in the response from google translate
+		replacedText := strings.ReplaceAll(row.Text, "&#39;", "'")
 		insertTranslate, err := q.InsertTranslates(
 			eCtx.Request().Context(),
 			db.InsertTranslatesParams{
 				PhraseID:   row.PhraseId,
 				LanguageID: langId,
-				Phrase:     row.Text,
-				PhraseHint: makeHintString(row.Text),
+				Phrase:     replacedText,
+				PhraseHint: makeHintString(replacedText),
 			})
 		if err != nil {
 			return nil, err
@@ -138,6 +140,7 @@ func getSpeech(
 			Voice: &texttospeechpb.VoiceSelectionParams{
 				LanguageCode: tag,
 				SsmlGender:   texttospeechpb.SsmlVoiceGender_NEUTRAL,
+				//Name: "af-ZA-Standard-A",
 			},
 			// Select the type of audio file you want returned.
 			AudioConfig: &texttospeechpb.AudioConfig{
