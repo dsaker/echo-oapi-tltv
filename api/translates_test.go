@@ -3,6 +3,7 @@ package api
 import (
 	"database/sql"
 	"github.com/golang/mock/gomock"
+	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/text/language"
 	"io"
@@ -95,7 +96,8 @@ func TestInsertNewPhrases(t *testing.T) {
 			store := mockdb.NewMockQuerier(ctrl)
 			tc.buildStubs(store, text)
 
-			e, _ := NewServer(testCfg, store, text)
+			e := echo.New()
+			NewServer(e, testCfg, store, text)
 
 			req := httptest.NewRequest(http.MethodPost, "/titles/translates", nil)
 			rec := httptest.NewRecorder()
@@ -174,8 +176,7 @@ func TestInsertTranslates(t *testing.T) {
 			store := mockdb.NewMockQuerier(ctrl)
 			tc.buildStubs(store, text)
 
-			e, _ := NewServer(testCfg, store, text)
-
+			e := echo.New()
 			req := httptest.NewRequest(http.MethodPost, "/titles/translates", nil)
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
@@ -232,7 +233,7 @@ func TestTextToSpeech(t *testing.T) {
 			store := mockdb.NewMockQuerier(ctrl)
 			tc.buildStubs(store, text)
 
-			e, _ := NewServer(testCfg, store, text)
+			e := echo.New()
 			req := httptest.NewRequest(http.MethodPost, "/titles/translates", nil)
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
@@ -248,7 +249,11 @@ func TestTranslatePhrases(t *testing.T) {
 	title := randomTitle()
 	title.OgLanguageID = 27
 
-	newLanguage := randomLanguage()
+	newLanguage := db.Language{
+		ID:       109,
+		Language: "Spanish",
+		Tag:      "es",
+	}
 	randomPhrase1 := randomPhrase()
 	text1 := "This is sentence one."
 	translate1 := db.Translate{
@@ -281,7 +286,7 @@ func TestTranslatePhrases(t *testing.T) {
 			store := mockdb.NewMockQuerier(ctrl)
 			tc.buildStubs(store, text)
 
-			e, _ := NewServer(testCfg, store, text)
+			e := echo.New()
 			req := httptest.NewRequest(http.MethodPost, "/titles/translates", nil)
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)

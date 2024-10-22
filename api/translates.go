@@ -156,14 +156,13 @@ func getSpeech(
 		}
 
 		// The resp AudioContent is binary.
-		filename := basepath + strconv.FormatInt(translate.PhraseID, 10) + ".mp3"
+		filename := basepath + strconv.FormatInt(translate.PhraseID, 10)
 		err = os.WriteFile(filename, resp.AudioContent, 0644)
 		if err != nil {
 			eCtx.Logger().Error(fmt.Errorf("error creating translate client: %s", err))
 			cancel()
 			return
 		}
-		fmt.Printf("Audio content written to file: %v\n", filename)
 	}
 }
 

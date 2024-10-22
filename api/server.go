@@ -24,9 +24,7 @@ type Server struct {
 }
 
 // NewServer creates a new HTTP server and sets up routing.
-func NewServer(cfg config.Config, q db.Querier, t TranslateX) (*echo.Echo, *Server) {
-
-	e := echo.New()
+func NewServer(e *echo.Echo, cfg config.Config, q db.Querier, t TranslateX) *Server {
 
 	spec, err := GetSwagger()
 	if err != nil {
@@ -77,7 +75,7 @@ func NewServer(cfg config.Config, q db.Querier, t TranslateX) (*echo.Echo, *Serv
 
 	RegisterHandlersWithBaseURL(apiGrp, srv, "")
 
-	return e, srv
+	return srv
 }
 
 // Make sure we conform to ServerInterface

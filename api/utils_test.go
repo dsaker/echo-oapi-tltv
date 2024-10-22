@@ -139,7 +139,8 @@ func setupHandlerTest(t *testing.T, ctrl *gomock.Controller, tc testCase, urlBas
 	store := mockdb.NewMockQuerier(ctrl)
 	tc.buildStubs(store, text)
 
-	e, srv := NewServer(testCfg, store, text)
+	e := echo.New()
+	srv := NewServer(e, testCfg, store, text)
 
 	jwsToken, err := srv.fa.CreateJWSWithClaims(tc.permissions, tc.user)
 	require.NoError(t, err)
@@ -159,7 +160,8 @@ func setupServerTest(t *testing.T, ctrl *gomock.Controller, tc testCase) (*httpt
 	store := mockdb.NewMockQuerier(ctrl)
 	tc.buildStubs(store, text)
 
-	e, srv := NewServer(testCfg, store, text)
+	e := echo.New()
+	srv := NewServer(e, testCfg, store, text)
 
 	ts := httptest.NewServer(e)
 

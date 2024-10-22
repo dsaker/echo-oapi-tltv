@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/text/language"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -491,7 +490,11 @@ func TestTranslateTitle(t *testing.T) {
 	selectTranslatesByTitleIdLangIdRows := []db.Translate{
 		selectTranslatesByTitleIdLangIdRow1, selectTranslatesByTitleIdLangIdRow2}
 
-	langTag := language.English
+	//dbLang := db.Language{
+	//	ID:       109,
+	//	Language: "Spanish",
+	//	Tag:      "es",
+	//}
 	translatesReturn1 := util.TranslatesReturn{PhraseId: phrase1.Id, Text: util.RandomString(8)}
 	translatesReturn2 := util.TranslatesReturn{PhraseId: phrase2.Id, Text: util.RandomString(8)}
 	translatesReturns := []util.TranslatesReturn{translatesReturn1, translatesReturn2}
@@ -523,7 +526,7 @@ func TestTranslateTitle(t *testing.T) {
 				text.EXPECT().TranslatePhrases(
 					gomock.Any(),
 					selectTranslatesByTitleIdLangIdRows,
-					langTag).Times(1).
+					newLanguage).Times(1).
 					Return(translatesReturns, nil)
 				text.EXPECT().
 					InsertTranslates(gomock.Any(), store, translateTitleBody.NewLanguageId, translatesReturns).
