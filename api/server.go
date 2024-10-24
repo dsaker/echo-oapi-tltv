@@ -17,8 +17,8 @@ import (
 
 type Server struct {
 	sync.RWMutex
-	queries    db.Querier
-	translates TranslateX
+	Queries    db.Querier
+	Translates TranslateX
 	config     config.Config
 	fa         token.FakeAuthenticator
 }
@@ -68,8 +68,8 @@ func NewServer(e *echo.Echo, cfg config.Config, q db.Querier, t TranslateX) *Ser
 
 	srv := &Server{
 		fa:         *fa,
-		translates: t,
-		queries:    q,
+		Translates: t,
+		Queries:    q,
 		config:     cfg,
 	}
 

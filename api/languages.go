@@ -6,7 +6,7 @@ import (
 )
 
 func (s *Server) GetLanguages(ctx echo.Context) error {
-	languages, err := s.queries.ListLanguages(ctx.Request().Context())
+	languages, err := s.Queries.ListLanguages(ctx.Request().Context())
 
 	if err != nil {
 		ctx.Logger().Error(err)

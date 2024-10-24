@@ -437,14 +437,19 @@ paths:
             schema:
               type: object
               required:
-                - fileLanguageID
+                - titleName
+                - fileLanguageId
                 - fromLanguageId
                 - toLanguageId
                 - filePath
               properties:
                 titleName:
                   type: string
-                languageId:
+                fileLanguageId:
+                  type: string
+                fromLanguageId:
+                  type: string
+                toLanguageId:
                   type: string
                 filePath:
                   type: string

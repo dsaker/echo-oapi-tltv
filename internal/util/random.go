@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"strconv"
 	"strings"
 )
 
@@ -37,12 +38,15 @@ func RandomString(n int) string {
 	return sb.String()
 }
 
-// RandomName generates a random user name
-func RandomName(n int) string {
-	return RandomString(n)
-}
-
 // RandomEmail generates a random email
 func RandomEmail() string {
 	return fmt.Sprintf("%s@email.com", RandomString(6))
+}
+
+func ConvertStringInt16(s string) (int16, error) {
+	i, err := strconv.ParseInt(s, 10, 16)
+	if err != nil {
+		return -1, err
+	}
+	return int16(i), nil
 }
