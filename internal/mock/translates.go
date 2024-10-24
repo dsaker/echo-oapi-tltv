@@ -36,6 +36,20 @@ func (m *MockTranslateX) EXPECT() *MockTranslateXMockRecorder {
 	return m.recorder
 }
 
+// CreateTTS mocks base method.
+func (m *MockTranslateX) CreateTTS(arg0 echo.Context, arg1 db.Querier, arg2 db.Language, arg3 db.Title, arg4 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateTTS", arg0, arg1, arg2, arg3, arg4)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateTTS indicates an expected call of CreateTTS.
+func (mr *MockTranslateXMockRecorder) CreateTTS(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateTTS", reflect.TypeOf((*MockTranslateX)(nil).CreateTTS), arg0, arg1, arg2, arg3, arg4)
+}
+
 // InsertNewPhrases mocks base method.
 func (m *MockTranslateX) InsertNewPhrases(arg0 echo.Context, arg1 db.Title, arg2 db.Querier, arg3 []string) ([]db.Translate, error) {
 	m.ctrl.T.Helper()

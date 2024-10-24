@@ -24,6 +24,7 @@ type TranslateX interface {
 	TextToSpeech(echo.Context, []db.Translate, string, string) error
 	TranslatePhrases(echo.Context, []db.Translate, db.Language) ([]util.TranslatesReturn, error)
 	InsertTranslates(echo.Context, db.Querier, int16, []util.TranslatesReturn) ([]db.Translate, error)
+	CreateTTS(echo.Context, db.Querier, db.Language, db.Title, string) error
 }
 
 type Translate struct {
@@ -91,7 +92,7 @@ func (t *Translate) TextToSpeech(eCtx echo.Context, translatesSlice []db.Transla
 	for i, nextText := range translatesSlice {
 		// added intermittent sleep to fix TLS handshake errors on the client side
 		if i%50 == 0 && i != 0 {
-			time.Sleep(1 * time.Second)
+			time.Sleep(2 * time.Second)
 		}
 		wg.Add(1)
 		//get responses concurrently with go routines
@@ -184,7 +185,7 @@ func (t *Translate) TranslatePhrases(eCtx echo.Context, ts []db.Translate, dbLan
 	for i, nextTranslate := range ts {
 		// added intermittent sleep to fix TLS handshake errors on the client side
 		if i%50 == 0 && i != 0 {
-			time.Sleep(1 * time.Second)
+			time.Sleep(2 * time.Second)
 		}
 		wg.Add(1)
 		//get responses concurrently with go routines
@@ -247,6 +248,84 @@ func getTranslate(eCtx echo.Context,
 	}
 }
 
+func (t *Translate) CreateTTS(eCtx echo.Context, q db.Querier, lang db.Language, title db.Title, basepath string) error {
+	skip, err := pathExists(basepath)
+	if err != nil {
+		eCtx.Logger().Error(err)
+		return err
+	}
+
+	if !skip {
+		fromTranslates, err := getOrCreateTranslates(eCtx, q, t, title.ID, lang, title.OgLanguageID)
+		if err != nil {
+			return err
+		}
+
+		err = os.MkdirAll(basepath, 0777)
+		if err != nil {
+			eCtx.Logger().Error(err)
+			return err
+		}
+
+		if err = t.TextToSpeech(eCtx, fromTranslates, basepath, lang.Tag); err != nil {
+			eCtx.Logger().Error(err)
+			return err
+		}
+	}
+
+	return nil
+}
+
+func getOrCreateTranslates(eCtx echo.Context, q db.Querier, t TranslateX, titleId int64, toLang db.Language, fromLangId int16) ([]db.Translate, error) {
+	// see if translates exist for title for language
+	exists, err := q.SelectExistsTranslates(
+		eCtx.Request().Context(),
+		db.SelectExistsTranslatesParams{
+			LanguageID: toLang.ID,
+			ID:         titleId,
+		})
+
+	// if exists get translates for language
+	if exists {
+		params := db.SelectTranslatesByTitleIdLangIdParams{
+			LanguageID: toLang.ID,
+			ID:         titleId,
+		}
+		translates, err := q.SelectTranslatesByTitleIdLangId(eCtx.Request().Context(), params)
+		if err != nil {
+			eCtx.Logger().Error(err)
+			return nil, err
+		}
+		return translates, nil
+	}
+
+	// if not exists get translates for fromLangId
+	fromTranslates, err := q.SelectTranslatesByTitleIdLangId(
+		eCtx.Request().Context(),
+		db.SelectTranslatesByTitleIdLangIdParams{
+			LanguageID: fromLangId,
+			ID:         titleId,
+		})
+	if err != nil {
+		eCtx.Logger().Error(err)
+		return nil, err
+	}
+
+	// create translates for title and to language and return
+	translatesReturn, err := t.TranslatePhrases(eCtx, fromTranslates, toLang)
+	if err != nil {
+		eCtx.Logger().Error(err)
+		return nil, err
+	}
+
+	dbTranslates, err := t.InsertTranslates(eCtx, q, toLang.ID, translatesReturn)
+	if err != nil {
+		eCtx.Logger().Error(err)
+		return nil, err
+	}
+	return dbTranslates, nil
+}
+
 func makeHintString(s string) string {
 	hintString := ""
 	words := strings.Fields(s)
@@ -269,4 +348,16 @@ func makeHintString(s string) string {
 		hintString += " "
 	}
 	return hintString
+}
+
+// pathExists returns whether the given file or directory exists
+func pathExists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
 }

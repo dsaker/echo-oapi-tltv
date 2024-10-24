@@ -223,7 +223,7 @@ func TestAddTitle(t *testing.T) {
 				require.NoError(t, err)
 				defer file.Close()
 				writer := bufio.NewWriter(file)
-				for i := 0; i < 32100; i++ {
+				for i := 0; i < 64100; i++ {
 					// Write random characters to the file
 					char := byte('a')
 					err = writer.WriteByte(char)

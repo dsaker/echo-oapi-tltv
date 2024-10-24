@@ -54,7 +54,7 @@ func (s *Server) CreateUser(ctx echo.Context) error {
 		return ctx.String(http.StatusBadRequest, err.Error())
 	}
 
-	user, err := s.Queries.InsertUser(
+	user, err := s.queries.InsertUser(
 		ctx.Request().Context(),
 		db.InsertUserParams{
 			Name:           newUser.Name,
@@ -79,12 +79,12 @@ func (s *Server) CreateUser(ctx echo.Context) error {
 		return ctx.String(http.StatusInternalServerError, err.Error())
 	}
 
-	permission, err := s.Queries.SelectPermissionByCode(ctx.Request().Context(), db.ReadTitlesCode)
+	permission, err := s.queries.SelectPermissionByCode(ctx.Request().Context(), db.ReadTitlesCode)
 	if err != nil {
 		ctx.Logger().Error(err)
 		return ctx.String(http.StatusInternalServerError, err.Error())
 	}
-	_, err = s.Queries.InsertUserPermission(
+	_, err = s.queries.InsertUserPermission(
 		ctx.Request().Context(), db.InsertUserPermissionParams{
 			UserID:       user.ID,
 			PermissionID: permission.ID,
@@ -105,7 +105,7 @@ func (s *Server) DeleteUser(ctx echo.Context, id int64) error {
 		return ctx.String(http.StatusForbidden, "Invalid user ID")
 	}
 
-	err = s.Queries.DeleteUserById(ctx.Request().Context(), id)
+	err = s.queries.DeleteUserById(ctx.Request().Context(), id)
 	if err != nil {
 		return ctx.String(http.StatusBadRequest, fmt.Sprintf("Error deleting user: %s", err))
 	}
@@ -119,7 +119,7 @@ func (s *Server) FindUserByID(ctx echo.Context, id int64) error {
 		return ctx.String(http.StatusForbidden, err.Error())
 	}
 
-	user, err := s.Queries.SelectUserById(ctx.Request().Context(), id)
+	user, err := s.queries.SelectUserById(ctx.Request().Context(), id)
 	if err != nil {
 		return ctx.String(http.StatusBadRequest, fmt.Sprintf("Error selecting user by id: %s", err))
 	}
@@ -145,7 +145,7 @@ func (s *Server) UpdateUser(ctx echo.Context, id int64) error {
 		return ctx.String(http.StatusBadRequest, err.Error())
 	}
 
-	user, err := s.Queries.SelectUserById(ctx.Request().Context(), id)
+	user, err := s.queries.SelectUserById(ctx.Request().Context(), id)
 	if err != nil {
 		return ctx.String(http.StatusBadRequest, fmt.Sprintf("Error selecting user by id: %s", err))
 	}
@@ -184,7 +184,7 @@ func (s *Server) UpdateUser(ctx echo.Context, id int64) error {
 		modified.Password = string(password)
 	}
 
-	updatedUser, err := s.Queries.UpdateUserById(
+	updatedUser, err := s.queries.UpdateUserById(
 		ctx.Request().Context(),
 		db.UpdateUserByIdParams{
 			TitleID:        modified.TitleId,
@@ -212,7 +212,7 @@ func (s *Server) LoginUser(ctx echo.Context) error {
 		return ctx.String(http.StatusBadRequest, err.Error())
 	}
 
-	user, err := s.Queries.SelectUserByName(ctx.Request().Context(), userLogin.Username)
+	user, err := s.queries.SelectUserByName(ctx.Request().Context(), userLogin.Username)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ctx.String(http.StatusUnauthorized, "invalid username or password")
@@ -226,7 +226,7 @@ func (s *Server) LoginUser(ctx echo.Context) error {
 		return ctx.String(http.StatusUnauthorized, "invalid username or password")
 	}
 
-	permissions, err := s.Queries.SelectUserPermissions(ctx.Request().Context(), user.ID)
+	permissions, err := s.queries.SelectUserPermissions(ctx.Request().Context(), user.ID)
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
 			ctx.Logger().Error(err)

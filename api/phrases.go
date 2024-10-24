@@ -23,7 +23,7 @@ func (s *Server) GetPhrases(ctx echo.Context, params GetPhrasesParams) error {
 		return ctx.String(http.StatusBadRequest, err.Error())
 	}
 
-	usersPhrases, err := s.Queries.SelectPhrasesFromTranslatesWithCorrect(
+	usersPhrases, err := s.queries.SelectPhrasesFromTranslatesWithCorrect(
 		ctx.Request().Context(),
 		db.SelectPhrasesFromTranslatesWithCorrectParams{
 			UserID:       user.ID,
@@ -57,7 +57,7 @@ func (s *Server) UpdateUsersPhrases(ctx echo.Context, phraseId int64, languageId
 		return ctx.String(http.StatusBadRequest, err.Error())
 	}
 
-	usersPhraseById, err := s.Queries.SelectUsersPhrasesByIds(
+	usersPhraseById, err := s.queries.SelectUsersPhrasesByIds(
 		ctx.Request().Context(),
 		db.SelectUsersPhrasesByIdsParams{
 			UserID:     user.ID,
@@ -92,7 +92,7 @@ func (s *Server) UpdateUsersPhrases(ctx echo.Context, phraseId int64, languageId
 		return ctx.String(http.StatusBadRequest, err.Error())
 	}
 
-	updatedUsersPhrases, err := s.Queries.UpdateUsersPhrasesByThreeIds(
+	updatedUsersPhrases, err := s.queries.UpdateUsersPhrasesByThreeIds(
 		ctx.Request().Context(),
 		db.UpdateUsersPhrasesByThreeIdsParams{
 			TitleID:       modified.TitleId,

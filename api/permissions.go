@@ -18,7 +18,7 @@ func (s *Server) AddUserPermission(ctx echo.Context) error {
 	s.Lock()
 	defer s.Unlock()
 
-	userPermission, err := s.Queries.InsertUserPermission(
+	userPermission, err := s.queries.InsertUserPermission(
 		ctx.Request().Context(),
 		db.InsertUserPermissionParams{
 			UserID:       newUserPermission.UserId,

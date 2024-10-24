@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/labstack/echo/v4"
 	"net/http"
-	"os"
 	"strconv"
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/audio/audiofile"
@@ -15,7 +14,7 @@ import (
 // FindTitles returns the number of titles set by the Limit and Similarity params
 func (s *Server) FindTitles(ctx echo.Context, params FindTitlesParams) error {
 
-	titles, err := s.Queries.ListTitles(
+	titles, err := s.queries.ListTitles(
 		ctx.Request().Context(),
 		db.ListTitlesParams{
 			Similarity: params.Similarity,
@@ -74,7 +73,7 @@ func (s *Server) AddTitle(e echo.Context) error {
 	s.Lock()
 	defer s.Unlock()
 
-	title, err := s.Queries.InsertTitle(
+	title, err := s.queries.InsertTitle(
 		e.Request().Context(),
 		db.InsertTitleParams{
 			Title:        titleName,
@@ -86,9 +85,9 @@ func (s *Server) AddTitle(e echo.Context) error {
 	}
 
 	// insert phrases into db as translates object of OgLanguage
-	_, err = s.Translates.InsertNewPhrases(e, title, s.Queries, stringsSlice)
+	_, err = s.Translates.InsertNewPhrases(e, title, s.queries, stringsSlice)
 	if err != nil {
-		dbErr := s.Queries.DeleteTitleById(e.Request().Context(), title.ID)
+		dbErr := s.queries.DeleteTitleById(e.Request().Context(), title.ID)
 		if dbErr != nil {
 			return e.String(http.StatusInternalServerError, dbErr.Error())
 		}
@@ -98,35 +97,9 @@ func (s *Server) AddTitle(e echo.Context) error {
 	return e.JSON(http.StatusOK, title)
 }
 
-func addTitleHelper(eCtx echo.Context, s *Server, slice []string, t db.Title, tag string) error {
-
-	// insert phrases into db as translates object of OgLanguage
-	translatesSlice, err := s.Translates.InsertNewPhrases(eCtx, t, s.Queries, slice)
-	if err != nil {
-		return err
-	}
-
-	//create base path for storing mp3 audio files
-	audioBasePath := s.config.TTSBasePath +
-		strconv.Itoa(int(t.ID)) + "/" +
-		strconv.Itoa(int(t.OgLanguageID)) + "/"
-	// TODO change permission or make permission configurable. Can't run tests if set to 0644
-	err = os.MkdirAll(audioBasePath, 0777)
-	if err != nil {
-		return err
-	}
-
-	err = s.Translates.TextToSpeech(eCtx, translatesSlice, audioBasePath, tag)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (s *Server) FindTitleByID(ctx echo.Context, id int64) error {
 
-	title, err := s.Queries.SelectTitleById(ctx.Request().Context(), id)
+	title, err := s.queries.SelectTitleById(ctx.Request().Context(), id)
 	if err != nil {
 		ctx.Logger().Error(err)
 		return ctx.String(http.StatusBadRequest, err.Error())
@@ -137,7 +110,7 @@ func (s *Server) FindTitleByID(ctx echo.Context, id int64) error {
 
 func (s *Server) DeleteTitle(ctx echo.Context, id int64) error {
 
-	err := s.Queries.DeleteTitleById(ctx.Request().Context(), id)
+	err := s.queries.DeleteTitleById(ctx.Request().Context(), id)
 	if err != nil {
 		return ctx.String(http.StatusBadRequest, err.Error())
 	}
@@ -153,7 +126,7 @@ func (s *Server) TitlesTranslate(eCtx echo.Context) error {
 	}
 
 	// make sure the translates for that title don't already exist
-	exists, err := s.Queries.SelectExistsTranslates(
+	exists, err := s.queries.SelectExistsTranslates(
 		eCtx.Request().Context(),
 		db.SelectExistsTranslatesParams{
 			LanguageID: newTranslateTitle.NewLanguageId,
@@ -164,7 +137,7 @@ func (s *Server) TitlesTranslate(eCtx echo.Context) error {
 	}
 
 	// get title to translate from
-	title, err := s.Queries.SelectTitleById(eCtx.Request().Context(), newTranslateTitle.TitleId)
+	title, err := s.queries.SelectTitleById(eCtx.Request().Context(), newTranslateTitle.TitleId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return eCtx.String(http.StatusBadRequest, "invalid title id")
@@ -174,7 +147,7 @@ func (s *Server) TitlesTranslate(eCtx echo.Context) error {
 	}
 
 	// get language model for tag
-	dbLang, err := s.Queries.SelectLanguagesById(eCtx.Request().Context(), newTranslateTitle.NewLanguageId)
+	dbLang, err := s.queries.SelectLanguagesById(eCtx.Request().Context(), newTranslateTitle.NewLanguageId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return eCtx.String(http.StatusBadRequest, "invalid language id")
@@ -188,7 +161,7 @@ func (s *Server) TitlesTranslate(eCtx echo.Context) error {
 	defer s.Unlock()
 
 	// get translates for original language to translate from
-	phrasesToTranslate, err := s.Queries.SelectTranslatesByTitleIdLangId(
+	phrasesToTranslate, err := s.queries.SelectTranslatesByTitleIdLangId(
 		eCtx.Request().Context(),
 		db.SelectTranslatesByTitleIdLangIdParams{
 			ID:         newTranslateTitle.TitleId,
@@ -207,7 +180,7 @@ func (s *Server) TitlesTranslate(eCtx echo.Context) error {
 	}
 
 	// insert new translated phrases into the database
-	insertTranslates, err := s.Translates.InsertTranslates(eCtx, s.Queries, dbLang.ID, newTranslates)
+	insertTranslates, err := s.Translates.InsertTranslates(eCtx, s.queries, dbLang.ID, newTranslates)
 	if err != nil {
 		eCtx.Logger().Info(fmt.Sprintf("Error inserting translates -- titleId: %d -- languageId: %d -- error: %s", title.ID, dbLang.ID, err.Error()))
 		// TODO		delete translates where language id and phrase id in ( select by title id)
