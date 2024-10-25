@@ -9,10 +9,11 @@ import (
 	"strconv"
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/audio/audiofile"
+	"talkliketv.click/tltv/internal/oapi"
 )
 
 // FindTitles returns the number of titles set by the Limit and Similarity params
-func (s *Server) FindTitles(ctx echo.Context, params FindTitlesParams) error {
+func (s *Server) FindTitles(ctx echo.Context, params oapi.FindTitlesParams) error {
 
 	titles, err := s.queries.ListTitles(
 		ctx.Request().Context(),
@@ -119,7 +120,7 @@ func (s *Server) DeleteTitle(ctx echo.Context, id int64) error {
 
 func (s *Server) TitlesTranslate(eCtx echo.Context) error {
 
-	var newTranslateTitle TitlesTranslateRequest
+	var newTranslateTitle oapi.TitlesTranslateRequest
 	err := eCtx.Bind(&newTranslateTitle)
 	if err != nil {
 		return eCtx.String(http.StatusBadRequest, err.Error())

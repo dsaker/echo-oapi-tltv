@@ -4,11 +4,12 @@ import (
 	"github.com/labstack/echo/v4"
 	"net/http"
 	db "talkliketv.click/tltv/db/sqlc"
+	"talkliketv.click/tltv/internal/oapi"
 )
 
 func (s *Server) AddUserPermission(ctx echo.Context) error {
 	// We expect a NewTitle object in the request body.
-	var newUserPermission NewUserPermission
+	var newUserPermission oapi.NewUserPermission
 	err := ctx.Bind(&newUserPermission)
 	if err != nil {
 		return ctx.String(http.StatusBadRequest, err.Error())

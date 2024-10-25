@@ -12,21 +12,23 @@ import (
 	"sync"
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/config"
+	"talkliketv.click/tltv/internal/oapi"
 	"talkliketv.click/tltv/internal/token"
+	"talkliketv.click/tltv/internal/translates"
 )
 
 type Server struct {
 	sync.RWMutex
 	queries    db.Querier
-	Translates TranslateX
+	Translates translates.TranslateX
 	config     config.Config
 	fa         token.FakeAuthenticator
 }
 
 // NewServer creates a new HTTP server and sets up routing.
-func NewServer(e *echo.Echo, cfg config.Config, q db.Querier, t TranslateX) *Server {
+func NewServer(e *echo.Echo, cfg config.Config, q db.Querier, t translates.TranslateX) *Server {
 
-	spec, err := GetSwagger()
+	spec, err := oapi.GetSwagger()
 	if err != nil {
 		log.Fatalln("loading spec: %w", err)
 	}
@@ -73,13 +75,13 @@ func NewServer(e *echo.Echo, cfg config.Config, q db.Querier, t TranslateX) *Ser
 		config:     cfg,
 	}
 
-	RegisterHandlersWithBaseURL(apiGrp, srv, "")
+	oapi.RegisterHandlersWithBaseURL(apiGrp, srv, "")
 
 	return srv
 }
 
 // Make sure we conform to ServerInterface
-var _ ServerInterface = (*Server)(nil)
+var _ oapi.ServerInterface = (*Server)(nil)
 
 func createMiddleware(v token.JWSValidator, spec *openapi3.T) ([]echo.MiddlewareFunc, error) {
 	validator := mw.OapiRequestValidatorWithOptions(spec,

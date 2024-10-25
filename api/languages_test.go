@@ -8,6 +8,7 @@ import (
 	mockdb "talkliketv.click/tltv/db/mock"
 	db "talkliketv.click/tltv/db/sqlc"
 	mock "talkliketv.click/tltv/internal/mock"
+	"talkliketv.click/tltv/internal/util"
 	"testing"
 )
 
@@ -34,7 +35,7 @@ func TestListLanguages(t *testing.T) {
 				var gotLanguages []db.Language
 				err := json.Unmarshal([]byte(body), &gotLanguages)
 				require.NoError(t, err)
-				requireMatchAnyExcept(t, gotLanguages[0], languages[0], nil, "", "")
+				util.RequireMatchAnyExcept(t, gotLanguages[0], languages[0], nil, "", "")
 			},
 			permissions: []string{db.ReadTitlesCode},
 		},

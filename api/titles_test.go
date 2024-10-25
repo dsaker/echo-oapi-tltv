@@ -15,6 +15,7 @@ import (
 	mockdb "talkliketv.click/tltv/db/mock"
 	db "talkliketv.click/tltv/db/sqlc"
 	mock "talkliketv.click/tltv/internal/mock"
+	"talkliketv.click/tltv/internal/oapi"
 	"talkliketv.click/tltv/internal/util"
 	"testing"
 )
@@ -54,7 +55,7 @@ func TestFindTitles(t *testing.T) {
 				var gotTitlesRow []db.ListTitlesRow
 				err := json.Unmarshal([]byte(body), &gotTitlesRow)
 				require.NoError(t, err)
-				requireMatchAnyExcept(t, listTitlesRow[0], gotTitlesRow[0], nil, "", "")
+				util.RequireMatchAnyExcept(t, listTitlesRow[0], gotTitlesRow[0], nil, "", "")
 			},
 			permissions: []string{db.ReadTitlesCode},
 		},
@@ -185,7 +186,7 @@ func TestAddTitle(t *testing.T) {
 				var gotTitle db.Title
 				err := json.Unmarshal([]byte(body), &gotTitle)
 				require.NoError(t, err)
-				requireMatchAnyExcept(t, title, gotTitle, nil, "", "")
+				util.RequireMatchAnyExcept(t, title, gotTitle, nil, "", "")
 			},
 			permissions: []string{db.WriteTitlesCode},
 		},
@@ -358,7 +359,7 @@ func TestFindTitleById(t *testing.T) {
 				var gotTitle db.Title
 				err := json.Unmarshal([]byte(body), &gotTitle)
 				require.NoError(t, err)
-				requireMatchAnyExcept(t, title, gotTitle, nil, "", "")
+				util.RequireMatchAnyExcept(t, title, gotTitle, nil, "", "")
 			},
 			permissions: []string{},
 		},
@@ -463,7 +464,7 @@ func TestTranslateTitle(t *testing.T) {
 	phrase2 := randomPhrase()
 	translate2 := randomTranslate(phrase2, newLanguage.ID)
 
-	translateTitleBody := TitlesTranslateRequest{
+	translateTitleBody := oapi.TitlesTranslateRequest{
 		TitleId:       title.ID,
 		OldLanguageId: title.OgLanguageID,
 		NewLanguageId: newLanguage.ID,
@@ -538,7 +539,7 @@ func TestTranslateTitle(t *testing.T) {
 				var gotTranslates []db.Translate
 				err := json.Unmarshal([]byte(body), &gotTranslates)
 				require.NoError(t, err)
-				requireMatchAnyExcept(t, translatesSlice[0], gotTranslates[0], nil, "", "")
+				util.RequireMatchAnyExcept(t, translatesSlice[0], gotTranslates[0], nil, "", "")
 			},
 			permissions: []string{db.WriteTitlesCode},
 		},

@@ -12,6 +12,7 @@ import (
 	"talkliketv.click/tltv/api"
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/config"
+	"talkliketv.click/tltv/internal/translates"
 )
 
 func main() {
@@ -48,7 +49,7 @@ func main() {
 
 	q := db.New(conn)
 
-	api.NewServer(e, cfg, q, &api.Translate{})
+	api.NewServer(e, cfg, q, &translates.Translate{})
 
 	e.Logger.Fatal(e.Start(net.JoinHostPort("0.0.0.0", cfg.Port)))
 }

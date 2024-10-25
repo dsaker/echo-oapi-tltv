@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	db "talkliketv.click/tltv/db/sqlc"
+	"talkliketv.click/tltv/internal/oapi"
 	"talkliketv.click/tltv/internal/token"
 	"talkliketv.click/tltv/internal/util"
 	"time"
@@ -39,7 +40,7 @@ func newUserResponse(user db.User) userResponse {
 
 func (s *Server) CreateUser(ctx echo.Context) error {
 	// We expect a NewUser object in the request body.
-	var newUser NewUser
+	var newUser oapi.NewUser
 	err := ctx.Bind(&newUser)
 	if err != nil {
 		return ctx.String(http.StatusBadRequest, err.Error())
@@ -150,7 +151,7 @@ func (s *Server) UpdateUser(ctx echo.Context, id int64) error {
 		return ctx.String(http.StatusBadRequest, fmt.Sprintf("Error selecting user by id: %s", err))
 	}
 
-	current := NewUser{
+	current := oapi.NewUser{
 		Email:         user.Email,
 		NewLanguageId: user.NewLanguageID,
 		OgLanguageId:  user.OgLanguageID,
@@ -168,7 +169,7 @@ func (s *Server) UpdateUser(ctx echo.Context, id int64) error {
 		return ctx.String(http.StatusBadRequest, err.Error())
 	}
 
-	var modified NewUser
+	var modified oapi.NewUser
 	err = json.Unmarshal(modifiedBytes, &modified)
 	if err != nil {
 		return ctx.String(http.StatusBadRequest, err.Error())
@@ -206,7 +207,7 @@ func (s *Server) UpdateUser(ctx echo.Context, id int64) error {
 func (s *Server) LoginUser(ctx echo.Context) error {
 
 	// We expect a NewUser object in the request body.
-	var userLogin UserLogin
+	var userLogin oapi.UserLogin
 	err := ctx.Bind(&userLogin)
 	if err != nil {
 		return ctx.String(http.StatusBadRequest, err.Error())

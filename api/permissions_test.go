@@ -9,6 +9,7 @@ import (
 	mockdb "talkliketv.click/tltv/db/mock"
 	db "talkliketv.click/tltv/db/sqlc"
 	mock "talkliketv.click/tltv/internal/mock"
+	"talkliketv.click/tltv/internal/util"
 	"testing"
 )
 
@@ -45,7 +46,7 @@ func TestAddUserPermission(t *testing.T) {
 				var got db.UsersPermission
 				err := json.Unmarshal([]byte(body), &got)
 				require.NoError(t, err)
-				requireMatchAnyExcept(t, userPermission, got, nil, "", "")
+				util.RequireMatchAnyExcept(t, userPermission, got, nil, "", "")
 			},
 			permissions: []string{db.GlobalAdminCode},
 		},

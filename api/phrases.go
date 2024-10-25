@@ -8,10 +8,11 @@ import (
 	"io"
 	"net/http"
 	db "talkliketv.click/tltv/db/sqlc"
+	"talkliketv.click/tltv/internal/oapi"
 	"talkliketv.click/tltv/internal/token"
 )
 
-func (s *Server) GetPhrases(ctx echo.Context, params GetPhrasesParams) error {
+func (s *Server) GetPhrases(ctx echo.Context, params oapi.GetPhrasesParams) error {
 
 	if params.Limit == nil {
 		params.Limit = new(int32)
@@ -68,7 +69,7 @@ func (s *Server) UpdateUsersPhrases(ctx echo.Context, phraseId int64, languageId
 		return ctx.String(http.StatusInternalServerError, fmt.Sprintf("Error selecting user phrase by ids: %s", err.Error()))
 	}
 
-	current := UsersPhrases{
+	current := oapi.UsersPhrases{
 		LanguageId:    usersPhraseById.LanguageID,
 		TitleId:       usersPhraseById.TitleID,
 		PhraseId:      usersPhraseById.PhraseID,
@@ -86,7 +87,7 @@ func (s *Server) UpdateUsersPhrases(ctx echo.Context, phraseId int64, languageId
 		return ctx.String(http.StatusBadRequest, err.Error())
 	}
 
-	var modified UsersPhrases
+	var modified oapi.UsersPhrases
 	err = json.Unmarshal(modifiedBytes, &modified)
 	if err != nil {
 		return ctx.String(http.StatusBadRequest, err.Error())

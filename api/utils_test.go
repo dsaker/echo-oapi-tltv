@@ -11,14 +11,13 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"reflect"
-	"slices"
 	"strconv"
 	"strings"
 	mockdb "talkliketv.click/tltv/db/mock"
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/config"
 	mock "talkliketv.click/tltv/internal/mock"
+	"talkliketv.click/tltv/internal/oapi"
 	"talkliketv.click/tltv/internal/token"
 	"talkliketv.click/tltv/internal/util"
 	"testing"
@@ -99,14 +98,14 @@ func randomUser(t *testing.T) (user db.User, password string) {
 	return
 }
 
-func randomPhrase() Phrase {
-	return Phrase{
+func randomPhrase() oapi.Phrase {
+	return oapi.Phrase{
 		Id:      util.RandomInt64(),
 		TitleId: util.RandomInt64(),
 	}
 }
 
-func randomTranslate(phrase Phrase, languageId int16) db.Translate {
+func randomTranslate(phrase oapi.Phrase, languageId int16) db.Translate {
 
 	return db.Translate{
 		PhraseID:   phrase.Id,
@@ -196,32 +195,4 @@ func jsonRequest(t *testing.T, json []byte, ts *httptest.Server, urlPath, method
 	req.Header.Set("Content-Type", "application/json")
 
 	return req
-}
-
-func requireMatchAnyExcept(t *testing.T, model any, response any, skip []string, except string, shouldEqual any) {
-
-	v := reflect.ValueOf(response)
-	u := reflect.ValueOf(model)
-
-	for i := 0; i < v.NumField(); i++ {
-		// Check if field name is the one that should be different
-		if v.Type().Field(i).Name == except {
-			// Check if type is int32 or int64
-			if v.Field(i).CanInt() {
-				// check if equal as int64
-				require.Equal(t, shouldEqual, v.Field(i).Int())
-			} else {
-				// if not check if equal as string
-				require.Equal(t, shouldEqual, v.Field(i).String())
-			}
-		} else if slices.Contains(skip, v.Type().Field(i).Name) {
-			continue
-		} else {
-			if v.Field(i).CanInt() {
-				require.Equal(t, u.Field(i).Int(), v.Field(i).Int())
-			} else {
-				require.Equal(t, u.Field(i).String(), v.Field(i).String())
-			}
-		}
-	}
 }

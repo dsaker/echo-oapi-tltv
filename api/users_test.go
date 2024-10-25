@@ -65,7 +65,7 @@ func TestGetUser(t *testing.T) {
 				var gotUser db.User
 				err := json.Unmarshal([]byte(rec.Body.String()), &gotUser)
 				require.NoError(t, err)
-				requireMatchAnyExcept(t, user1, gotUser, []string{"HashedPassword", "ID"}, "", "")
+				util.RequireMatchAnyExcept(t, user1, gotUser, []string{"HashedPassword", "ID"}, "", "")
 			},
 		},
 		{
@@ -229,7 +229,7 @@ func TestCreateUser(t *testing.T) {
 				var gotUser db.User
 				err := json.Unmarshal([]byte(rec.Body.String()), &gotUser)
 				require.NoError(t, err)
-				requireMatchAnyExcept(t, user, gotUser, []string{"HashedPassword", "ID"}, "", "")
+				util.RequireMatchAnyExcept(t, user, gotUser, []string{"HashedPassword", "ID"}, "", "")
 			},
 		},
 		{
@@ -340,7 +340,7 @@ func TestUpdateUser(t *testing.T) {
 				var gotUser db.User
 				err := json.Unmarshal([]byte(rec.Body.String()), &gotUser)
 				require.NoError(t, err)
-				requireMatchAnyExcept(t, user1, gotUser, []string{"HashedPassword", "ID"}, "Email", "newemail2@email.com")
+				util.RequireMatchAnyExcept(t, user1, gotUser, []string{"HashedPassword", "ID"}, "Email", "newemail2@email.com")
 			},
 		},
 		{

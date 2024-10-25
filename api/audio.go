@@ -9,6 +9,7 @@ import (
 	"os"
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/audio/audiofile"
+	"talkliketv.click/tltv/internal/oapi"
 	"talkliketv.click/tltv/internal/util"
 )
 
@@ -99,7 +100,7 @@ func (s *Server) AudioFromFile(e echo.Context) error {
 		return e.String(http.StatusInternalServerError, err.Error())
 	}
 
-	audioFromTitleRequest := AudioFromTitleJSONRequestBody{
+	audioFromTitleRequest := oapi.AudioFromTitleJSONRequestBody{
 		FromLanguageId: fromLangId,
 		TitleId:        title.ID,
 		ToLanguageId:   toLangId,
@@ -113,7 +114,7 @@ func (s *Server) AudioFromFile(e echo.Context) error {
 }
 
 func (s *Server) AudioFromTitle(e echo.Context) error {
-	var audioFromTitleRequest AudioFromTitleJSONRequestBody
+	var audioFromTitleRequest oapi.AudioFromTitleJSONRequestBody
 	err := e.Bind(&audioFromTitleRequest)
 	if err != nil {
 		return e.String(http.StatusBadRequest, err.Error())
@@ -136,7 +137,7 @@ func (s *Server) AudioFromTitle(e echo.Context) error {
 	return e.Attachment(zipFile.Name(), title.Title+".zip")
 }
 
-func createAudioFromTitle(e echo.Context, s *Server, t db.Title, r AudioFromTitleJSONRequestBody) (*os.File, error) {
+func createAudioFromTitle(e echo.Context, s *Server, t db.Title, r oapi.AudioFromTitleJSONRequestBody) (*os.File, error) {
 
 	// get db.Language for from language from id
 	fromLang, err := s.queries.SelectLanguagesById(e.Request().Context(), r.FromLanguageId)
