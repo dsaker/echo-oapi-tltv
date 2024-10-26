@@ -7,8 +7,8 @@ import (
 	"net/http"
 	mockdb "talkliketv.click/tltv/db/mock"
 	db "talkliketv.click/tltv/db/sqlc"
-	mock "talkliketv.click/tltv/internal/mock"
-	"talkliketv.click/tltv/internal/util"
+	mockt "talkliketv.click/tltv/internal/mock/translates"
+	"talkliketv.click/tltv/internal/test"
 	"testing"
 )
 
@@ -23,7 +23,7 @@ func TestListLanguages(t *testing.T) {
 		{
 			name: "OK",
 			user: user,
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mockt.MockTranslateX) {
 				store.EXPECT().
 					ListLanguages(gomock.Any()).
 					Times(1).
@@ -35,7 +35,7 @@ func TestListLanguages(t *testing.T) {
 				var gotLanguages []db.Language
 				err := json.Unmarshal([]byte(body), &gotLanguages)
 				require.NoError(t, err)
-				util.RequireMatchAnyExcept(t, gotLanguages[0], languages[0], nil, "", "")
+				test.RequireMatchAnyExcept(t, gotLanguages[0], languages[0], nil, "", "")
 			},
 			permissions: []string{db.ReadTitlesCode},
 		},

@@ -38,12 +38,12 @@ func newUserResponse(user db.User) userResponse {
 	}
 }
 
-func (s *Server) CreateUser(ctx echo.Context) error {
+func (s *Server) CreateUser(e echo.Context) error {
 	// We expect a NewUser object in the request body.
 	var newUser oapi.NewUser
-	err := ctx.Bind(&newUser)
+	err := e.Bind(&newUser)
 	if err != nil {
-		return ctx.String(http.StatusBadRequest, err.Error())
+		return e.String(http.StatusBadRequest, err.Error())
 	}
 
 	// We're always asynchronous, so lock unsafe operations below
@@ -52,11 +52,11 @@ func (s *Server) CreateUser(ctx echo.Context) error {
 
 	password, err := bcrypt.GenerateFromPassword([]byte(newUser.Password), 14)
 	if err != nil {
-		return ctx.String(http.StatusBadRequest, err.Error())
+		return e.String(http.StatusBadRequest, err.Error())
 	}
 
 	user, err := s.queries.InsertUser(
-		ctx.Request().Context(),
+		e.Request().Context(),
 		db.InsertUserParams{
 			Name:           newUser.Name,
 			Email:          newUser.Email,
@@ -69,35 +69,35 @@ func (s *Server) CreateUser(ctx echo.Context) error {
 	if err != nil {
 		if db.PqErrorCode(err) == db.UniqueViolation {
 			if db.PqErrorConstraint(err) == db.EmailConstraint {
-				return ctx.String(http.StatusBadRequest, "a user with this email address already exists")
+				return e.String(http.StatusBadRequest, "a user with this email address already exists")
 			}
 			if db.PqErrorConstraint(err) == db.UsernameConstraint {
-				return ctx.String(http.StatusBadRequest, "a user with this name already exists")
+				return e.String(http.StatusBadRequest, "a user with this name already exists")
 			}
-			return ctx.String(http.StatusBadRequest, "duplicate key violation")
+			return e.String(http.StatusBadRequest, "duplicate key violation")
 		}
-		ctx.Logger().Error(err)
-		return ctx.String(http.StatusInternalServerError, err.Error())
+		e.Logger().Error(err)
+		return e.String(http.StatusInternalServerError, err.Error())
 	}
 
-	permission, err := s.queries.SelectPermissionByCode(ctx.Request().Context(), db.ReadTitlesCode)
+	permission, err := s.queries.SelectPermissionByCode(e.Request().Context(), db.ReadTitlesCode)
 	if err != nil {
-		ctx.Logger().Error(err)
-		return ctx.String(http.StatusInternalServerError, err.Error())
+		e.Logger().Error(err)
+		return e.String(http.StatusInternalServerError, err.Error())
 	}
 	_, err = s.queries.InsertUserPermission(
-		ctx.Request().Context(), db.InsertUserPermissionParams{
+		e.Request().Context(), db.InsertUserPermissionParams{
 			UserID:       user.ID,
 			PermissionID: permission.ID,
 		})
 
 	if err != nil {
-		ctx.Logger().Error(err)
-		return ctx.String(http.StatusInternalServerError, err.Error())
+		e.Logger().Error(err)
+		return e.String(http.StatusInternalServerError, err.Error())
 	}
 
 	rsp := newUserResponse(user)
-	return ctx.JSON(http.StatusOK, rsp)
+	return e.JSON(http.StatusOK, rsp)
 }
 
 func (s *Server) DeleteUser(ctx echo.Context, id int64) error {

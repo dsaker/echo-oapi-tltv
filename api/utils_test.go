@@ -16,8 +16,10 @@ import (
 	mockdb "talkliketv.click/tltv/db/mock"
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/config"
-	mock "talkliketv.click/tltv/internal/mock"
+	mockc "talkliketv.click/tltv/internal/mock/clients"
+	mockt "talkliketv.click/tltv/internal/mock/translates"
 	"talkliketv.click/tltv/internal/oapi"
+	"talkliketv.click/tltv/internal/test"
 	"talkliketv.click/tltv/internal/token"
 	"talkliketv.click/tltv/internal/util"
 	"testing"
@@ -43,16 +45,17 @@ const (
 )
 
 type testCase struct {
-	name          string
-	body          interface{}
-	user          db.User
-	userId        int64
-	buildStubs    func(*mockdb.MockQuerier, *mock.MockTranslateX)
-	multipartBody func(*testing.T) (*bytes.Buffer, *multipart.Writer)
-	checkRecorder func(rec *httptest.ResponseRecorder)
-	checkResponse func(res *http.Response)
-	values        map[string]any
-	permissions   []string
+	name             string
+	body             interface{}
+	user             db.User
+	userId           int64
+	buildStubs       func(*mockdb.MockQuerier, *mockt.MockTranslateX)
+	buildStubsClient func(*mockdb.MockQuerier, *mockt.MockTranslateX, *mockc.MockTranslateClientX)
+	multipartBody    func(*testing.T) (*bytes.Buffer, *multipart.Writer)
+	checkRecorder    func(rec *httptest.ResponseRecorder)
+	checkResponse    func(res *http.Response)
+	values           map[string]any
+	permissions      []string
 }
 
 func TestMain(m *testing.M) {
@@ -82,59 +85,59 @@ func readBody(t *testing.T, rs *http.Response) string {
 }
 
 func randomUser(t *testing.T) (user db.User, password string) {
-	password = util.RandomString(8)
+	password = test.RandomString(8)
 	hashedPassword, err := util.HashPassword(password)
 	require.NoError(t, err)
 
 	user = db.User{
-		ID:             util.RandomInt64(),
-		Name:           util.RandomString(8),
-		Email:          util.RandomEmail(),
-		TitleID:        util.ValidTitleId,
-		OgLanguageID:   util.ValidOgLanguageId,
-		NewLanguageID:  util.ValidNewLanguageId,
+		ID:             test.RandomInt64(),
+		Name:           test.RandomString(8),
+		Email:          test.RandomEmail(),
+		TitleID:        test.ValidTitleId,
+		OgLanguageID:   test.ValidOgLanguageId,
+		NewLanguageID:  test.ValidNewLanguageId,
 		HashedPassword: hashedPassword,
 	}
 	return
 }
 
-func randomPhrase() oapi.Phrase {
-	return oapi.Phrase{
-		Id:      util.RandomInt64(),
-		TitleId: util.RandomInt64(),
-	}
-}
+//func randomPhrase() oapi.Phrase {
+//	return oapi.Phrase{
+//		Id:      util.RandomInt64(),
+//		TitleId: util.RandomInt64(),
+//	}
+//}
 
 func randomTranslate(phrase oapi.Phrase, languageId int16) db.Translate {
 
 	return db.Translate{
 		PhraseID:   phrase.Id,
 		LanguageID: languageId,
-		Phrase:     util.RandomString(8),
-		PhraseHint: util.RandomString(8),
+		Phrase:     test.RandomString(8),
+		PhraseHint: test.RandomString(8),
 	}
 }
 
-func randomTitle() (title db.Title) {
+func RandomTitle() (title db.Title) {
 
 	return db.Title{
-		ID:           util.RandomInt64(),
-		Title:        util.RandomString(8),
-		NumSubs:      util.RandomInt16(),
+		ID:           test.RandomInt64(),
+		Title:        test.RandomString(8),
+		NumSubs:      test.RandomInt16(),
 		OgLanguageID: validLanguageId,
 	}
 }
 
 func randomLanguage() (language db.Language) {
 	return db.Language{
-		ID:       util.RandomInt16(),
-		Language: util.RandomString(6),
+		ID:       test.RandomInt16(),
+		Language: test.RandomString(6),
 		Tag:      "en",
 	}
 }
 
 func setupHandlerTest(t *testing.T, ctrl *gomock.Controller, tc testCase, urlBasePath, body, method string) (*Server, echo.Context, *httptest.ResponseRecorder) {
-	text := mock.NewMockTranslateX(ctrl)
+	text := mockt.NewMockTranslateX(ctrl)
 	store := mockdb.NewMockQuerier(ctrl)
 	tc.buildStubs(store, text)
 
@@ -155,7 +158,7 @@ func setupHandlerTest(t *testing.T, ctrl *gomock.Controller, tc testCase, urlBas
 }
 
 func setupServerTest(t *testing.T, ctrl *gomock.Controller, tc testCase) (*httptest.Server, string) {
-	text := mock.NewMockTranslateX(ctrl)
+	text := mockt.NewMockTranslateX(ctrl)
 	store := mockdb.NewMockQuerier(ctrl)
 	tc.buildStubs(store, text)
 
@@ -167,7 +170,6 @@ func setupServerTest(t *testing.T, ctrl *gomock.Controller, tc testCase) (*httpt
 	jwsToken, err := srv.fa.CreateJWSWithClaims(tc.permissions, tc.user)
 	require.NoError(t, err)
 
-	//req := jsonRequest(t, body, ts, urlPath, method, string(jwsToken))
 	return ts, string(jwsToken)
 }
 

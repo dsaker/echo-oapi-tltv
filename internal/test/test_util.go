@@ -1,9 +1,10 @@
-package util
+package test
 
 import (
 	"github.com/stretchr/testify/require"
 	"reflect"
 	"slices"
+	"talkliketv.click/tltv/internal/oapi"
 	"testing"
 )
 
@@ -40,5 +41,12 @@ func RequireMatchAnyExcept(t *testing.T, model any, response any, skip []string,
 				require.Equal(t, u.Field(i).String(), v.Field(i).String())
 			}
 		}
+	}
+}
+
+func RandomPhrase() oapi.Phrase {
+	return oapi.Phrase{
+		Id:      RandomInt64(),
+		TitleId: RandomInt64(),
 	}
 }

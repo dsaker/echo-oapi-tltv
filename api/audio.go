@@ -10,7 +10,7 @@ import (
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/audio/audiofile"
 	"talkliketv.click/tltv/internal/oapi"
-	"talkliketv.click/tltv/internal/util"
+	"talkliketv.click/tltv/internal/test"
 )
 
 var AudioPauseFilePath = map[int]string{
@@ -28,15 +28,15 @@ func (s *Server) AudioFromFile(e echo.Context) error {
 	// get values from multipart form
 	titleName := e.FormValue("titleName")
 	// convert strings from multipart form to int16's
-	fileLangId, err := util.ConvertStringInt16(e.FormValue("fileLanguageId"))
+	fileLangId, err := test.ConvertStringInt16(e.FormValue("fileLanguageId"))
 	if err != nil {
 		return e.String(http.StatusBadRequest, fmt.Sprintf("error converting fileLanguageId to int16: %s", err.Error()))
 	}
-	fromLangId, err := util.ConvertStringInt16(e.FormValue("fromLanguageId"))
+	fromLangId, err := test.ConvertStringInt16(e.FormValue("fromLanguageId"))
 	if err != nil {
 		return e.String(http.StatusBadRequest, fmt.Sprintf("error converting fromLanguageId to int16: %s", err.Error()))
 	}
-	toLangId, err := util.ConvertStringInt16(e.FormValue("toLanguageId"))
+	toLangId, err := test.ConvertStringInt16(e.FormValue("toLanguageId"))
 	if err != nil {
 		return e.String(http.StatusBadRequest, fmt.Sprintf("error converting toLanguageId to int16: %s", err.Error()))
 	}
@@ -65,8 +65,8 @@ func (s *Server) AudioFromFile(e echo.Context) error {
 		return e.String(http.StatusBadRequest, fmt.Sprintf("unable to parse file: %s", err.Error()))
 	}
 	// TODO add max number of phrases to configs
-	if len(stringsSlice) > 800 {
-		responseString := fmt.Sprintf("file too large, limit is %d, your file has %d lines", 800, len(stringsSlice))
+	if len(stringsSlice) > 100 {
+		responseString := fmt.Sprintf("file too large, limit is %d, your file has %d lines", 100, len(stringsSlice))
 		return e.String(http.StatusBadRequest, responseString)
 	}
 
@@ -89,7 +89,7 @@ func (s *Server) AudioFromFile(e echo.Context) error {
 	}
 
 	// insert phrases into db as translates object of OgLanguage
-	_, err = s.Translates.InsertNewPhrases(e, title, s.queries, stringsSlice)
+	_, err = s.translates.InsertNewPhrases(e, title, s.queries, stringsSlice)
 	if err != nil {
 		dbErr := s.queries.DeleteTitleById(e.Request().Context(), title.ID)
 		if dbErr != nil {
@@ -166,14 +166,34 @@ func createAudioFromTitle(e echo.Context, s *Server, t db.Title, r oapi.AudioFro
 	fromAudioBasePath := fmt.Sprintf("%s%d/", audioBasePath, r.FromLanguageId)
 	toAudioBasePath := fmt.Sprintf("%s%d/", audioBasePath, r.ToLanguageId)
 
+	tClient1, err := s.translates.CreateGoogleTranslateClient(e)
+	if err != nil {
+		e.Logger().Error(err)
+		return nil, err
+	}
+	ttsClient1, err := s.translates.CreateGoogleTTSClient(e)
+	if err != nil {
+		e.Logger().Error(err)
+		return nil, err
+	}
 	// create TTS for from language
-	if err = s.Translates.CreateTTS(e, s.queries, fromLang, t, fromAudioBasePath); err != nil {
+	if err = s.translates.CreateTTS(e, s.queries, ttsClient1, tClient1, fromLang, t, fromAudioBasePath); err != nil {
 		e.Logger().Error(err)
 		return nil, err
 	}
 
+	tClient2, err := s.translates.CreateGoogleTranslateClient(e)
+	if err != nil {
+		e.Logger().Error(err)
+		return nil, err
+	}
+	ttsClient2, err := s.translates.CreateGoogleTTSClient(e)
+	if err != nil {
+		e.Logger().Error(err)
+		return nil, err
+	}
 	// create TTS for to language
-	if err = s.Translates.CreateTTS(e, s.queries, toLang, t, toAudioBasePath); err != nil {
+	if err = s.translates.CreateTTS(e, s.queries, ttsClient2, tClient2, toLang, t, toAudioBasePath); err != nil {
 		e.Logger().Error(err)
 		return nil, err
 	}
@@ -193,7 +213,7 @@ func createAudioFromTitle(e echo.Context, s *Server, t db.Title, r oapi.AudioFro
 	}
 	fullPausePath := s.config.TTSBasePath + pausePath
 
-	tmpDirPath := fmt.Sprintf("/tmp/%s-%s/", t.Title, util.RandomString(4))
+	tmpDirPath := fmt.Sprintf("/tmp/%s-%s/", t.Title, test.RandomString(4))
 	err = os.MkdirAll(tmpDirPath, 0777)
 	if err != nil {
 		e.Logger().Error(err)

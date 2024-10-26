@@ -8,8 +8,8 @@ import (
 	"net/http"
 	mockdb "talkliketv.click/tltv/db/mock"
 	db "talkliketv.click/tltv/db/sqlc"
-	mock "talkliketv.click/tltv/internal/mock"
-	"talkliketv.click/tltv/internal/util"
+	mockt "talkliketv.click/tltv/internal/mock/translates"
+	"talkliketv.click/tltv/internal/test"
 	"testing"
 )
 
@@ -34,7 +34,7 @@ func TestAddUserPermission(t *testing.T) {
 				"permissionId": 1,
 				"userId":       user.ID,
 			},
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mockt.MockTranslateX) {
 				store.EXPECT().
 					InsertUserPermission(gomock.Any(), insertUsersPermission).
 					Times(1).
@@ -46,7 +46,7 @@ func TestAddUserPermission(t *testing.T) {
 				var got db.UsersPermission
 				err := json.Unmarshal([]byte(body), &got)
 				require.NoError(t, err)
-				util.RequireMatchAnyExcept(t, userPermission, got, nil, "", "")
+				test.RequireMatchAnyExcept(t, userPermission, got, nil, "", "")
 			},
 			permissions: []string{db.GlobalAdminCode},
 		},
@@ -57,7 +57,7 @@ func TestAddUserPermission(t *testing.T) {
 				"permission": 1,
 				"userId":     user.ID,
 			},
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mockt.MockTranslateX) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)
@@ -73,7 +73,7 @@ func TestAddUserPermission(t *testing.T) {
 				"permissionId": 1,
 				"userId":       user.ID,
 			},
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mockt.MockTranslateX) {
 				store.EXPECT().
 					InsertUserPermission(gomock.Any(), gomock.Any()).
 					Times(1).
@@ -93,7 +93,7 @@ func TestAddUserPermission(t *testing.T) {
 				"permissionId": 1,
 				"userId":       user.ID,
 			},
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mockt.MockTranslateX) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusForbidden, res.StatusCode)
@@ -109,7 +109,7 @@ func TestAddUserPermission(t *testing.T) {
 				"permissionId": 1,
 				"userId":       user.ID,
 			},
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mockt.MockTranslateX) {
 				store.EXPECT().
 					InsertUserPermission(gomock.Any(), gomock.Any()).
 					Times(1).

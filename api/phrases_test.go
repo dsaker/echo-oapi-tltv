@@ -9,15 +9,15 @@ import (
 	"strconv"
 	mockdb "talkliketv.click/tltv/db/mock"
 	db "talkliketv.click/tltv/db/sqlc"
-	mock "talkliketv.click/tltv/internal/mock"
+	mockt "talkliketv.click/tltv/internal/mock/translates"
 	"talkliketv.click/tltv/internal/oapi"
-	"talkliketv.click/tltv/internal/util"
+	"talkliketv.click/tltv/internal/test"
 	"testing"
 )
 
 func TestGetPhrases(t *testing.T) {
 	user, _ := randomUser(t)
-	phrase := randomPhrase()
+	phrase := test.RandomPhrase()
 	ogTranslate := randomTranslate(phrase, user.OgLanguageID)
 	newTranslate := randomTranslate(phrase, user.NewLanguageID)
 
@@ -44,7 +44,7 @@ func TestGetPhrases(t *testing.T) {
 			name:   "OK",
 			user:   user,
 			values: map[string]any{"limit": true},
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mockt.MockTranslateX) {
 				store.EXPECT().
 					SelectPhrasesFromTranslatesWithCorrect(gomock.Any(), selectPhrasesFromTranslatesParams).
 					Times(1).
@@ -56,7 +56,7 @@ func TestGetPhrases(t *testing.T) {
 				var got []db.SelectPhrasesFromTranslatesRow
 				err := json.Unmarshal([]byte(body), &got)
 				require.NoError(t, err)
-				util.RequireMatchAnyExcept(t, selectPhrasesFromTranslatesRowList[0], got[0], nil, "", "")
+				test.RequireMatchAnyExcept(t, selectPhrasesFromTranslatesRowList[0], got[0], nil, "", "")
 			},
 			permissions: []string{db.ReadTitlesCode},
 		},
@@ -64,7 +64,7 @@ func TestGetPhrases(t *testing.T) {
 			name:   "No limit set",
 			user:   user,
 			values: map[string]any{"limit": false},
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mockt.MockTranslateX) {
 				store.EXPECT().
 					SelectPhrasesFromTranslatesWithCorrect(gomock.Any(), selectPhrasesFromTranslatesParams).
 					Times(1).
@@ -76,7 +76,7 @@ func TestGetPhrases(t *testing.T) {
 				var got []db.SelectPhrasesFromTranslatesWithCorrectRow
 				err := json.Unmarshal([]byte(body), &got)
 				require.NoError(t, err)
-				util.RequireMatchAnyExcept(t, selectPhrasesFromTranslatesRowList[0], got[0], nil, "", "")
+				test.RequireMatchAnyExcept(t, selectPhrasesFromTranslatesRowList[0], got[0], nil, "", "")
 			},
 			permissions: []string{db.ReadTitlesCode},
 		},
@@ -109,7 +109,7 @@ func TestGetPhrases(t *testing.T) {
 
 func TestUpdateUsersPhrases(t *testing.T) {
 	user1, _ := randomUser(t)
-	phrase := randomPhrase()
+	phrase := test.RandomPhrase()
 	usersPhrase := randomUsersPhrase(user1, phrase)
 
 	updateUsersPhrasesParams := db.UpdateUsersPhrasesByThreeIdsParams{
@@ -136,7 +136,7 @@ func TestUpdateUsersPhrases(t *testing.T) {
 				"value": 1
 			}
 		]`,
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mockt.MockTranslateX) {
 				args := db.SelectUsersPhrasesByIdsParams{
 					UserID:     user1.ID,
 					LanguageID: user1.NewLanguageID,
@@ -162,7 +162,7 @@ func TestUpdateUsersPhrases(t *testing.T) {
 				err := json.Unmarshal([]byte(body), &got)
 				require.NoError(t, err)
 				var x int64 = 1
-				util.RequireMatchAnyExcept(t, usersPhrase, got, []string{}, "PhraseCorrect", x)
+				test.RequireMatchAnyExcept(t, usersPhrase, got, []string{}, "PhraseCorrect", x)
 			},
 		},
 		{
@@ -180,7 +180,7 @@ func TestUpdateUsersPhrases(t *testing.T) {
 				"value": 1
 			}
 		]`,
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mockt.MockTranslateX) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)

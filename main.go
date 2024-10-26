@@ -48,7 +48,6 @@ func main() {
 	e.Logger.Info("database connection pool established")
 
 	q := db.New(conn)
-
 	api.NewServer(e, cfg, q, &translates.Translate{})
 
 	e.Logger.Fatal(e.Start(net.JoinHostPort("0.0.0.0", cfg.Port)))
