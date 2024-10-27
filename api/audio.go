@@ -88,7 +88,7 @@ func (s *Server) AudioFromFile(e echo.Context) error {
 		return e.String(http.StatusInternalServerError, err.Error())
 	}
 
-	// insert phrases into db as translates object of OgLanguage
+	// insert phrases into store as translates object of OgLanguage
 	_, err = s.translates.InsertNewPhrases(e, title, s.queries, stringsSlice)
 	if err != nil {
 		dbErr := s.queries.DeleteTitleById(e.Request().Context(), title.ID)
@@ -139,7 +139,7 @@ func (s *Server) AudioFromTitle(e echo.Context) error {
 
 func createAudioFromTitle(e echo.Context, s *Server, t db.Title, r oapi.AudioFromTitleJSONRequestBody) (*os.File, error) {
 
-	// get db.Language for from language from id
+	// get store.Language for from language from id
 	fromLang, err := s.queries.SelectLanguagesById(e.Request().Context(), r.FromLanguageId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -150,7 +150,7 @@ func createAudioFromTitle(e echo.Context, s *Server, t db.Title, r oapi.AudioFro
 		return nil, err
 	}
 
-	// get db.Language for to language from id
+	// get store.Language for to language from id
 	toLang, err := s.queries.SelectLanguagesById(e.Request().Context(), r.ToLanguageId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

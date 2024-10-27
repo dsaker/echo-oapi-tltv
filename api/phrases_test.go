@@ -7,9 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"net/http"
 	"strconv"
-	mockdb "talkliketv.click/tltv/db/mock"
 	db "talkliketv.click/tltv/db/sqlc"
-	mockt "talkliketv.click/tltv/internal/mock/translates"
 	"talkliketv.click/tltv/internal/oapi"
 	"talkliketv.click/tltv/internal/test"
 	"testing"
@@ -44,8 +42,8 @@ func TestGetPhrases(t *testing.T) {
 			name:   "OK",
 			user:   user,
 			values: map[string]any{"limit": true},
-			buildStubs: func(store *mockdb.MockQuerier, text *mockt.MockTranslateX) {
-				store.EXPECT().
+			buildStubs: func(stubs buildStubs) {
+				stubs.store.EXPECT().
 					SelectPhrasesFromTranslatesWithCorrect(gomock.Any(), selectPhrasesFromTranslatesParams).
 					Times(1).
 					Return(selectPhrasesFromTranslatesRowList, nil)
@@ -64,8 +62,8 @@ func TestGetPhrases(t *testing.T) {
 			name:   "No limit set",
 			user:   user,
 			values: map[string]any{"limit": false},
-			buildStubs: func(store *mockdb.MockQuerier, text *mockt.MockTranslateX) {
-				store.EXPECT().
+			buildStubs: func(stubs buildStubs) {
+				stubs.store.EXPECT().
 					SelectPhrasesFromTranslatesWithCorrect(gomock.Any(), selectPhrasesFromTranslatesParams).
 					Times(1).
 					Return(selectPhrasesFromTranslatesRowList, nil)
@@ -136,7 +134,7 @@ func TestUpdateUsersPhrases(t *testing.T) {
 				"value": 1
 			}
 		]`,
-			buildStubs: func(store *mockdb.MockQuerier, text *mockt.MockTranslateX) {
+			buildStubs: func(stubs buildStubs) {
 				args := db.SelectUsersPhrasesByIdsParams{
 					UserID:     user1.ID,
 					LanguageID: user1.NewLanguageID,
@@ -146,11 +144,11 @@ func TestUpdateUsersPhrases(t *testing.T) {
 				paramsCopy := updateUsersPhrasesParams
 				paramsCopy.PhraseCorrect = 1
 				usersPhraseCopy.PhraseCorrect = 1
-				store.EXPECT().
+				stubs.store.EXPECT().
 					SelectUsersPhrasesByIds(gomock.Any(), args).
 					Times(1).
 					Return(usersPhrase, nil)
-				store.EXPECT().
+				stubs.store.EXPECT().
 					UpdateUsersPhrasesByThreeIds(gomock.Any(), paramsCopy).
 					Times(1).
 					Return(usersPhraseCopy, nil)
@@ -180,7 +178,7 @@ func TestUpdateUsersPhrases(t *testing.T) {
 				"value": 1
 			}
 		]`,
-			buildStubs: func(store *mockdb.MockQuerier, text *mockt.MockTranslateX) {
+			buildStubs: func(stubs buildStubs) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)

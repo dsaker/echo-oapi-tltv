@@ -5,13 +5,13 @@ import (
 	"net/http"
 )
 
-func (s *Server) GetLanguages(ctx echo.Context) error {
-	languages, err := s.queries.ListLanguages(ctx.Request().Context())
+func (s *Server) GetLanguages(e echo.Context) error {
+	languages, err := s.queries.ListLanguages(e.Request().Context())
 
 	if err != nil {
-		ctx.Logger().Error(err)
-		return ctx.String(http.StatusInternalServerError, err.Error())
+		e.Logger().Error(err)
+		return e.String(http.StatusInternalServerError, err.Error())
 	}
 
-	return ctx.JSON(http.StatusOK, languages)
+	return e.JSON(http.StatusOK, languages)
 }

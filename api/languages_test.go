@@ -5,9 +5,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	"net/http"
-	mockdb "talkliketv.click/tltv/db/mock"
 	db "talkliketv.click/tltv/db/sqlc"
-	mockt "talkliketv.click/tltv/internal/mock/translates"
 	"talkliketv.click/tltv/internal/test"
 	"testing"
 )
@@ -23,8 +21,8 @@ func TestListLanguages(t *testing.T) {
 		{
 			name: "OK",
 			user: user,
-			buildStubs: func(store *mockdb.MockQuerier, text *mockt.MockTranslateX) {
-				store.EXPECT().
+			buildStubs: func(stubs buildStubs) {
+				stubs.store.EXPECT().
 					ListLanguages(gomock.Any()).
 					Times(1).
 					Return(languages, nil)

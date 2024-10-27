@@ -6,9 +6,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	"net/http"
-	mockdb "talkliketv.click/tltv/db/mock"
 	db "talkliketv.click/tltv/db/sqlc"
-	mockt "talkliketv.click/tltv/internal/mock/translates"
 	"talkliketv.click/tltv/internal/test"
 	"testing"
 )
@@ -34,8 +32,8 @@ func TestAddUserPermission(t *testing.T) {
 				"permissionId": 1,
 				"userId":       user.ID,
 			},
-			buildStubs: func(store *mockdb.MockQuerier, text *mockt.MockTranslateX) {
-				store.EXPECT().
+			buildStubs: func(stubs buildStubs) {
+				stubs.store.EXPECT().
 					InsertUserPermission(gomock.Any(), insertUsersPermission).
 					Times(1).
 					Return(userPermission, nil)
@@ -57,7 +55,7 @@ func TestAddUserPermission(t *testing.T) {
 				"permission": 1,
 				"userId":     user.ID,
 			},
-			buildStubs: func(store *mockdb.MockQuerier, text *mockt.MockTranslateX) {
+			buildStubs: func(stubs buildStubs) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)
@@ -67,14 +65,14 @@ func TestAddUserPermission(t *testing.T) {
 			permissions: []string{db.GlobalAdminCode},
 		},
 		{
-			name: "db connection closed",
+			name: "store connection closed",
 			user: user,
 			body: map[string]any{
 				"permissionId": 1,
 				"userId":       user.ID,
 			},
-			buildStubs: func(store *mockdb.MockQuerier, text *mockt.MockTranslateX) {
-				store.EXPECT().
+			buildStubs: func(stubs buildStubs) {
+				stubs.store.EXPECT().
 					InsertUserPermission(gomock.Any(), gomock.Any()).
 					Times(1).
 					Return(db.UsersPermission{}, sql.ErrConnDone)
@@ -93,7 +91,7 @@ func TestAddUserPermission(t *testing.T) {
 				"permissionId": 1,
 				"userId":       user.ID,
 			},
-			buildStubs: func(store *mockdb.MockQuerier, text *mockt.MockTranslateX) {
+			buildStubs: func(stubs buildStubs) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusForbidden, res.StatusCode)
@@ -109,8 +107,8 @@ func TestAddUserPermission(t *testing.T) {
 				"permissionId": 1,
 				"userId":       user.ID,
 			},
-			buildStubs: func(store *mockdb.MockQuerier, text *mockt.MockTranslateX) {
-				store.EXPECT().
+			buildStubs: func(stubs buildStubs) {
+				stubs.store.EXPECT().
 					InsertUserPermission(gomock.Any(), gomock.Any()).
 					Times(1).
 					Return(db.UsersPermission{}, db.ErrForeignKeyViolation)

@@ -44,18 +44,23 @@ const (
 	validLanguageId         = 27
 )
 
+type buildStubs struct {
+	store *mockdb.MockQuerier
+	tr    *mockt.MockTranslateX
+	trc   *mockc.MockTranslateClientX
+	ttsc  *mockc.MockTTSClientX
+}
 type testCase struct {
-	name             string
-	body             interface{}
-	user             db.User
-	userId           int64
-	buildStubs       func(*mockdb.MockQuerier, *mockt.MockTranslateX)
-	buildStubsClient func(*mockdb.MockQuerier, *mockt.MockTranslateX, *mockc.MockTranslateClientX)
-	multipartBody    func(*testing.T) (*bytes.Buffer, *multipart.Writer)
-	checkRecorder    func(rec *httptest.ResponseRecorder)
-	checkResponse    func(res *http.Response)
-	values           map[string]any
-	permissions      []string
+	name          string
+	body          interface{}
+	user          db.User
+	userId        int64
+	buildStubs    func(stubs buildStubs)
+	multipartBody func(*testing.T) (*bytes.Buffer, *multipart.Writer)
+	checkRecorder func(rec *httptest.ResponseRecorder)
+	checkResponse func(res *http.Response)
+	values        map[string]any
+	permissions   []string
 }
 
 func TestMain(m *testing.M) {
@@ -101,13 +106,6 @@ func randomUser(t *testing.T) (user db.User, password string) {
 	return
 }
 
-//func randomPhrase() oapi.Phrase {
-//	return oapi.Phrase{
-//		Id:      util.RandomInt64(),
-//		TitleId: util.RandomInt64(),
-//	}
-//}
-
 func randomTranslate(phrase oapi.Phrase, languageId int16) db.Translate {
 
 	return db.Translate{
@@ -137,12 +135,16 @@ func randomLanguage() (language db.Language) {
 }
 
 func setupHandlerTest(t *testing.T, ctrl *gomock.Controller, tc testCase, urlBasePath, body, method string) (*Server, echo.Context, *httptest.ResponseRecorder) {
-	text := mockt.NewMockTranslateX(ctrl)
-	store := mockdb.NewMockQuerier(ctrl)
-	tc.buildStubs(store, text)
+	stubs := buildStubs{
+		store: mockdb.NewMockQuerier(ctrl),
+		tr:    mockt.NewMockTranslateX(ctrl),
+		trc:   mockc.NewMockTranslateClientX(ctrl),
+		ttsc:  mockc.NewMockTTSClientX(ctrl),
+	}
+	tc.buildStubs(stubs)
 
 	e := echo.New()
-	srv := NewServer(e, testCfg, store, text)
+	srv := NewServer(e, testCfg, stubs.store, stubs.tr)
 
 	jwsToken, err := srv.fa.CreateJWSWithClaims(tc.permissions, tc.user)
 	require.NoError(t, err)
@@ -158,12 +160,16 @@ func setupHandlerTest(t *testing.T, ctrl *gomock.Controller, tc testCase, urlBas
 }
 
 func setupServerTest(t *testing.T, ctrl *gomock.Controller, tc testCase) (*httptest.Server, string) {
-	text := mockt.NewMockTranslateX(ctrl)
-	store := mockdb.NewMockQuerier(ctrl)
-	tc.buildStubs(store, text)
+	stubs := buildStubs{
+		store: mockdb.NewMockQuerier(ctrl),
+		tr:    mockt.NewMockTranslateX(ctrl),
+		trc:   mockc.NewMockTranslateClientX(ctrl),
+		ttsc:  mockc.NewMockTTSClientX(ctrl),
+	}
+	tc.buildStubs(stubs)
 
 	e := echo.New()
-	srv := NewServer(e, testCfg, store, text)
+	srv := NewServer(e, testCfg, stubs.store, stubs.tr)
 
 	ts := httptest.NewServer(e)
 

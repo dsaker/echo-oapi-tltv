@@ -7,12 +7,12 @@ import (
 	"talkliketv.click/tltv/internal/oapi"
 )
 
-func (s *Server) AddUserPermission(ctx echo.Context) error {
+func (s *Server) AddUserPermission(e echo.Context) error {
 	// We expect a NewTitle object in the request body.
 	var newUserPermission oapi.NewUserPermission
-	err := ctx.Bind(&newUserPermission)
+	err := e.Bind(&newUserPermission)
 	if err != nil {
-		return ctx.String(http.StatusBadRequest, err.Error())
+		return e.String(http.StatusBadRequest, err.Error())
 	}
 
 	// We're always asynchronous, so lock unsafe operations below
@@ -20,7 +20,7 @@ func (s *Server) AddUserPermission(ctx echo.Context) error {
 	defer s.Unlock()
 
 	userPermission, err := s.queries.InsertUserPermission(
-		ctx.Request().Context(),
+		e.Request().Context(),
 		db.InsertUserPermissionParams{
 			UserID:       newUserPermission.UserId,
 			PermissionID: newUserPermission.PermissionId,
@@ -28,11 +28,11 @@ func (s *Server) AddUserPermission(ctx echo.Context) error {
 
 	if err != nil {
 		if db.PqErrorCode(err) == db.ForeignKeyViolation {
-			return ctx.String(http.StatusBadRequest, err.Error())
+			return e.String(http.StatusBadRequest, err.Error())
 		}
-		ctx.Logger().Error(err)
-		return ctx.String(http.StatusInternalServerError, err.Error())
+		e.Logger().Error(err)
+		return e.String(http.StatusInternalServerError, err.Error())
 	}
 
-	return ctx.JSON(http.StatusCreated, userPermission)
+	return e.JSON(http.StatusCreated, userPermission)
 }
