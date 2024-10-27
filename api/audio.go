@@ -110,6 +110,7 @@ func (s *Server) AudioFromFile(e echo.Context) error {
 		e.Logger().Error(err)
 		return e.String(http.StatusInternalServerError, err.Error())
 	}
+	// TODO delete tmp folder
 	return e.Attachment(zipFile.Name(), title.Title+".zip")
 }
 
@@ -176,7 +177,7 @@ func createAudioFromTitle(e echo.Context, s *Server, t db.Title, r oapi.AudioFro
 		e.Logger().Error(err)
 		return nil, err
 	}
-	// create TTS for from language
+	// create TTS for fromLanguage
 	if err = s.translates.CreateTTS(e, s.queries, ttsClient1, tClient1, fromLang, t, fromAudioBasePath); err != nil {
 		e.Logger().Error(err)
 		return nil, err
@@ -192,7 +193,7 @@ func createAudioFromTitle(e echo.Context, s *Server, t db.Title, r oapi.AudioFro
 		e.Logger().Error(err)
 		return nil, err
 	}
-	// create TTS for to language
+	// create TTS for toLanguage
 	if err = s.translates.CreateTTS(e, s.queries, ttsClient2, tClient2, toLang, t, toAudioBasePath); err != nil {
 		e.Logger().Error(err)
 		return nil, err

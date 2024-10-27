@@ -36,6 +36,7 @@ var (
 
 const (
 	usersBasePath           = "/v1/users"
+	audioBasePath           = "/v1/audio"
 	titlesBasePath          = "/v1/titles"
 	usersPermissionBasePath = "/v1/userspermissions"
 	phrasesBasePath         = "/v1/phrases"

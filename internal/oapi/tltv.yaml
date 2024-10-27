@@ -419,7 +419,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-  /audiofromfile:
+  /audio/fromfile:
     post:
       description: |
         create a language learning audio file from uploaded txt or srt file. txt file can be in paragraphs or one phrase per line
@@ -469,7 +469,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-  /audiofromtitle:
+  /audio/fromtitle:
     post:
       description: create a language learning audio file from title
       operationId: audioFromTitle
