@@ -22,7 +22,7 @@ func TestListLanguages(t *testing.T) {
 			name: "OK",
 			user: user,
 			buildStubs: func(stubs buildStubs) {
-				stubs.store.EXPECT().
+				stubs.mdb.EXPECT().
 					ListLanguages(gomock.Any()).
 					Times(1).
 					Return(languages, nil)

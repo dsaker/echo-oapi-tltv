@@ -30,10 +30,10 @@ func TestAddUserPermission(t *testing.T) {
 			user: user,
 			body: map[string]any{
 				"permissionId": 1,
-				"userId":       user.ID,
+				"extraInt":     user.ID,
 			},
 			buildStubs: func(stubs buildStubs) {
-				stubs.store.EXPECT().
+				stubs.mdb.EXPECT().
 					InsertUserPermission(gomock.Any(), insertUsersPermission).
 					Times(1).
 					Return(userPermission, nil)
@@ -53,7 +53,7 @@ func TestAddUserPermission(t *testing.T) {
 			user: user,
 			body: map[string]any{
 				"permission": 1,
-				"userId":     user.ID,
+				"extraInt":   user.ID,
 			},
 			buildStubs: func(stubs buildStubs) {
 			},
@@ -65,14 +65,14 @@ func TestAddUserPermission(t *testing.T) {
 			permissions: []string{db.GlobalAdminCode},
 		},
 		{
-			name: "store connection closed",
+			name: "mdb connection closed",
 			user: user,
 			body: map[string]any{
 				"permissionId": 1,
-				"userId":       user.ID,
+				"extraInt":     user.ID,
 			},
 			buildStubs: func(stubs buildStubs) {
-				stubs.store.EXPECT().
+				stubs.mdb.EXPECT().
 					InsertUserPermission(gomock.Any(), gomock.Any()).
 					Times(1).
 					Return(db.UsersPermission{}, sql.ErrConnDone)
@@ -89,7 +89,7 @@ func TestAddUserPermission(t *testing.T) {
 			user: user,
 			body: map[string]any{
 				"permissionId": 1,
-				"userId":       user.ID,
+				"extraInt":     user.ID,
 			},
 			buildStubs: func(stubs buildStubs) {
 			},
@@ -105,10 +105,10 @@ func TestAddUserPermission(t *testing.T) {
 			user: user,
 			body: map[string]any{
 				"permissionId": 1,
-				"userId":       user.ID,
+				"extraInt":     user.ID,
 			},
 			buildStubs: func(stubs buildStubs) {
-				stubs.store.EXPECT().
+				stubs.mdb.EXPECT().
 					InsertUserPermission(gomock.Any(), gomock.Any()).
 					Times(1).
 					Return(db.UsersPermission{}, db.ErrForeignKeyViolation)

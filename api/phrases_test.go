@@ -43,7 +43,7 @@ func TestGetPhrases(t *testing.T) {
 			user:   user,
 			values: map[string]any{"limit": true},
 			buildStubs: func(stubs buildStubs) {
-				stubs.store.EXPECT().
+				stubs.mdb.EXPECT().
 					SelectPhrasesFromTranslatesWithCorrect(gomock.Any(), selectPhrasesFromTranslatesParams).
 					Times(1).
 					Return(selectPhrasesFromTranslatesRowList, nil)
@@ -63,7 +63,7 @@ func TestGetPhrases(t *testing.T) {
 			user:   user,
 			values: map[string]any{"limit": false},
 			buildStubs: func(stubs buildStubs) {
-				stubs.store.EXPECT().
+				stubs.mdb.EXPECT().
 					SelectPhrasesFromTranslatesWithCorrect(gomock.Any(), selectPhrasesFromTranslatesParams).
 					Times(1).
 					Return(selectPhrasesFromTranslatesRowList, nil)
@@ -125,8 +125,8 @@ func TestUpdateUsersPhrases(t *testing.T) {
 			values: map[string]any{
 				"phraseId":   strconv.FormatInt(phrase.Id, 10),
 				"languageId": fmt.Sprint(user1.NewLanguageID)},
-			user:   user1,
-			userId: user1.ID,
+			user:     user1,
+			extraInt: user1.ID,
 			body: `[
 			{
 				"op": "replace",
@@ -144,11 +144,11 @@ func TestUpdateUsersPhrases(t *testing.T) {
 				paramsCopy := updateUsersPhrasesParams
 				paramsCopy.PhraseCorrect = 1
 				usersPhraseCopy.PhraseCorrect = 1
-				stubs.store.EXPECT().
+				stubs.mdb.EXPECT().
 					SelectUsersPhrasesByIds(gomock.Any(), args).
 					Times(1).
 					Return(usersPhrase, nil)
-				stubs.store.EXPECT().
+				stubs.mdb.EXPECT().
 					UpdateUsersPhrasesByThreeIds(gomock.Any(), paramsCopy).
 					Times(1).
 					Return(usersPhraseCopy, nil)
@@ -169,8 +169,8 @@ func TestUpdateUsersPhrases(t *testing.T) {
 			values: map[string]any{
 				"phraseId":   strconv.FormatInt(phrase.Id, 10),
 				"languageId": fmt.Sprint(user1.NewLanguageID)},
-			user:   user1,
-			userId: user1.ID,
+			user:     user1,
+			extraInt: user1.ID,
 			body: `[
 			{
 				"wrong": "replace",

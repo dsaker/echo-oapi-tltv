@@ -41,7 +41,7 @@ func TestFindTitles(t *testing.T) {
 			user:   user,
 			values: map[string]any{"similarity": true, "limit": true},
 			buildStubs: func(stubs buildStubs) {
-				stubs.store.EXPECT().
+				stubs.mdb.EXPECT().
 					ListTitles(gomock.Any(), listTitleParams).
 					Times(1).
 					Return(listTitlesRow, nil)
@@ -134,13 +134,10 @@ func TestAddTitle(t *testing.T) {
 
 	dbTranslates := []db.Translate{translate1, translate2}
 
-	filename := "/tmp/sentences2.txt"
+	err := os.MkdirAll(testAudioBasePath, 0777)
+	require.NoError(t, err)
+	filename := testAudioBasePath + "testAddTitle.txt"
 	stringsSlice := []string{"This is the first sentence.", "This is the second sentence."}
-
-	//create a base path for storing mp3 audio files
-	audioBasePath := "/tmp/audio/" +
-		strconv.Itoa(int(title.ID)) + "/" +
-		strconv.Itoa(int(title.OgLanguageID)) + "/"
 
 	insertTitle := db.InsertTitleParams{
 		Title:        title.Title,
@@ -148,33 +145,27 @@ func TestAddTitle(t *testing.T) {
 		OgLanguageID: title.OgLanguageID,
 	}
 
-	filename = "/tmp/filename.txt"
-
 	testCases := []testCase{
 		{
 			name: "OK",
 			user: user,
 			multipartBody: func(t *testing.T) (*bytes.Buffer, *multipart.Writer) {
 				data := []byte("This is the first sentence.\nThis is the second sentence.\n")
-				err := os.WriteFile(filename, data, 0777)
-				file, err := os.Open(filename)
-				body := new(bytes.Buffer)
-				writer := multipart.NewWriter(body)
-				part, err := writer.CreateFormFile("filePath", filename)
-				require.NoError(t, err)
-				_, err = io.Copy(part, file)
-				require.NoError(t, err)
-				err = writer.WriteField("titleName", title.Title)
-				err = writer.WriteField("languageId", strconv.Itoa(int(title.OgLanguageID)))
-				require.NoError(t, writer.Close())
-				return body, writer
+				fields := map[string]string{
+					"titleName":  title.Title,
+					"languageId": strconv.Itoa(int(title.OgLanguageID)),
+				}
+				return createMultiPartBody(t, data, filename, fields)
 			},
 			buildStubs: func(stubs buildStubs) {
-				stubs.store.EXPECT().
+				stubs.ma.EXPECT().
+					GetLines(gomock.Any(), gomock.Any()).
+					Return(stringsSlice, nil)
+				stubs.mdb.EXPECT().
 					InsertTitle(gomock.Any(), insertTitle).
 					Times(1).Return(title, nil)
-				stubs.tr.EXPECT().
-					InsertNewPhrases(gomock.Any(), title, stubs.store, stringsSlice).
+				stubs.mt.EXPECT().
+					InsertNewPhrases(gomock.Any(), title, stubs.mdb, stringsSlice).
 					Times(1).Return(dbTranslates, nil)
 			},
 			checkResponse: func(res *http.Response) {
@@ -192,17 +183,10 @@ func TestAddTitle(t *testing.T) {
 			user: user,
 			multipartBody: func(t *testing.T) (*bytes.Buffer, *multipart.Writer) {
 				data := []byte("This is the first sentence.\nThis is the second sentence.\n")
-				err := os.WriteFile(filename, data, 0644)
-				file, err := os.Open(filename)
-				body := new(bytes.Buffer)
-				writer := multipart.NewWriter(body)
-				part, err := writer.CreateFormFile("filePath", filename)
-				require.NoError(t, err)
-				_, err = io.Copy(part, file)
-				require.NoError(t, err)
-				err = writer.WriteField("languageId", strconv.Itoa(int(title.OgLanguageID)))
-				require.NoError(t, writer.Close())
-				return body, writer
+				fields := map[string]string{
+					"languageId": strconv.Itoa(int(title.OgLanguageID)),
+				}
+				return createMultiPartBody(t, data, filename, fields)
 			},
 			buildStubs: func(stubs buildStubs) {
 			},
@@ -217,7 +201,8 @@ func TestAddTitle(t *testing.T) {
 			name: "File Too Big",
 			user: user,
 			multipartBody: func(t *testing.T) (*bytes.Buffer, *multipart.Writer) {
-				file, err := os.Create(filename)
+				tooBigFile := testAudioBasePath + "tooBigFile.txt"
+				file, err := os.Create(tooBigFile)
 				require.NoError(t, err)
 				defer file.Close()
 				writer := bufio.NewWriter(file)
@@ -229,10 +214,10 @@ func TestAddTitle(t *testing.T) {
 				}
 				writer.Flush()
 
-				multiFile, err := os.Open(filename)
+				multiFile, err := os.Open(tooBigFile)
 				body := new(bytes.Buffer)
 				multiWriter := multipart.NewWriter(body)
-				part, err := multiWriter.CreateFormFile("filePath", filename)
+				part, err := multiWriter.CreateFormFile("filePath", tooBigFile)
 				require.NoError(t, err)
 				_, err = io.Copy(part, multiFile)
 				require.NoError(t, err)
@@ -255,21 +240,17 @@ func TestAddTitle(t *testing.T) {
 			user: user,
 			multipartBody: func(t *testing.T) (*bytes.Buffer, *multipart.Writer) {
 				data := []byte("This is the first sentence.\nThis is the second sentence.\n")
-				err := os.WriteFile(filename, data, 0644)
-				file, err := os.Open(filename)
-				body := new(bytes.Buffer)
-				writer := multipart.NewWriter(body)
-				part, err := writer.CreateFormFile("filePath", filename)
-				require.NoError(t, err)
-				_, err = io.Copy(part, file)
-				require.NoError(t, err)
-				err = writer.WriteField("titleName", title.Title)
-				err = writer.WriteField("languageId", strconv.Itoa(int(title.OgLanguageID)))
-				require.NoError(t, writer.Close())
-				return body, writer
+				fields := map[string]string{
+					"titleName":  title.Title,
+					"languageId": strconv.Itoa(int(title.OgLanguageID)),
+				}
+				return createMultiPartBody(t, data, filename, fields)
 			},
 			buildStubs: func(stubs buildStubs) {
-				stubs.store.EXPECT().
+				stubs.ma.EXPECT().
+					GetLines(gomock.Any(), gomock.Any()).
+					Return(stringsSlice, nil)
+				stubs.mdb.EXPECT().
 					InsertTitle(gomock.Any(), insertTitle).
 					Times(1).Return(db.Title{}, sql.ErrConnDone)
 			},
@@ -283,22 +264,15 @@ func TestAddTitle(t *testing.T) {
 		{
 			name: "missing permission",
 			user: user,
+			buildStubs: func(stubs buildStubs) {
+			},
 			multipartBody: func(t *testing.T) (*bytes.Buffer, *multipart.Writer) {
 				data := []byte("This is the first sentence.\nThis is the second sentence.\n")
-				err := os.WriteFile(filename, data, 0644)
-				file, err := os.Open(filename)
-				body := new(bytes.Buffer)
-				writer := multipart.NewWriter(body)
-				part, err := writer.CreateFormFile("filePath", filename)
-				require.NoError(t, err)
-				_, err = io.Copy(part, file)
-				require.NoError(t, err)
-				err = writer.WriteField("titleName", title.Title)
-				err = writer.WriteField("languageId", strconv.Itoa(int(title.OgLanguageID)))
-				require.NoError(t, writer.Close())
-				return body, writer
-			},
-			buildStubs: func(stubs buildStubs) {
+				fields := map[string]string{
+					"titleName":  title.Title,
+					"languageId": strconv.Itoa(int(title.OgLanguageID)),
+				}
+				return createMultiPartBody(t, data, filename, fields)
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusForbidden, res.StatusCode)
@@ -328,10 +302,6 @@ func TestAddTitle(t *testing.T) {
 			require.NoError(t, err)
 
 			tc.checkResponse(res)
-			err = os.RemoveAll(audioBasePath)
-			require.NoError(t, err)
-			err = os.Remove(filename)
-			require.NoError(t, err)
 		})
 	}
 }
@@ -345,7 +315,7 @@ func TestFindTitleById(t *testing.T) {
 			name: "OK",
 			user: user,
 			buildStubs: func(stubs buildStubs) {
-				stubs.store.EXPECT().
+				stubs.mdb.EXPECT().
 					SelectTitleById(gomock.Any(), title.ID).
 					Times(1).
 					Return(title, nil)
@@ -364,7 +334,7 @@ func TestFindTitleById(t *testing.T) {
 			name: "id not found",
 			user: user,
 			buildStubs: func(stubs buildStubs) {
-				stubs.store.EXPECT().
+				stubs.mdb.EXPECT().
 					SelectTitleById(gomock.Any(), title.ID).
 					Times(1).
 					Return(db.Title{}, sql.ErrNoRows)
@@ -406,7 +376,7 @@ func TestDeleteTitleById(t *testing.T) {
 			name: "OK",
 			user: user,
 			buildStubs: func(stubs buildStubs) {
-				stubs.store.EXPECT().
+				stubs.mdb.EXPECT().
 					DeleteTitleById(gomock.Any(), title.ID).
 					Times(1).Return(nil)
 			},
@@ -419,7 +389,7 @@ func TestDeleteTitleById(t *testing.T) {
 			name: "id not found",
 			user: user,
 			buildStubs: func(stubs buildStubs) {
-				stubs.store.EXPECT().
+				stubs.mdb.EXPECT().
 					DeleteTitleById(gomock.Any(), title.ID).
 					Times(1).
 					Return(sql.ErrNoRows)

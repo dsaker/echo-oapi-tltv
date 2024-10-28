@@ -11,6 +11,7 @@ import (
 	"strings"
 	"talkliketv.click/tltv/api"
 	db "talkliketv.click/tltv/db/sqlc"
+	"talkliketv.click/tltv/internal/audio/audiofile"
 	"talkliketv.click/tltv/internal/config"
 	"talkliketv.click/tltv/internal/translates"
 )
@@ -48,7 +49,7 @@ func main() {
 	e.Logger.Info("database connection pool established")
 
 	q := db.New(conn)
-	api.NewServer(e, cfg, q, &translates.Translate{})
+	api.NewServer(e, cfg, q, &translates.Translate{}, &audiofile.AudioFile{})
 
 	e.Logger.Fatal(e.Start(net.JoinHostPort("0.0.0.0", cfg.Port)))
 }

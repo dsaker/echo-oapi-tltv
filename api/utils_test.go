@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"flag"
+	"fmt"
 	"github.com/golang/mock/gomock"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
@@ -16,6 +17,7 @@ import (
 	mockdb "talkliketv.click/tltv/db/mock"
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/config"
+	mocka "talkliketv.click/tltv/internal/mock/audiofile"
 	mockc "talkliketv.click/tltv/internal/mock/clients"
 	mockt "talkliketv.click/tltv/internal/mock/translates"
 	"talkliketv.click/tltv/internal/oapi"
@@ -23,15 +25,11 @@ import (
 	"talkliketv.click/tltv/internal/token"
 	"talkliketv.click/tltv/internal/util"
 	"testing"
+	"time"
 )
 
 var (
-	testCfg            config.Config
-	validLanguageModel = db.Language{
-		ID:       27,
-		Language: "English",
-		Tag:      "en",
-	}
+	testCfg config.Config
 )
 
 const (
@@ -43,33 +41,49 @@ const (
 	usersPhrasesBasePath    = "/v1/usersphrases"
 	languagesBasePath       = "/v1/languages"
 	validLanguageId         = 27
+	testAudioBasePath       = "../tmp/test/audio/"
 )
 
 type buildStubs struct {
-	store *mockdb.MockQuerier
-	tr    *mockt.MockTranslateX
-	trc   *mockc.MockTranslateClientX
-	ttsc  *mockc.MockTTSClientX
+	mdb  *mockdb.MockQuerier
+	mt   *mockt.MockTranslateX
+	trc  *mockc.MockTranslateClientX
+	ttsc *mockc.MockTTSClientX
+	ma   *mocka.MockAudioFileX
 }
 type testCase struct {
 	name          string
 	body          interface{}
 	user          db.User
-	userId        int64
+	extraInt      int64
 	buildStubs    func(stubs buildStubs)
-	multipartBody func(*testing.T) (*bytes.Buffer, *multipart.Writer)
+	multipartBody func(t *testing.T) (*bytes.Buffer, *multipart.Writer)
 	checkRecorder func(rec *httptest.ResponseRecorder)
 	checkResponse func(res *http.Response)
 	values        map[string]any
 	permissions   []string
+	cleanUp       func(*testing.T)
 }
 
 func TestMain(m *testing.M) {
-	testCfg = config.SetConfigs()
-
+	testCfg = SetTestConfigs()
 	flag.Parse()
-	testCfg.TTSBasePath = "/tmp/audio/"
 	os.Exit(m.Run())
+}
+
+func SetTestConfigs() (config config.Config) {
+
+	// get port and debug from commandline flags... if not present use defaults
+	flag.StringVar(&config.Port, "port", "8080", "API server port")
+
+	flag.StringVar(&config.Env, "env", "development", "Environment (development|staging|cloud)")
+	flag.DurationVar(&config.CtxTimeout, "ctx-timeout", 3*time.Second, "Context timeout for db queries in seconds")
+
+	flag.StringVar(&config.TTSBasePath, "tts-base-path", testAudioBasePath, "text-to-speech base path temporary storage of mp3 audio files")
+
+	flag.Int64Var(&config.FileUploadLimit, "upload-size-limit", 8, "File upload size limit in KB (default is 4)")
+	return config
+
 }
 
 func readBody(t *testing.T, rs *http.Response) string {
@@ -137,20 +151,21 @@ func randomLanguage() (language db.Language) {
 
 func setupHandlerTest(t *testing.T, ctrl *gomock.Controller, tc testCase, urlBasePath, body, method string) (*Server, echo.Context, *httptest.ResponseRecorder) {
 	stubs := buildStubs{
-		store: mockdb.NewMockQuerier(ctrl),
-		tr:    mockt.NewMockTranslateX(ctrl),
-		trc:   mockc.NewMockTranslateClientX(ctrl),
-		ttsc:  mockc.NewMockTTSClientX(ctrl),
+		mdb:  mockdb.NewMockQuerier(ctrl),
+		mt:   mockt.NewMockTranslateX(ctrl),
+		trc:  mockc.NewMockTranslateClientX(ctrl),
+		ttsc: mockc.NewMockTTSClientX(ctrl),
+		ma:   mocka.NewMockAudioFileX(ctrl),
 	}
 	tc.buildStubs(stubs)
 
 	e := echo.New()
-	srv := NewServer(e, testCfg, stubs.store, stubs.tr)
+	srv := NewServer(e, testCfg, stubs.mdb, stubs.mt, stubs.ma)
 
 	jwsToken, err := srv.fa.CreateJWSWithClaims(tc.permissions, tc.user)
 	require.NoError(t, err)
 
-	urlPath := urlBasePath + strconv.FormatInt(tc.userId, 10)
+	urlPath := urlBasePath + strconv.FormatInt(tc.extraInt, 10)
 
 	req := handlerRequest(body, urlPath, method, string(jwsToken))
 	rec := httptest.NewRecorder()
@@ -162,15 +177,16 @@ func setupHandlerTest(t *testing.T, ctrl *gomock.Controller, tc testCase, urlBas
 
 func setupServerTest(t *testing.T, ctrl *gomock.Controller, tc testCase) (*httptest.Server, string) {
 	stubs := buildStubs{
-		store: mockdb.NewMockQuerier(ctrl),
-		tr:    mockt.NewMockTranslateX(ctrl),
-		trc:   mockc.NewMockTranslateClientX(ctrl),
-		ttsc:  mockc.NewMockTTSClientX(ctrl),
+		mdb:  mockdb.NewMockQuerier(ctrl),
+		mt:   mockt.NewMockTranslateX(ctrl),
+		trc:  mockc.NewMockTranslateClientX(ctrl),
+		ttsc: mockc.NewMockTTSClientX(ctrl),
+		ma:   mocka.NewMockAudioFileX(ctrl),
 	}
 	tc.buildStubs(stubs)
 
 	e := echo.New()
-	srv := NewServer(e, testCfg, stubs.store, stubs.tr)
+	srv := NewServer(e, testCfg, stubs.mdb, stubs.mt, stubs.ma)
 
 	ts := httptest.NewServer(e)
 
@@ -204,4 +220,23 @@ func jsonRequest(t *testing.T, json []byte, ts *httptest.Server, urlPath, method
 	req.Header.Set("Content-Type", "application/json")
 
 	return req
+}
+
+func createMultiPartBody(t *testing.T, data []byte, filename string, m map[string]string) (*bytes.Buffer, *multipart.Writer) {
+	//data := []byte("This is the first sentence.\nThis is the second sentence.\n")
+	err := os.WriteFile(filename, data, 0777)
+	file, err := os.Open(filename)
+	fmt.Println(file.Name())
+	body := new(bytes.Buffer)
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("filePath", filename)
+	require.NoError(t, err)
+	_, err = io.Copy(part, file)
+	require.NoError(t, err)
+	for key, val := range m {
+		err = writer.WriteField(key, val)
+		require.NoError(t, err)
+	}
+	require.NoError(t, writer.Close())
+	return body, writer
 }

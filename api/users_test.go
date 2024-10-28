@@ -50,11 +50,11 @@ func TestGetUser(t *testing.T) {
 
 	testCases := []testCase{
 		{
-			name:   "get user1",
-			user:   user1,
-			userId: user1.ID,
+			name:     "get user1",
+			user:     user1,
+			extraInt: user1.ID,
 			buildStubs: func(stubs buildStubs) {
-				stubs.store.EXPECT().
+				stubs.mdb.EXPECT().
 					SelectUserById(gomock.Any(), user1.ID).
 					Times(1).
 					Return(user1, nil)
@@ -68,9 +68,9 @@ func TestGetUser(t *testing.T) {
 			},
 		},
 		{
-			name:   "Id's don't match",
-			user:   user1,
-			userId: user2.ID,
+			name:     "Id's don't match",
+			user:     user1,
+			extraInt: user2.ID,
 			buildStubs: func(stubs buildStubs) {
 			},
 			checkRecorder: func(rec *httptest.ResponseRecorder) {
@@ -79,11 +79,11 @@ func TestGetUser(t *testing.T) {
 			},
 		},
 		{
-			name:   "User does not exist",
-			user:   user2,
-			userId: user2.ID,
+			name:     "User does not exist",
+			user:     user2,
+			extraInt: user2.ID,
 			buildStubs: func(stubs buildStubs) {
-				stubs.store.EXPECT().
+				stubs.mdb.EXPECT().
 					SelectUserById(gomock.Any(), user2.ID).
 					Times(1).
 					Return(db.User{}, sql.ErrNoRows)
@@ -109,7 +109,7 @@ func TestGetUser(t *testing.T) {
 			urlPath := usersBasePath + "/" + strconv.FormatInt(tc.user.ID, 10)
 			srv, c, rec := setupHandlerTest(t, ctrl, tc, urlPath, string(data), http.MethodGet)
 
-			err = srv.FindUserByID(c, tc.userId)
+			err = srv.FindUserByID(c, tc.extraInt)
 			require.NoError(t, err)
 			tc.checkRecorder(rec)
 		})
@@ -122,11 +122,11 @@ func TestDeleteUser(t *testing.T) {
 
 	testCases := []testCase{
 		{
-			name:   "delete user1",
-			user:   user1,
-			userId: user1.ID,
+			name:     "delete user1",
+			user:     user1,
+			extraInt: user1.ID,
 			buildStubs: func(stubs buildStubs) {
-				stubs.store.EXPECT().
+				stubs.mdb.EXPECT().
 					DeleteUserById(gomock.Any(), user1.ID).
 					Times(1).
 					Return(nil)
@@ -136,9 +136,9 @@ func TestDeleteUser(t *testing.T) {
 			},
 		},
 		{
-			name:   "Id's don't match",
-			user:   user1,
-			userId: user2.ID,
+			name:     "Id's don't match",
+			user:     user1,
+			extraInt: user2.ID,
 			buildStubs: func(stubs buildStubs) {
 			},
 			checkRecorder: func(rec *httptest.ResponseRecorder) {
@@ -147,11 +147,11 @@ func TestDeleteUser(t *testing.T) {
 			},
 		},
 		{
-			name:   "User does not exist",
-			user:   user2,
-			userId: user2.ID,
+			name:     "User does not exist",
+			user:     user2,
+			extraInt: user2.ID,
 			buildStubs: func(stubs buildStubs) {
-				stubs.store.EXPECT().
+				stubs.mdb.EXPECT().
 					DeleteUserById(gomock.Any(), user2.ID).
 					Times(1).
 					Return(sql.ErrNoRows)
@@ -176,7 +176,7 @@ func TestDeleteUser(t *testing.T) {
 			urlPath := usersBasePath + "/" + strconv.FormatInt(tc.user.ID, 10)
 			srv, c, rec := setupHandlerTest(t, ctrl, tc, urlPath, string(data), http.MethodDelete)
 
-			err = srv.DeleteUser(c, tc.userId)
+			err = srv.DeleteUser(c, tc.extraInt)
 			require.NoError(t, err)
 			tc.checkRecorder(rec)
 		})
@@ -209,15 +209,15 @@ func TestCreateUser(t *testing.T) {
 					UserID:       user.ID,
 					PermissionID: test.ValidPermissionId,
 				}
-				stubs.store.EXPECT().
+				stubs.mdb.EXPECT().
 					InsertUser(gomock.Any(), EqCreateUserParams(arg, password)).
 					Return(user, nil)
-				stubs.store.EXPECT().
+				stubs.mdb.EXPECT().
 					SelectPermissionByCode(
 						gomock.Any(),
 						db.ReadTitlesCode).
 					Return(db.Permission{ID: test.ValidPermissionId, Code: ""}, nil)
-				stubs.store.EXPECT().
+				stubs.mdb.EXPECT().
 					InsertUserPermission(gomock.Any(), arg2).
 					Times(1).
 					Return(db.UsersPermission{UserID: user.ID, PermissionID: test.ValidPermissionId}, nil)
@@ -242,7 +242,7 @@ func TestCreateUser(t *testing.T) {
 				"titleId":       user.TitleID,
 			},
 			buildStubs: func(stubs buildStubs) {
-				stubs.store.EXPECT().
+				stubs.mdb.EXPECT().
 					InsertUser(gomock.Any(), gomock.Any()).
 					Times(1).
 					Return(db.User{}, sql.ErrConnDone)
@@ -263,7 +263,7 @@ func TestCreateUser(t *testing.T) {
 				"titleId":       user.TitleID,
 			},
 			buildStubs: func(stubs buildStubs) {
-				stubs.store.EXPECT().
+				stubs.mdb.EXPECT().
 					InsertUser(gomock.Any(), gomock.Any()).
 					Times(1).
 					Return(db.User{}, db.ErrUniqueViolation)
@@ -310,9 +310,9 @@ func TestUpdateUser(t *testing.T) {
 
 	testCases := []testCase{
 		{
-			name:   "update user1 email",
-			user:   user1,
-			userId: user1.ID,
+			name:     "update user1 email",
+			user:     user1,
+			extraInt: user1.ID,
 			body: `[
 			{
 				"op": "replace",
@@ -325,11 +325,11 @@ func TestUpdateUser(t *testing.T) {
 				paramsCopy := updateUserParams
 				paramsCopy.Email = "newemail2@email.com"
 				userCopy.Email = "newemail2@email.com"
-				stubs.store.EXPECT().
+				stubs.mdb.EXPECT().
 					SelectUserById(gomock.Any(), user1.ID).
 					Times(1).
 					Return(user1, nil)
-				stubs.store.EXPECT().
+				stubs.mdb.EXPECT().
 					UpdateUserById(gomock.Any(), paramsCopy).
 					Times(1).
 					Return(userCopy, nil)
@@ -343,9 +343,9 @@ func TestUpdateUser(t *testing.T) {
 			},
 		},
 		{
-			name:   "Id does not match",
-			user:   user1,
-			userId: user2.ID,
+			name:     "Id does not match",
+			user:     user1,
+			extraInt: user2.ID,
 			body: `[
 			{
 				"op": "replace",
@@ -361,9 +361,9 @@ func TestUpdateUser(t *testing.T) {
 			},
 		},
 		{
-			name:   "Invalid format for PatchUser",
-			user:   user1,
-			userId: user1.ID,
+			name:     "Invalid format for PatchUser",
+			user:     user1,
+			extraInt: user1.ID,
 			body: `[
 			{
 				"wrong": "replace",
@@ -379,9 +379,9 @@ func TestUpdateUser(t *testing.T) {
 			},
 		},
 		{
-			name:   "User does not exist",
-			user:   user2,
-			userId: user2.ID,
+			name:     "User does not exist",
+			user:     user2,
+			extraInt: user2.ID,
 			body: `[
 			{
 				"op": "replace",
@@ -390,7 +390,7 @@ func TestUpdateUser(t *testing.T) {
 			}
 		]`,
 			buildStubs: func(stubs buildStubs) {
-				stubs.store.EXPECT().
+				stubs.mdb.EXPECT().
 					SelectUserById(gomock.Any(), user2.ID).
 					Times(1).
 					Return(db.User{}, sql.ErrNoRows)
@@ -411,7 +411,7 @@ func TestUpdateUser(t *testing.T) {
 
 			urlPath := usersBasePath + "/" + strconv.FormatInt(tc.user.ID, 10)
 			srv, c, rec := setupHandlerTest(t, ctrl, tc, urlPath, tc.body.(string), http.MethodPatch)
-			err := srv.UpdateUser(c, tc.userId)
+			err := srv.UpdateUser(c, tc.extraInt)
 			require.NoError(t, err)
 			tc.checkRecorder(rec)
 		})
@@ -430,11 +430,11 @@ func TestLoginUser(t *testing.T) {
 				"password": password,
 			},
 			buildStubs: func(stubs buildStubs) {
-				stubs.store.EXPECT().
+				stubs.mdb.EXPECT().
 					SelectUserByName(gomock.Any(), gomock.Any()).
 					Times(1).
 					Return(user, nil)
-				stubs.store.EXPECT().
+				stubs.mdb.EXPECT().
 					SelectUserPermissions(gomock.Any(), gomock.Eq(user.ID)).
 					Times(1).
 					Return(permissions, nil)
@@ -450,7 +450,7 @@ func TestLoginUser(t *testing.T) {
 				"password": password,
 			},
 			buildStubs: func(stubs buildStubs) {
-				stubs.store.EXPECT().
+				stubs.mdb.EXPECT().
 					SelectUserByName(gomock.Any(), gomock.Any()).
 					Times(1).
 					Return(db.User{}, sql.ErrNoRows)
@@ -467,7 +467,7 @@ func TestLoginUser(t *testing.T) {
 				"password": "incorrect",
 			},
 			buildStubs: func(stubs buildStubs) {
-				stubs.store.EXPECT().
+				stubs.mdb.EXPECT().
 					SelectUserByName(gomock.Any(), gomock.Eq(user.Name)).
 					Times(1).
 					Return(user, nil)
@@ -484,7 +484,7 @@ func TestLoginUser(t *testing.T) {
 				"password": password,
 			},
 			buildStubs: func(stubs buildStubs) {
-				stubs.store.EXPECT().
+				stubs.mdb.EXPECT().
 					SelectUserByName(gomock.Any(), gomock.Any()).
 					Times(1).
 					Return(db.User{}, sql.ErrConnDone)

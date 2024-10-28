@@ -11,6 +11,7 @@ import (
 	"log"
 	"sync"
 	db "talkliketv.click/tltv/db/sqlc"
+	"talkliketv.click/tltv/internal/audio/audiofile"
 	"talkliketv.click/tltv/internal/config"
 	"talkliketv.click/tltv/internal/oapi"
 	"talkliketv.click/tltv/internal/token"
@@ -23,10 +24,11 @@ type Server struct {
 	translates translates.TranslateX
 	config     config.Config
 	fa         token.FakeAuthenticator
+	af         audiofile.AudioFileX
 }
 
 // NewServer creates a new HTTP server and sets up routing.
-func NewServer(e *echo.Echo, cfg config.Config, q db.Querier, t translates.TranslateX) *Server {
+func NewServer(e *echo.Echo, cfg config.Config, q db.Querier, t translates.TranslateX, af audiofile.AudioFileX) *Server {
 
 	spec, err := oapi.GetSwagger()
 	if err != nil {
@@ -73,6 +75,7 @@ func NewServer(e *echo.Echo, cfg config.Config, q db.Querier, t translates.Trans
 		translates: t,
 		queries:    q,
 		config:     cfg,
+		af:         af,
 	}
 
 	oapi.RegisterHandlersWithBaseURL(apiGrp, srv, "")
