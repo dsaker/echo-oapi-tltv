@@ -43,7 +43,7 @@ func TestGetPhrases(t *testing.T) {
 			user:   user,
 			values: map[string]any{"limit": true},
 			buildStubs: func(stubs buildStubs) {
-				stubs.mdb.EXPECT().
+				stubs.mockQuerier.EXPECT().
 					SelectPhrasesFromTranslatesWithCorrect(gomock.Any(), selectPhrasesFromTranslatesParams).
 					Times(1).
 					Return(selectPhrasesFromTranslatesRowList, nil)
@@ -63,7 +63,7 @@ func TestGetPhrases(t *testing.T) {
 			user:   user,
 			values: map[string]any{"limit": false},
 			buildStubs: func(stubs buildStubs) {
-				stubs.mdb.EXPECT().
+				stubs.mockQuerier.EXPECT().
 					SelectPhrasesFromTranslatesWithCorrect(gomock.Any(), selectPhrasesFromTranslatesParams).
 					Times(1).
 					Return(selectPhrasesFromTranslatesRowList, nil)
@@ -144,11 +144,11 @@ func TestUpdateUsersPhrases(t *testing.T) {
 				paramsCopy := updateUsersPhrasesParams
 				paramsCopy.PhraseCorrect = 1
 				usersPhraseCopy.PhraseCorrect = 1
-				stubs.mdb.EXPECT().
+				stubs.mockQuerier.EXPECT().
 					SelectUsersPhrasesByIds(gomock.Any(), args).
 					Times(1).
 					Return(usersPhrase, nil)
-				stubs.mdb.EXPECT().
+				stubs.mockQuerier.EXPECT().
 					UpdateUsersPhrasesByThreeIds(gomock.Any(), paramsCopy).
 					Times(1).
 					Return(usersPhraseCopy, nil)

@@ -45,11 +45,11 @@ const (
 )
 
 type buildStubs struct {
-	mdb  *mockdb.MockQuerier
-	mt   *mockt.MockTranslateX
-	trc  *mockc.MockTranslateClientX
-	ttsc *mockc.MockTTSClientX
-	ma   *mocka.MockAudioFileX
+	mockQuerier      *mockdb.MockQuerier
+	translateX       *mockt.MockTranslateX
+	translateClientX *mockc.MockTranslateClientX
+	ttsClientX       *mockc.MockTTSClientX
+	audioFileX       *mocka.MockAudioFileX
 }
 type testCase struct {
 	name          string
@@ -151,16 +151,16 @@ func randomLanguage() (language db.Language) {
 
 func setupHandlerTest(t *testing.T, ctrl *gomock.Controller, tc testCase, urlBasePath, body, method string) (*Server, echo.Context, *httptest.ResponseRecorder) {
 	stubs := buildStubs{
-		mdb:  mockdb.NewMockQuerier(ctrl),
-		mt:   mockt.NewMockTranslateX(ctrl),
-		trc:  mockc.NewMockTranslateClientX(ctrl),
-		ttsc: mockc.NewMockTTSClientX(ctrl),
-		ma:   mocka.NewMockAudioFileX(ctrl),
+		mockQuerier:      mockdb.NewMockQuerier(ctrl),
+		translateX:       mockt.NewMockTranslateX(ctrl),
+		translateClientX: mockc.NewMockTranslateClientX(ctrl),
+		ttsClientX:       mockc.NewMockTTSClientX(ctrl),
+		audioFileX:       mocka.NewMockAudioFileX(ctrl),
 	}
 	tc.buildStubs(stubs)
 
 	e := echo.New()
-	srv := NewServer(e, testCfg, stubs.mdb, stubs.mt, stubs.ma)
+	srv := NewServer(e, testCfg, stubs.mockQuerier, stubs.translateX, stubs.audioFileX)
 
 	jwsToken, err := srv.fa.CreateJWSWithClaims(tc.permissions, tc.user)
 	require.NoError(t, err)
@@ -177,16 +177,16 @@ func setupHandlerTest(t *testing.T, ctrl *gomock.Controller, tc testCase, urlBas
 
 func setupServerTest(t *testing.T, ctrl *gomock.Controller, tc testCase) (*httptest.Server, string) {
 	stubs := buildStubs{
-		mdb:  mockdb.NewMockQuerier(ctrl),
-		mt:   mockt.NewMockTranslateX(ctrl),
-		trc:  mockc.NewMockTranslateClientX(ctrl),
-		ttsc: mockc.NewMockTTSClientX(ctrl),
-		ma:   mocka.NewMockAudioFileX(ctrl),
+		mockQuerier:      mockdb.NewMockQuerier(ctrl),
+		translateX:       mockt.NewMockTranslateX(ctrl),
+		translateClientX: mockc.NewMockTranslateClientX(ctrl),
+		ttsClientX:       mockc.NewMockTTSClientX(ctrl),
+		audioFileX:       mocka.NewMockAudioFileX(ctrl),
 	}
 	tc.buildStubs(stubs)
 
 	e := echo.New()
-	srv := NewServer(e, testCfg, stubs.mdb, stubs.mt, stubs.ma)
+	srv := NewServer(e, testCfg, stubs.mockQuerier, stubs.translateX, stubs.audioFileX)
 
 	ts := httptest.NewServer(e)
 

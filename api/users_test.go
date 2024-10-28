@@ -54,7 +54,7 @@ func TestGetUser(t *testing.T) {
 			user:     user1,
 			extraInt: user1.ID,
 			buildStubs: func(stubs buildStubs) {
-				stubs.mdb.EXPECT().
+				stubs.mockQuerier.EXPECT().
 					SelectUserById(gomock.Any(), user1.ID).
 					Times(1).
 					Return(user1, nil)
@@ -83,7 +83,7 @@ func TestGetUser(t *testing.T) {
 			user:     user2,
 			extraInt: user2.ID,
 			buildStubs: func(stubs buildStubs) {
-				stubs.mdb.EXPECT().
+				stubs.mockQuerier.EXPECT().
 					SelectUserById(gomock.Any(), user2.ID).
 					Times(1).
 					Return(db.User{}, sql.ErrNoRows)
@@ -126,7 +126,7 @@ func TestDeleteUser(t *testing.T) {
 			user:     user1,
 			extraInt: user1.ID,
 			buildStubs: func(stubs buildStubs) {
-				stubs.mdb.EXPECT().
+				stubs.mockQuerier.EXPECT().
 					DeleteUserById(gomock.Any(), user1.ID).
 					Times(1).
 					Return(nil)
@@ -151,7 +151,7 @@ func TestDeleteUser(t *testing.T) {
 			user:     user2,
 			extraInt: user2.ID,
 			buildStubs: func(stubs buildStubs) {
-				stubs.mdb.EXPECT().
+				stubs.mockQuerier.EXPECT().
 					DeleteUserById(gomock.Any(), user2.ID).
 					Times(1).
 					Return(sql.ErrNoRows)
@@ -209,15 +209,15 @@ func TestCreateUser(t *testing.T) {
 					UserID:       user.ID,
 					PermissionID: test.ValidPermissionId,
 				}
-				stubs.mdb.EXPECT().
+				stubs.mockQuerier.EXPECT().
 					InsertUser(gomock.Any(), EqCreateUserParams(arg, password)).
 					Return(user, nil)
-				stubs.mdb.EXPECT().
+				stubs.mockQuerier.EXPECT().
 					SelectPermissionByCode(
 						gomock.Any(),
 						db.ReadTitlesCode).
 					Return(db.Permission{ID: test.ValidPermissionId, Code: ""}, nil)
-				stubs.mdb.EXPECT().
+				stubs.mockQuerier.EXPECT().
 					InsertUserPermission(gomock.Any(), arg2).
 					Times(1).
 					Return(db.UsersPermission{UserID: user.ID, PermissionID: test.ValidPermissionId}, nil)
@@ -242,7 +242,7 @@ func TestCreateUser(t *testing.T) {
 				"titleId":       user.TitleID,
 			},
 			buildStubs: func(stubs buildStubs) {
-				stubs.mdb.EXPECT().
+				stubs.mockQuerier.EXPECT().
 					InsertUser(gomock.Any(), gomock.Any()).
 					Times(1).
 					Return(db.User{}, sql.ErrConnDone)
@@ -263,7 +263,7 @@ func TestCreateUser(t *testing.T) {
 				"titleId":       user.TitleID,
 			},
 			buildStubs: func(stubs buildStubs) {
-				stubs.mdb.EXPECT().
+				stubs.mockQuerier.EXPECT().
 					InsertUser(gomock.Any(), gomock.Any()).
 					Times(1).
 					Return(db.User{}, db.ErrUniqueViolation)
@@ -325,11 +325,11 @@ func TestUpdateUser(t *testing.T) {
 				paramsCopy := updateUserParams
 				paramsCopy.Email = "newemail2@email.com"
 				userCopy.Email = "newemail2@email.com"
-				stubs.mdb.EXPECT().
+				stubs.mockQuerier.EXPECT().
 					SelectUserById(gomock.Any(), user1.ID).
 					Times(1).
 					Return(user1, nil)
-				stubs.mdb.EXPECT().
+				stubs.mockQuerier.EXPECT().
 					UpdateUserById(gomock.Any(), paramsCopy).
 					Times(1).
 					Return(userCopy, nil)
@@ -390,7 +390,7 @@ func TestUpdateUser(t *testing.T) {
 			}
 		]`,
 			buildStubs: func(stubs buildStubs) {
-				stubs.mdb.EXPECT().
+				stubs.mockQuerier.EXPECT().
 					SelectUserById(gomock.Any(), user2.ID).
 					Times(1).
 					Return(db.User{}, sql.ErrNoRows)
@@ -430,11 +430,11 @@ func TestLoginUser(t *testing.T) {
 				"password": password,
 			},
 			buildStubs: func(stubs buildStubs) {
-				stubs.mdb.EXPECT().
+				stubs.mockQuerier.EXPECT().
 					SelectUserByName(gomock.Any(), gomock.Any()).
 					Times(1).
 					Return(user, nil)
-				stubs.mdb.EXPECT().
+				stubs.mockQuerier.EXPECT().
 					SelectUserPermissions(gomock.Any(), gomock.Eq(user.ID)).
 					Times(1).
 					Return(permissions, nil)
@@ -450,7 +450,7 @@ func TestLoginUser(t *testing.T) {
 				"password": password,
 			},
 			buildStubs: func(stubs buildStubs) {
-				stubs.mdb.EXPECT().
+				stubs.mockQuerier.EXPECT().
 					SelectUserByName(gomock.Any(), gomock.Any()).
 					Times(1).
 					Return(db.User{}, sql.ErrNoRows)
@@ -467,7 +467,7 @@ func TestLoginUser(t *testing.T) {
 				"password": "incorrect",
 			},
 			buildStubs: func(stubs buildStubs) {
-				stubs.mdb.EXPECT().
+				stubs.mockQuerier.EXPECT().
 					SelectUserByName(gomock.Any(), gomock.Eq(user.Name)).
 					Times(1).
 					Return(user, nil)
@@ -484,7 +484,7 @@ func TestLoginUser(t *testing.T) {
 				"password": password,
 			},
 			buildStubs: func(stubs buildStubs) {
-				stubs.mdb.EXPECT().
+				stubs.mockQuerier.EXPECT().
 					SelectUserByName(gomock.Any(), gomock.Any()).
 					Times(1).
 					Return(db.User{}, sql.ErrConnDone)

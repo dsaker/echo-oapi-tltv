@@ -27,6 +27,7 @@ type TranslateX interface {
 	TranslatePhrases(echo.Context, []db.Translate, db.Language, clients.TranslateClientX) ([]util.TranslatesReturn, error)
 	CreateGoogleTranslateClient(echo.Context) (clients.TranslateClientX, error)
 	CreateGoogleTTSClient(echo.Context) (clients.TTSClientX, error)
+	CreateTTSForLang(echo.Context, db.Querier, db.Language, db.Title, string) error
 }
 
 type Translate struct {
@@ -355,6 +356,25 @@ func (t *Translate) CreateGoogleTTSClient(e echo.Context) (clients.TTSClientX, e
 	defer ttsClient.Close()
 
 	return ttsClient, nil
+}
+
+func (t *Translate) CreateTTSForLang(e echo.Context, q db.Querier, l db.Language, title db.Title, abp string) error {
+	trClient, err := t.CreateGoogleTranslateClient(e)
+	if err != nil {
+		e.Logger().Error(err)
+		return err
+	}
+	ttsClient, err := t.CreateGoogleTTSClient(e)
+	if err != nil {
+		e.Logger().Error(err)
+		return err
+	}
+	// create TTS for fromLanguage
+	if err = t.CreateTTS(e, q, ttsClient, trClient, l, title, abp); err != nil {
+		e.Logger().Error(err)
+		return err
+	}
+	return nil
 }
 
 func makeHintString(s string) string {

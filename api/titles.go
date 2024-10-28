@@ -83,9 +83,9 @@ func (s *Server) AddTitle(e echo.Context) error {
 	if err != nil {
 		return e.String(http.StatusInternalServerError, err.Error())
 	}
-	// create new translates without google api client for inserting into translates into mdb
+	// create new translates without google api client for inserting into translates into mockQuerier
 	//newTranslates := translates.NewTranslate(nil, nil)
-	// insert phrases into mdb as translates object of OgLanguage
+	// insert phrases into mockQuerier as translates object of OgLanguage
 	_, err = s.translates.InsertNewPhrases(e, title, s.queries, stringsSlice)
 	if err != nil {
 		dbErr := s.queries.DeleteTitleById(e.Request().Context(), title.ID)

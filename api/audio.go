@@ -87,7 +87,7 @@ func (s *Server) AudioFromFile(e echo.Context) error {
 		return e.String(http.StatusInternalServerError, err.Error())
 	}
 
-	// insert phrases into mdb as translates object of OgLanguage
+	// insert phrases into mockQuerier as translates object of OgLanguage
 	_, err = s.translates.InsertNewPhrases(e, title, s.queries, stringsSlice)
 	if err != nil {
 		dbErr := s.queries.DeleteTitleById(e.Request().Context(), title.ID)
@@ -104,7 +104,7 @@ func (s *Server) AudioFromFile(e echo.Context) error {
 		TitleId:        title.ID,
 		ToLanguageId:   toLangId,
 	}
-	zipFile, err := createAudioFromTitle(e, s, title, audioFromTitleRequest)
+	zipFile, err := s.createAudioFromTitle(e, title, audioFromTitleRequest)
 	if err != nil {
 		e.Logger().Error(err)
 		return e.String(http.StatusInternalServerError, err.Error())
@@ -130,16 +130,16 @@ func (s *Server) AudioFromTitle(e echo.Context) error {
 		return e.String(http.StatusInternalServerError, err.Error())
 	}
 
-	zipFile, err := createAudioFromTitle(e, s, title, audioFromTitleRequest)
+	zipFile, err := s.createAudioFromTitle(e, title, audioFromTitleRequest)
 	if err != nil {
 		return e.String(http.StatusInternalServerError, err.Error())
 	}
 	return e.Attachment(zipFile.Name(), title.Title+".zip")
 }
 
-func createAudioFromTitle(e echo.Context, s *Server, t db.Title, r oapi.AudioFromTitleJSONRequestBody) (*os.File, error) {
+func (s *Server) createAudioFromTitle(e echo.Context, t db.Title, r oapi.AudioFromTitleJSONRequestBody) (*os.File, error) {
 
-	// get mdb.Language for from language from id
+	// get mockQuerier.Language for from language from id
 	fromLang, err := s.queries.SelectLanguagesById(e.Request().Context(), r.FromLanguageId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -150,7 +150,7 @@ func createAudioFromTitle(e echo.Context, s *Server, t db.Title, r oapi.AudioFro
 		return nil, err
 	}
 
-	// get mdb.Language for to language from id
+	// get mockQuerier.Language for to language from id
 	toLang, err := s.queries.SelectLanguagesById(e.Request().Context(), r.ToLanguageId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -166,34 +166,12 @@ func createAudioFromTitle(e echo.Context, s *Server, t db.Title, r oapi.AudioFro
 	fromAudioBasePath := fmt.Sprintf("%s%d/", audioBasePath, r.FromLanguageId)
 	toAudioBasePath := fmt.Sprintf("%s%d/", audioBasePath, r.ToLanguageId)
 
-	tClient1, err := s.translates.CreateGoogleTranslateClient(e)
-	if err != nil {
-		e.Logger().Error(err)
-		return nil, err
-	}
-	ttsClient1, err := s.translates.CreateGoogleTTSClient(e)
-	if err != nil {
-		e.Logger().Error(err)
-		return nil, err
-	}
-	// create TTS for fromLanguage
-	if err = s.translates.CreateTTS(e, s.queries, ttsClient1, tClient1, fromLang, t, fromAudioBasePath); err != nil {
+	if err = s.translates.CreateTTSForLang(e, s.queries, fromLang, t, fromAudioBasePath); err != nil {
 		e.Logger().Error(err)
 		return nil, err
 	}
 
-	tClient2, err := s.translates.CreateGoogleTranslateClient(e)
-	if err != nil {
-		e.Logger().Error(err)
-		return nil, err
-	}
-	ttsClient2, err := s.translates.CreateGoogleTTSClient(e)
-	if err != nil {
-		e.Logger().Error(err)
-		return nil, err
-	}
-	// create TTS for toLanguage
-	if err = s.translates.CreateTTS(e, s.queries, ttsClient2, tClient2, toLang, t, toAudioBasePath); err != nil {
+	if err = s.translates.CreateTTSForLang(e, s.queries, toLang, t, toAudioBasePath); err != nil {
 		e.Logger().Error(err)
 		return nil, err
 	}

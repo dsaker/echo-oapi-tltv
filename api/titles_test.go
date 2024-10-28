@@ -41,7 +41,7 @@ func TestFindTitles(t *testing.T) {
 			user:   user,
 			values: map[string]any{"similarity": true, "limit": true},
 			buildStubs: func(stubs buildStubs) {
-				stubs.mdb.EXPECT().
+				stubs.mockQuerier.EXPECT().
 					ListTitles(gomock.Any(), listTitleParams).
 					Times(1).
 					Return(listTitlesRow, nil)
@@ -158,14 +158,14 @@ func TestAddTitle(t *testing.T) {
 				return createMultiPartBody(t, data, filename, fields)
 			},
 			buildStubs: func(stubs buildStubs) {
-				stubs.ma.EXPECT().
+				stubs.audioFileX.EXPECT().
 					GetLines(gomock.Any(), gomock.Any()).
 					Return(stringsSlice, nil)
-				stubs.mdb.EXPECT().
+				stubs.mockQuerier.EXPECT().
 					InsertTitle(gomock.Any(), insertTitle).
 					Times(1).Return(title, nil)
-				stubs.mt.EXPECT().
-					InsertNewPhrases(gomock.Any(), title, stubs.mdb, stringsSlice).
+				stubs.translateX.EXPECT().
+					InsertNewPhrases(gomock.Any(), title, stubs.mockQuerier, stringsSlice).
 					Times(1).Return(dbTranslates, nil)
 			},
 			checkResponse: func(res *http.Response) {
@@ -247,10 +247,10 @@ func TestAddTitle(t *testing.T) {
 				return createMultiPartBody(t, data, filename, fields)
 			},
 			buildStubs: func(stubs buildStubs) {
-				stubs.ma.EXPECT().
+				stubs.audioFileX.EXPECT().
 					GetLines(gomock.Any(), gomock.Any()).
 					Return(stringsSlice, nil)
-				stubs.mdb.EXPECT().
+				stubs.mockQuerier.EXPECT().
 					InsertTitle(gomock.Any(), insertTitle).
 					Times(1).Return(db.Title{}, sql.ErrConnDone)
 			},
@@ -315,7 +315,7 @@ func TestFindTitleById(t *testing.T) {
 			name: "OK",
 			user: user,
 			buildStubs: func(stubs buildStubs) {
-				stubs.mdb.EXPECT().
+				stubs.mockQuerier.EXPECT().
 					SelectTitleById(gomock.Any(), title.ID).
 					Times(1).
 					Return(title, nil)
@@ -334,7 +334,7 @@ func TestFindTitleById(t *testing.T) {
 			name: "id not found",
 			user: user,
 			buildStubs: func(stubs buildStubs) {
-				stubs.mdb.EXPECT().
+				stubs.mockQuerier.EXPECT().
 					SelectTitleById(gomock.Any(), title.ID).
 					Times(1).
 					Return(db.Title{}, sql.ErrNoRows)
@@ -376,7 +376,7 @@ func TestDeleteTitleById(t *testing.T) {
 			name: "OK",
 			user: user,
 			buildStubs: func(stubs buildStubs) {
-				stubs.mdb.EXPECT().
+				stubs.mockQuerier.EXPECT().
 					DeleteTitleById(gomock.Any(), title.ID).
 					Times(1).Return(nil)
 			},
@@ -389,7 +389,7 @@ func TestDeleteTitleById(t *testing.T) {
 			name: "id not found",
 			user: user,
 			buildStubs: func(stubs buildStubs) {
-				stubs.mdb.EXPECT().
+				stubs.mockQuerier.EXPECT().
 					DeleteTitleById(gomock.Any(), title.ID).
 					Times(1).
 					Return(sql.ErrNoRows)
