@@ -1,9 +1,7 @@
 package translates
 
 import (
-	texttospeech "cloud.google.com/go/texttospeech/apiv1"
 	"cloud.google.com/go/texttospeech/apiv1/texttospeechpb"
-	"cloud.google.com/go/translate"
 	"context"
 	"errors"
 	"fmt"
@@ -14,7 +12,6 @@ import (
 	"strings"
 	"sync"
 	db "talkliketv.click/tltv/db/sqlc"
-	"talkliketv.click/tltv/internal/clients"
 	"talkliketv.click/tltv/internal/util"
 	"time"
 	"unicode"
@@ -23,17 +20,26 @@ import (
 type TranslateX interface {
 	InsertNewPhrases(echo.Context, db.Title, db.Querier, []string) ([]db.Translate, error)
 	InsertTranslates(echo.Context, db.Querier, int16, []util.TranslatesReturn) ([]db.Translate, error)
-	CreateTTS(echo.Context, db.Querier, clients.TTSClientX, clients.TranslateClientX, db.Language, db.Title, string) error
-	TranslatePhrases(echo.Context, []db.Translate, db.Language, clients.TranslateClientX) ([]util.TranslatesReturn, error)
-	CreateGoogleTranslateClient(echo.Context) (clients.TranslateClientX, error)
-	CreateGoogleTTSClient(echo.Context) (clients.TTSClientX, error)
-	CreateTTSForLang(echo.Context, db.Querier, db.Language, db.Title, string) error
+	CreateTTS(echo.Context, db.Querier, db.Language, db.Title, string) error
+	TranslatePhrases(echo.Context, []db.Translate, db.Language) ([]util.TranslatesReturn, error)
+	//CreateGoogleTranslateClient(echo.Context) (TranslateClientX, error)
+	//CreateGoogleTTSClient(echo.Context) (TTSClientX, error)
+	//CreateTTSForLang(echo.Context, db.Querier, db.Language, db.Title, string) error
 }
 
 type Translate struct {
+	translateClient TranslateClientX
+	ttsClient       TTSClientX
 }
 
-func (t *Translate) TextToSpeech(e echo.Context, ts []db.Translate, c clients.TTSClientX, bp, tag string) error {
+func New(trc TranslateClientX, ttsc TTSClientX) *Translate {
+	return &Translate{
+		translateClient: trc,
+		ttsClient:       ttsc,
+	}
+}
+
+func (t *Translate) TextToSpeech(e echo.Context, ts []db.Translate, bp, tag string) error {
 
 	// concurrently get all the audio content from Google text-to-speech
 	var wg sync.WaitGroup
@@ -48,7 +54,7 @@ func (t *Translate) TextToSpeech(e echo.Context, ts []db.Translate, c clients.TT
 		}
 		wg.Add(1)
 		//get responses concurrently with go routines
-		go t.GetSpeech(e, newCtx, cancel, nextText, &wg, c, bp, tag)
+		go t.GetSpeech(e, newCtx, cancel, nextText, &wg, bp, tag)
 	}
 	wg.Wait()
 
@@ -66,7 +72,6 @@ func (t *Translate) GetSpeech(
 	cancel context.CancelFunc,
 	translate db.Translate,
 	wg *sync.WaitGroup,
-	c clients.TTSClientX,
 	basepath,
 	tag string) {
 	defer wg.Done()
@@ -94,7 +99,7 @@ func (t *Translate) GetSpeech(
 			},
 		}
 
-		resp, err := c.SynthesizeSpeech(ctx, &req)
+		resp, err := t.ttsClient.SynthesizeSpeech(ctx, &req)
 		if err != nil {
 			e.Logger().Error(fmt.Errorf("error creating Synthesize Speech client: %s", err))
 			cancel()
@@ -112,7 +117,7 @@ func (t *Translate) GetSpeech(
 	}
 }
 
-func (t *Translate) TranslatePhrases(e echo.Context, ts []db.Translate, dbLang db.Language, c clients.TranslateClientX) ([]util.TranslatesReturn, error) {
+func (t *Translate) TranslatePhrases(e echo.Context, ts []db.Translate, dbLang db.Language) ([]util.TranslatesReturn, error) {
 
 	// get language tag to translate to
 	langTag, err := language.Parse(dbLang.Tag)
@@ -134,7 +139,7 @@ func (t *Translate) TranslatePhrases(e echo.Context, ts []db.Translate, dbLang d
 		}
 		wg.Add(1)
 		//get responses concurrently with go routines
-		go t.GetTranslate(e, newCtx, cancel, nextTranslate, &wg, c, langTag, responses, i)
+		go t.GetTranslate(e, newCtx, cancel, nextTranslate, &wg, langTag, responses, i)
 	}
 	wg.Wait()
 
@@ -151,7 +156,6 @@ func (t *Translate) GetTranslate(e echo.Context,
 	cancel context.CancelFunc,
 	phrase db.Translate,
 	wg *sync.WaitGroup,
-	c clients.TranslateClientX,
 	lang language.Tag,
 	responses []util.TranslatesReturn,
 	i int,
@@ -163,7 +167,7 @@ func (t *Translate) GetTranslate(e echo.Context,
 		return // Error somewhere, terminate
 	default: // Default to avoid blocking
 
-		resp, err := c.Translate(ctx, []string{phrase.Phrase}, lang, nil)
+		resp, err := t.translateClient.Translate(ctx, []string{phrase.Phrase}, lang, nil)
 		if err != nil {
 			switch {
 			case errors.Is(err, context.Canceled):
@@ -188,7 +192,7 @@ func (t *Translate) GetTranslate(e echo.Context,
 	}
 }
 
-func (t *Translate) CreateTTS(e echo.Context, q db.Querier, ttsc clients.TTSClientX, tc clients.TranslateClientX, lang db.Language, title db.Title, basepath string) error {
+func (t *Translate) CreateTTS(e echo.Context, q db.Querier, lang db.Language, title db.Title, basepath string) error {
 	// if the audio files already exist no need to request them again
 	skip, err := pathExists(basepath)
 	if err != nil {
@@ -198,7 +202,7 @@ func (t *Translate) CreateTTS(e echo.Context, q db.Querier, ttsc clients.TTSClie
 
 	// if they do not exist then request them
 	if !skip {
-		fromTranslates, err := t.GetOrCreateTranslates(e, q, tc, title.ID, lang, title.OgLanguageID)
+		fromTranslates, err := t.GetOrCreateTranslates(e, q, title.ID, lang, title.OgLanguageID)
 		if err != nil {
 			return err
 		}
@@ -209,7 +213,7 @@ func (t *Translate) CreateTTS(e echo.Context, q db.Querier, ttsc clients.TTSClie
 			return err
 		}
 
-		if err = t.TextToSpeech(e, fromTranslates, ttsc, basepath, lang.Tag); err != nil {
+		if err = t.TextToSpeech(e, fromTranslates, basepath, lang.Tag); err != nil {
 			e.Logger().Error(err)
 			return err
 		}
@@ -218,7 +222,7 @@ func (t *Translate) CreateTTS(e echo.Context, q db.Querier, ttsc clients.TTSClie
 	return nil
 }
 
-func (t *Translate) GetOrCreateTranslates(e echo.Context, q db.Querier, c clients.TranslateClientX, titleId int64, toLang db.Language, fromLangId int16) ([]db.Translate, error) {
+func (t *Translate) GetOrCreateTranslates(e echo.Context, q db.Querier, titleId int64, toLang db.Language, fromLangId int16) ([]db.Translate, error) {
 	// see if translates exist for title for language
 	exists, err := q.SelectExistsTranslates(
 		e.Request().Context(),
@@ -254,7 +258,7 @@ func (t *Translate) GetOrCreateTranslates(e echo.Context, q db.Querier, c client
 	}
 
 	// create translates for title and to language and return
-	translatesReturn, err := t.TranslatePhrases(e, fromTranslates, toLang, c)
+	translatesReturn, err := t.TranslatePhrases(e, fromTranslates, toLang)
 	if err != nil {
 		e.Logger().Error(err)
 		return nil, err
@@ -331,51 +335,51 @@ func (t *Translate) InsertTranslates(e echo.Context, q db.Querier, langId int16,
 	return dbTranslates, nil
 }
 
-func (t *Translate) CreateGoogleTranslateClient(e echo.Context) (clients.TranslateClientX, error) {
-	ctx := e.Request().Context()
-	// create translate client
-	transClient, err := translate.NewClient(ctx)
-	if err != nil {
-		e.Logger().Error(fmt.Errorf("error creating translate client: %s", err))
-		return nil, err
-	}
-	defer transClient.Close()
+//func (t *Translate) CreateGoogleTranslateClient(e echo.Context) (TranslateClientX, error) {
+//	ctx := e.Request().Context()
+//	// create translate client
+//	transClient, err := translate.NewClient(ctx)
+//	if err != nil {
+//		e.Logger().Error(fmt.Errorf("error creating translate client: %s", err))
+//		return nil, err
+//	}
+//	defer transClient.Close()
+//
+//	return transClient, nil
+//}
 
-	return transClient, nil
-}
+//func (t *Translate) CreateGoogleTTSClient(e echo.Context) (TTSClientX, error) {
+//	ctx := e.Request().Context()
+//
+//	//create text-to-speech client
+//	ttsClient, err := texttospeech.NewClient(ctx)
+//	if err != nil {
+//		e.Logger().Error(fmt.Errorf("error creating texttospeech client: %s", err))
+//		return nil, err
+//	}
+//	defer ttsClient.Close()
+//
+//	return ttsClient, nil
+//}
 
-func (t *Translate) CreateGoogleTTSClient(e echo.Context) (clients.TTSClientX, error) {
-	ctx := e.Request().Context()
-
-	//create text-to-speech client
-	ttsClient, err := texttospeech.NewClient(ctx)
-	if err != nil {
-		e.Logger().Error(fmt.Errorf("error creating texttospeech client: %s", err))
-		return nil, err
-	}
-	defer ttsClient.Close()
-
-	return ttsClient, nil
-}
-
-func (t *Translate) CreateTTSForLang(e echo.Context, q db.Querier, l db.Language, title db.Title, abp string) error {
-	trClient, err := t.CreateGoogleTranslateClient(e)
-	if err != nil {
-		e.Logger().Error(err)
-		return err
-	}
-	ttsClient, err := t.CreateGoogleTTSClient(e)
-	if err != nil {
-		e.Logger().Error(err)
-		return err
-	}
-	// create TTS for fromLanguage
-	if err = t.CreateTTS(e, q, ttsClient, trClient, l, title, abp); err != nil {
-		e.Logger().Error(err)
-		return err
-	}
-	return nil
-}
+//func (t *Translate) CreateTTSForLang(e echo.Context, q db.Querier, l db.Language, title db.Title, abp string) error {
+//	trClient, err := t.CreateGoogleTranslateClient(e)
+//	if err != nil {
+//		e.Logger().Error(err)
+//		return err
+//	}
+//	ttsClient, err := t.CreateGoogleTTSClient(e)
+//	if err != nil {
+//		e.Logger().Error(err)
+//		return err
+//	}
+//	// create TTS for fromLanguage
+//	if err = t.CreateTTS(e, q, ttsClient, trClient, l, title, abp); err != nil {
+//		e.Logger().Error(err)
+//		return err
+//	}
+//	return nil
+//}
 
 func makeHintString(s string) string {
 	hintString := ""

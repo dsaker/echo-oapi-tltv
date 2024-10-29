@@ -166,12 +166,12 @@ func (s *Server) createAudioFromTitle(e echo.Context, title db.Title, r oapi.Aud
 	fromAudioBasePath := fmt.Sprintf("%s%d/", audioBasePath, r.FromLanguageId)
 	toAudioBasePath := fmt.Sprintf("%s%d/", audioBasePath, r.ToLanguageId)
 
-	if err = s.translates.CreateTTSForLang(e, s.queries, fromLang, title, fromAudioBasePath); err != nil {
+	if err = s.translates.CreateTTS(e, s.queries, fromLang, title, fromAudioBasePath); err != nil {
 		e.Logger().Error(err)
 		return nil, err
 	}
 
-	if err = s.translates.CreateTTSForLang(e, s.queries, toLang, title, toAudioBasePath); err != nil {
+	if err = s.translates.CreateTTS(e, s.queries, toLang, title, toAudioBasePath); err != nil {
 		e.Logger().Error(err)
 		return nil, err
 	}
@@ -191,7 +191,8 @@ func (s *Server) createAudioFromTitle(e echo.Context, title db.Title, r oapi.Aud
 	}
 	fullPausePath := s.config.TTSBasePath + pausePath
 
-	tmpDirPath := fmt.Sprintf("/tmp/%s-%s/", title.Title, test.RandomString(4))
+	// TODO add copy silence to base path if not exists to start of application
+	tmpDirPath := fmt.Sprintf("%s/%s-%s/", s.config.TTSBasePath, title.Title, test.RandomString(4))
 	err = os.MkdirAll(tmpDirPath, 0777)
 	if err != nil {
 		e.Logger().Error(err)

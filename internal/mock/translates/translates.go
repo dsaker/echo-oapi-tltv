@@ -10,7 +10,6 @@ import (
 	gomock "github.com/golang/mock/gomock"
 	echo "github.com/labstack/echo/v4"
 	db "talkliketv.click/tltv/db/sqlc"
-	clients "talkliketv.click/tltv/internal/clients"
 	util "talkliketv.click/tltv/internal/util"
 )
 
@@ -37,48 +36,18 @@ func (m *MockTranslateX) EXPECT() *MockTranslateXMockRecorder {
 	return m.recorder
 }
 
-// CreateGoogleTTSClient mocks base method.
-func (m *MockTranslateX) CreateGoogleTTSClient(arg0 echo.Context) (clients.TTSClientX, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateGoogleTTSClient", arg0)
-	ret0, _ := ret[0].(clients.TTSClientX)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// CreateGoogleTTSClient indicates an expected call of CreateGoogleTTSClient.
-func (mr *MockTranslateXMockRecorder) CreateGoogleTTSClient(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateGoogleTTSClient", reflect.TypeOf((*MockTranslateX)(nil).CreateGoogleTTSClient), arg0)
-}
-
-// CreateGoogleTranslateClient mocks base method.
-func (m *MockTranslateX) CreateGoogleTranslateClient(arg0 echo.Context) (clients.TranslateClientX, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateGoogleTranslateClient", arg0)
-	ret0, _ := ret[0].(clients.TranslateClientX)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// CreateGoogleTranslateClient indicates an expected call of CreateGoogleTranslateClient.
-func (mr *MockTranslateXMockRecorder) CreateGoogleTranslateClient(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateGoogleTranslateClient", reflect.TypeOf((*MockTranslateX)(nil).CreateGoogleTranslateClient), arg0)
-}
-
 // CreateTTS mocks base method.
-func (m *MockTranslateX) CreateTTS(arg0 echo.Context, arg1 db.Querier, arg2 clients.TTSClientX, arg3 clients.TranslateClientX, arg4 db.Language, arg5 db.Title, arg6 string) error {
+func (m *MockTranslateX) CreateTTS(arg0 echo.Context, arg1 db.Querier, arg2 db.Language, arg3 db.Title, arg4 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateTTS", arg0, arg1, arg2, arg3, arg4, arg5, arg6)
+	ret := m.ctrl.Call(m, "CreateTTS", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CreateTTS indicates an expected call of CreateTTS.
-func (mr *MockTranslateXMockRecorder) CreateTTS(arg0, arg1, arg2, arg3, arg4, arg5, arg6 interface{}) *gomock.Call {
+func (mr *MockTranslateXMockRecorder) CreateTTS(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateTTS", reflect.TypeOf((*MockTranslateX)(nil).CreateTTS), arg0, arg1, arg2, arg3, arg4, arg5, arg6)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateTTS", reflect.TypeOf((*MockTranslateX)(nil).CreateTTS), arg0, arg1, arg2, arg3, arg4)
 }
 
 // CreateTTSForLang mocks base method.
@@ -126,16 +95,16 @@ func (mr *MockTranslateXMockRecorder) InsertTranslates(arg0, arg1, arg2, arg3 in
 }
 
 // TranslatePhrases mocks base method.
-func (m *MockTranslateX) TranslatePhrases(arg0 echo.Context, arg1 []db.Translate, arg2 db.Language, arg3 clients.TranslateClientX) ([]util.TranslatesReturn, error) {
+func (m *MockTranslateX) TranslatePhrases(arg0 echo.Context, arg1 []db.Translate, arg2 db.Language) ([]util.TranslatesReturn, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TranslatePhrases", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "TranslatePhrases", arg0, arg1, arg2)
 	ret0, _ := ret[0].([]util.TranslatesReturn)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // TranslatePhrases indicates an expected call of TranslatePhrases.
-func (mr *MockTranslateXMockRecorder) TranslatePhrases(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+func (mr *MockTranslateXMockRecorder) TranslatePhrases(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TranslatePhrases", reflect.TypeOf((*MockTranslateX)(nil).TranslatePhrases), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TranslatePhrases", reflect.TypeOf((*MockTranslateX)(nil).TranslatePhrases), arg0, arg1, arg2)
 }

@@ -83,8 +83,7 @@ func (s *Server) AddTitle(e echo.Context) error {
 	if err != nil {
 		return e.String(http.StatusInternalServerError, err.Error())
 	}
-	// create new translates without google api client for inserting into translates into mockQuerier
-	//newTranslates := translates.NewTranslate(nil, nil)
+
 	// insert phrases into mockQuerier as translates object of OgLanguage
 	_, err = s.translates.InsertNewPhrases(e, title, s.queries, stringsSlice)
 	if err != nil {
@@ -173,14 +172,8 @@ func (s *Server) TitlesTranslate(e echo.Context) error {
 		return e.String(http.StatusInternalServerError, err.Error())
 	}
 
-	// create google api translate client
-	tClient, err := s.translates.CreateGoogleTranslateClient(e)
-	if err != nil {
-		e.Logger().Error(err)
-		return e.String(http.StatusInternalServerError, err.Error())
-	}
 	// get the translates from the phrases
-	newTranslates, err := s.translates.TranslatePhrases(e, phrasesToTranslate, dbLang, tClient)
+	newTranslates, err := s.translates.TranslatePhrases(e, phrasesToTranslate, dbLang)
 	if err != nil {
 		e.Logger().Error(err)
 		return e.String(http.StatusInternalServerError, err.Error())

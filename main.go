@@ -3,8 +3,14 @@
 package main
 
 import (
+	texttospeech "cloud.google.com/go/texttospeech/apiv1"
+	"cloud.google.com/go/translate"
+	"context"
 	"database/sql"
 	"flag"
+	"talkliketv.click/tltv/internal/translates"
+
+	//"github.com/kataras/iris/v12/context"
 	"github.com/labstack/echo/v4"
 	"net"
 	"os/exec"
@@ -13,13 +19,11 @@ import (
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/audio/audiofile"
 	"talkliketv.click/tltv/internal/config"
-	"talkliketv.click/tltv/internal/translates"
 )
 
 func main() {
 
 	e := echo.New()
-
 	cfg := config.SetConfigs()
 
 	flag.Parse()
@@ -49,7 +53,18 @@ func main() {
 	e.Logger.Info("database connection pool established")
 
 	q := db.New(conn)
-	api.NewServer(e, cfg, q, &translates.Translate{}, &audiofile.AudioFile{})
+	ctx := context.Background()
+	// create translate client
+	transClient, err := translate.NewClient(ctx)
+	if err != nil {
+		e.Logger.Fatal("Error creating google api translate client\n: %s", err)
+	}
+	ttsClient, err := texttospeech.NewClient(ctx)
+	if err != nil {
+		e.Logger.Fatal("Error creating google api translate client\n: %s", err)
+	}
+	t := translates.New(transClient, ttsClient)
+	api.NewServer(e, cfg, q, t, &audiofile.AudioFile{})
 
 	e.Logger.Fatal(e.Start(net.JoinHostPort("0.0.0.0", cfg.Port)))
 }
