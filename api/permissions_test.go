@@ -32,7 +32,7 @@ func TestAddUserPermission(t *testing.T) {
 				"permissionId": 1,
 				"userId":       user.ID,
 			},
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 				stubs.mockQuerier.EXPECT().
 					InsertUserPermission(gomock.Any(), insertUsersPermission).
 					Times(1).
@@ -55,7 +55,7 @@ func TestAddUserPermission(t *testing.T) {
 				"permission": 1,
 				"userId":     user.ID,
 			},
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)
@@ -71,7 +71,7 @@ func TestAddUserPermission(t *testing.T) {
 				"permissionId": 1,
 				"userId":       user.ID,
 			},
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 				stubs.mockQuerier.EXPECT().
 					InsertUserPermission(gomock.Any(), gomock.Any()).
 					Times(1).
@@ -91,7 +91,7 @@ func TestAddUserPermission(t *testing.T) {
 				"permissionId": 1,
 				"userId":       user.ID,
 			},
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusForbidden, res.StatusCode)
@@ -107,7 +107,7 @@ func TestAddUserPermission(t *testing.T) {
 				"permissionId": 1,
 				"userId":       user.ID,
 			},
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 				stubs.mockQuerier.EXPECT().
 					InsertUserPermission(gomock.Any(), gomock.Any()).
 					Times(1).

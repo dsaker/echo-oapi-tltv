@@ -42,7 +42,7 @@ func TestGetPhrases(t *testing.T) {
 			name:   "OK",
 			user:   user,
 			values: map[string]any{"limit": true},
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 				stubs.mockQuerier.EXPECT().
 					SelectPhrasesFromTranslatesWithCorrect(gomock.Any(), selectPhrasesFromTranslatesParams).
 					Times(1).
@@ -62,7 +62,7 @@ func TestGetPhrases(t *testing.T) {
 			name:   "No limit set",
 			user:   user,
 			values: map[string]any{"limit": false},
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 				stubs.mockQuerier.EXPECT().
 					SelectPhrasesFromTranslatesWithCorrect(gomock.Any(), selectPhrasesFromTranslatesParams).
 					Times(1).
@@ -134,7 +134,7 @@ func TestUpdateUsersPhrases(t *testing.T) {
 				"value": 1
 			}
 		]`,
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 				args := db.SelectUsersPhrasesByIdsParams{
 					UserID:     user1.ID,
 					LanguageID: user1.NewLanguageID,
@@ -178,7 +178,7 @@ func TestUpdateUsersPhrases(t *testing.T) {
 				"value": 1
 			}
 		]`,
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)

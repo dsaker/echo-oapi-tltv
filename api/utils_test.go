@@ -14,11 +14,11 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	mockdb "talkliketv.click/tltv/db/mock"
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/config"
 	mocka "talkliketv.click/tltv/internal/mock/audiofile"
 	mockc "talkliketv.click/tltv/internal/mock/clients"
+	mockdb "talkliketv.click/tltv/internal/mock/db"
 	mockt "talkliketv.click/tltv/internal/mock/translates"
 	"talkliketv.click/tltv/internal/oapi"
 	"talkliketv.click/tltv/internal/test"
@@ -44,19 +44,30 @@ const (
 	testAudioBasePath       = "../tmp/test/audio/"
 )
 
-type buildStubs struct {
+type mockStubs struct {
 	mockQuerier      *mockdb.MockQuerier
 	translateX       *mockt.MockTranslateX
 	translateClientX *mockc.MockTranslateClientX
 	ttsClientX       *mockc.MockTTSClientX
 	audioFileX       *mocka.MockAudioFileX
 }
+
+func newMockStubs(ctrl *gomock.Controller) mockStubs {
+	return mockStubs{
+		mockQuerier:      mockdb.NewMockQuerier(ctrl),
+		translateX:       mockt.NewMockTranslateX(ctrl),
+		translateClientX: mockc.NewMockTranslateClientX(ctrl),
+		ttsClientX:       mockc.NewMockTTSClientX(ctrl),
+		audioFileX:       mocka.NewMockAudioFileX(ctrl),
+	}
+}
+
 type testCase struct {
 	name          string
 	body          interface{}
 	user          db.User
 	extraInt      int64
-	buildStubs    func(stubs buildStubs)
+	buildStubs    func(stubs mockStubs)
 	multipartBody func(t *testing.T) (*bytes.Buffer, *multipart.Writer)
 	checkRecorder func(rec *httptest.ResponseRecorder)
 	checkResponse func(res *http.Response)
@@ -150,13 +161,7 @@ func randomLanguage() (language db.Language) {
 }
 
 func setupHandlerTest(t *testing.T, ctrl *gomock.Controller, tc testCase, urlBasePath, body, method string) (*Server, echo.Context, *httptest.ResponseRecorder) {
-	stubs := buildStubs{
-		mockQuerier:      mockdb.NewMockQuerier(ctrl),
-		translateX:       mockt.NewMockTranslateX(ctrl),
-		translateClientX: mockc.NewMockTranslateClientX(ctrl),
-		ttsClientX:       mockc.NewMockTTSClientX(ctrl),
-		audioFileX:       mocka.NewMockAudioFileX(ctrl),
-	}
+	stubs := newMockStubs(ctrl)
 	tc.buildStubs(stubs)
 
 	e := echo.New()
@@ -176,13 +181,8 @@ func setupHandlerTest(t *testing.T, ctrl *gomock.Controller, tc testCase, urlBas
 }
 
 func setupServerTest(t *testing.T, ctrl *gomock.Controller, tc testCase) (*httptest.Server, string) {
-	stubs := buildStubs{
-		mockQuerier:      mockdb.NewMockQuerier(ctrl),
-		translateX:       mockt.NewMockTranslateX(ctrl),
-		translateClientX: mockc.NewMockTranslateClientX(ctrl),
-		ttsClientX:       mockc.NewMockTTSClientX(ctrl),
-		audioFileX:       mocka.NewMockAudioFileX(ctrl),
-	}
+
+	stubs := newMockStubs(ctrl)
 	tc.buildStubs(stubs)
 
 	e := echo.New()

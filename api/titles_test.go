@@ -40,7 +40,7 @@ func TestFindTitles(t *testing.T) {
 			name:   "OK",
 			user:   user,
 			values: map[string]any{"similarity": true, "limit": true},
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 				stubs.mockQuerier.EXPECT().
 					ListTitles(gomock.Any(), listTitleParams).
 					Times(1).
@@ -60,7 +60,7 @@ func TestFindTitles(t *testing.T) {
 			name:   "Missing similarity value",
 			user:   user,
 			values: map[string]any{"similarity": false, "limit": true},
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)
@@ -73,7 +73,7 @@ func TestFindTitles(t *testing.T) {
 			name:   "Missing permission",
 			user:   user,
 			values: map[string]any{"similarity": false, "limit": true},
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusForbidden, res.StatusCode)
@@ -87,7 +87,7 @@ func TestFindTitles(t *testing.T) {
 			name:   "Missing limit value",
 			user:   user,
 			values: map[string]any{"similarity": true, "limit": false},
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)
@@ -157,7 +157,7 @@ func TestAddTitle(t *testing.T) {
 				}
 				return createMultiPartBody(t, data, filename, fields)
 			},
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 				stubs.audioFileX.EXPECT().
 					GetLines(gomock.Any(), gomock.Any()).
 					Return(stringsSlice, nil)
@@ -188,7 +188,7 @@ func TestAddTitle(t *testing.T) {
 				}
 				return createMultiPartBody(t, data, filename, fields)
 			},
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)
@@ -226,7 +226,7 @@ func TestAddTitle(t *testing.T) {
 				require.NoError(t, multiWriter.Close())
 				return body, multiWriter
 			},
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)
@@ -246,7 +246,7 @@ func TestAddTitle(t *testing.T) {
 				}
 				return createMultiPartBody(t, data, filename, fields)
 			},
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 				stubs.audioFileX.EXPECT().
 					GetLines(gomock.Any(), gomock.Any()).
 					Return(stringsSlice, nil)
@@ -264,7 +264,7 @@ func TestAddTitle(t *testing.T) {
 		{
 			name: "missing permission",
 			user: user,
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 			},
 			multipartBody: func(t *testing.T) (*bytes.Buffer, *multipart.Writer) {
 				data := []byte("This is the first sentence.\nThis is the second sentence.\n")
@@ -314,7 +314,7 @@ func TestFindTitleById(t *testing.T) {
 		{
 			name: "OK",
 			user: user,
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 				stubs.mockQuerier.EXPECT().
 					SelectTitleById(gomock.Any(), title.ID).
 					Times(1).
@@ -333,7 +333,7 @@ func TestFindTitleById(t *testing.T) {
 		{
 			name: "id not found",
 			user: user,
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 				stubs.mockQuerier.EXPECT().
 					SelectTitleById(gomock.Any(), title.ID).
 					Times(1).
@@ -375,7 +375,7 @@ func TestDeleteTitleById(t *testing.T) {
 		{
 			name: "OK",
 			user: user,
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 				stubs.mockQuerier.EXPECT().
 					DeleteTitleById(gomock.Any(), title.ID).
 					Times(1).Return(nil)
@@ -388,7 +388,7 @@ func TestDeleteTitleById(t *testing.T) {
 		{
 			name: "id not found",
 			user: user,
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 				stubs.mockQuerier.EXPECT().
 					DeleteTitleById(gomock.Any(), title.ID).
 					Times(1).

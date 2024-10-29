@@ -51,7 +51,7 @@ func TestAudioFromTitle(t *testing.T) {
 				"toLanguageId":   toLang.ID,
 			},
 			user: user,
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 				file, err := os.Create(filename)
 				require.NoError(t, err)
 				defer file.Close()
@@ -99,7 +99,7 @@ func TestAudioFromTitle(t *testing.T) {
 				"toLanguage":     toLang.ID,
 			},
 			user: user,
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)
@@ -116,7 +116,7 @@ func TestAudioFromTitle(t *testing.T) {
 				"toLanguageId":   toLang.ID,
 			},
 			user: user,
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 				stubs.mockQuerier.EXPECT().
 					SelectTitleById(gomock.Any(), title.ID).
 					Return(db.Title{}, sql.ErrConnDone)
@@ -136,7 +136,7 @@ func TestAudioFromTitle(t *testing.T) {
 				"titleId":        title.ID,
 				"toLanguage":     toLang.ID,
 			},
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusForbidden, res.StatusCode)
@@ -206,7 +206,7 @@ func TestAudioFromFile(t *testing.T) {
 		{
 			name: "OK",
 			user: user,
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 				file, err := os.Create(filename)
 				require.NoError(t, err)
 				defer file.Close()
@@ -275,7 +275,7 @@ func TestAudioFromFile(t *testing.T) {
 				}
 				return createMultiPartBody(t, data, filename, formMap)
 			},
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)
@@ -320,7 +320,7 @@ func TestAudioFromFile(t *testing.T) {
 				require.NoError(t, multiWriter.Close())
 				return body, multiWriter
 			},
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)
@@ -342,7 +342,7 @@ func TestAudioFromFile(t *testing.T) {
 					"titleName":      title.Title}
 				return createMultiPartBody(t, data, filename, formMap)
 			},
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 				stubs.audioFileX.EXPECT().
 					GetLines(gomock.Any(), gomock.Any()).
 					Return(stringsSlice, nil)
@@ -370,7 +370,7 @@ func TestAudioFromFile(t *testing.T) {
 					"titleName":      title.Title}
 				return createMultiPartBody(t, data, filename, formMap)
 			},
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusForbidden, res.StatusCode)

@@ -53,7 +53,7 @@ func TestGetUser(t *testing.T) {
 			name:     "get user1",
 			user:     user1,
 			extraInt: user1.ID,
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 				stubs.mockQuerier.EXPECT().
 					SelectUserById(gomock.Any(), user1.ID).
 					Times(1).
@@ -71,7 +71,7 @@ func TestGetUser(t *testing.T) {
 			name:     "Id's don't match",
 			user:     user1,
 			extraInt: user2.ID,
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 			},
 			checkRecorder: func(rec *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusForbidden, rec.Code)
@@ -82,7 +82,7 @@ func TestGetUser(t *testing.T) {
 			name:     "User does not exist",
 			user:     user2,
 			extraInt: user2.ID,
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 				stubs.mockQuerier.EXPECT().
 					SelectUserById(gomock.Any(), user2.ID).
 					Times(1).
@@ -125,7 +125,7 @@ func TestDeleteUser(t *testing.T) {
 			name:     "delete user1",
 			user:     user1,
 			extraInt: user1.ID,
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 				stubs.mockQuerier.EXPECT().
 					DeleteUserById(gomock.Any(), user1.ID).
 					Times(1).
@@ -139,7 +139,7 @@ func TestDeleteUser(t *testing.T) {
 			name:     "Id's don't match",
 			user:     user1,
 			extraInt: user2.ID,
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 			},
 			checkRecorder: func(rec *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusForbidden, rec.Code)
@@ -150,7 +150,7 @@ func TestDeleteUser(t *testing.T) {
 			name:     "User does not exist",
 			user:     user2,
 			extraInt: user2.ID,
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 				stubs.mockQuerier.EXPECT().
 					DeleteUserById(gomock.Any(), user2.ID).
 					Times(1).
@@ -196,7 +196,7 @@ func TestCreateUser(t *testing.T) {
 				"password":      password,
 				"titleId":       user.TitleID,
 			},
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 				arg := db.InsertUserParams{
 					Name:           user.Name,
 					Email:          user.Email,
@@ -241,7 +241,7 @@ func TestCreateUser(t *testing.T) {
 				"password":      password,
 				"titleId":       user.TitleID,
 			},
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 				stubs.mockQuerier.EXPECT().
 					InsertUser(gomock.Any(), gomock.Any()).
 					Times(1).
@@ -262,7 +262,7 @@ func TestCreateUser(t *testing.T) {
 				"password":      password,
 				"titleId":       user.TitleID,
 			},
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 				stubs.mockQuerier.EXPECT().
 					InsertUser(gomock.Any(), gomock.Any()).
 					Times(1).
@@ -320,7 +320,7 @@ func TestUpdateUser(t *testing.T) {
 				"value": "newemail2@email.com"
 			}
 		]`,
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 				userCopy := user1
 				paramsCopy := updateUserParams
 				paramsCopy.Email = "newemail2@email.com"
@@ -353,7 +353,7 @@ func TestUpdateUser(t *testing.T) {
 				"value": "newemail2@email.com"
 			}
 		]`,
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 			},
 			checkRecorder: func(rec *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusForbidden, rec.Code)
@@ -371,7 +371,7 @@ func TestUpdateUser(t *testing.T) {
 				"value": "newemail2@email.com"
 			}
 		]`,
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 			},
 			checkRecorder: func(rec *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, rec.Code)
@@ -389,7 +389,7 @@ func TestUpdateUser(t *testing.T) {
 				"value": "newemail2@email.com"
 			}
 		]`,
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 				stubs.mockQuerier.EXPECT().
 					SelectUserById(gomock.Any(), user2.ID).
 					Times(1).
@@ -429,7 +429,7 @@ func TestLoginUser(t *testing.T) {
 				"username": user.Name,
 				"password": password,
 			},
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 				stubs.mockQuerier.EXPECT().
 					SelectUserByName(gomock.Any(), gomock.Any()).
 					Times(1).
@@ -449,7 +449,7 @@ func TestLoginUser(t *testing.T) {
 				"username": "NotFound",
 				"password": password,
 			},
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 				stubs.mockQuerier.EXPECT().
 					SelectUserByName(gomock.Any(), gomock.Any()).
 					Times(1).
@@ -466,7 +466,7 @@ func TestLoginUser(t *testing.T) {
 				"username": user.Name,
 				"password": "incorrect",
 			},
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 				stubs.mockQuerier.EXPECT().
 					SelectUserByName(gomock.Any(), gomock.Eq(user.Name)).
 					Times(1).
@@ -483,7 +483,7 @@ func TestLoginUser(t *testing.T) {
 				"username": user.Name,
 				"password": password,
 			},
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 				stubs.mockQuerier.EXPECT().
 					SelectUserByName(gomock.Any(), gomock.Any()).
 					Times(1).
@@ -528,7 +528,7 @@ func TestCreateUserMiddleware(t *testing.T) {
 				"titleId":       user.TitleID,
 				"email":         "invalid-email",
 			},
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)
@@ -546,7 +546,7 @@ func TestCreateUserMiddleware(t *testing.T) {
 				"titleId":       user.TitleID,
 				"email":         user.Email,
 			},
-			buildStubs: func(stubs buildStubs) {
+			buildStubs: func(stubs mockStubs) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)

@@ -137,7 +137,7 @@ func (s *Server) AudioFromTitle(e echo.Context) error {
 	return e.Attachment(zipFile.Name(), title.Title+".zip")
 }
 
-func (s *Server) createAudioFromTitle(e echo.Context, t db.Title, r oapi.AudioFromTitleJSONRequestBody) (*os.File, error) {
+func (s *Server) createAudioFromTitle(e echo.Context, title db.Title, r oapi.AudioFromTitleJSONRequestBody) (*os.File, error) {
 
 	// get mockQuerier.Language for from language from id
 	fromLang, err := s.queries.SelectLanguagesById(e.Request().Context(), r.FromLanguageId)
@@ -161,22 +161,22 @@ func (s *Server) createAudioFromTitle(e echo.Context, t db.Title, r oapi.AudioFr
 		return nil, err
 	}
 
-	audioBasePath := fmt.Sprintf("%s%d/", s.config.TTSBasePath, t.ID)
+	audioBasePath := fmt.Sprintf("%s%d/", s.config.TTSBasePath, title.ID)
 
 	fromAudioBasePath := fmt.Sprintf("%s%d/", audioBasePath, r.FromLanguageId)
 	toAudioBasePath := fmt.Sprintf("%s%d/", audioBasePath, r.ToLanguageId)
 
-	if err = s.translates.CreateTTSForLang(e, s.queries, fromLang, t, fromAudioBasePath); err != nil {
+	if err = s.translates.CreateTTSForLang(e, s.queries, fromLang, title, fromAudioBasePath); err != nil {
 		e.Logger().Error(err)
 		return nil, err
 	}
 
-	if err = s.translates.CreateTTSForLang(e, s.queries, toLang, t, toAudioBasePath); err != nil {
+	if err = s.translates.CreateTTSForLang(e, s.queries, toLang, title, toAudioBasePath); err != nil {
 		e.Logger().Error(err)
 		return nil, err
 	}
 
-	phraseIds, err := s.queries.SelectPhraseIdsByTitleId(e.Request().Context(), t.ID)
+	phraseIds, err := s.queries.SelectPhraseIdsByTitleId(e.Request().Context(), title.ID)
 	if err != nil {
 		e.Logger().Error(err)
 		return nil, err
@@ -191,19 +191,19 @@ func (s *Server) createAudioFromTitle(e echo.Context, t db.Title, r oapi.AudioFr
 	}
 	fullPausePath := s.config.TTSBasePath + pausePath
 
-	tmpDirPath := fmt.Sprintf("/tmp/%s-%s/", t.Title, test.RandomString(4))
+	tmpDirPath := fmt.Sprintf("/tmp/%s-%s/", title.Title, test.RandomString(4))
 	err = os.MkdirAll(tmpDirPath, 0777)
 	if err != nil {
 		e.Logger().Error(err)
 		return nil, err
 	}
 
-	if err = s.af.BuildAudioInputFiles(e, phraseIds, t, fullPausePath, fromAudioBasePath, toAudioBasePath, tmpDirPath); err != nil {
+	if err = s.af.BuildAudioInputFiles(e, phraseIds, title, fullPausePath, fromAudioBasePath, toAudioBasePath, tmpDirPath); err != nil {
 		e.Logger().Error(err)
 		return nil, err
 	}
 
-	zipFile, err := s.af.CreateMp3ZipWithFfmpeg(e, t, tmpDirPath)
+	zipFile, err := s.af.CreateMp3ZipWithFfmpeg(e, title, tmpDirPath)
 	if err != nil {
 		return nil, err
 	}
