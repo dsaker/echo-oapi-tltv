@@ -7,6 +7,7 @@ package mocka
 import (
 	multipart "mime/multipart"
 	os "os"
+	exec "os/exec"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -79,4 +80,42 @@ func (m *MockAudioFileX) GetLines(arg0 echo.Context, arg1 multipart.File) ([]str
 func (mr *MockAudioFileXMockRecorder) GetLines(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLines", reflect.TypeOf((*MockAudioFileX)(nil).GetLines), arg0, arg1)
+}
+
+// MockcmdRunnerX is a mock of cmdRunnerX interface.
+type MockcmdRunnerX struct {
+	ctrl     *gomock.Controller
+	recorder *MockcmdRunnerXMockRecorder
+}
+
+// MockcmdRunnerXMockRecorder is the mock recorder for MockcmdRunnerX.
+type MockcmdRunnerXMockRecorder struct {
+	mock *MockcmdRunnerX
+}
+
+// NewMockcmdRunnerX creates a new mock instance.
+func NewMockcmdRunnerX(ctrl *gomock.Controller) *MockcmdRunnerX {
+	mock := &MockcmdRunnerX{ctrl: ctrl}
+	mock.recorder = &MockcmdRunnerXMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockcmdRunnerX) EXPECT() *MockcmdRunnerXMockRecorder {
+	return m.recorder
+}
+
+// CombinedOutput mocks base method.
+func (m *MockcmdRunnerX) CombinedOutput(cmd *exec.Cmd) ([]byte, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CombinedOutput", cmd)
+	ret0, _ := ret[0].([]byte)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CombinedOutput indicates an expected call of CombinedOutput.
+func (mr *MockcmdRunnerXMockRecorder) CombinedOutput(cmd interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CombinedOutput", reflect.TypeOf((*MockcmdRunnerX)(nil).CombinedOutput), cmd)
 }

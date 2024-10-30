@@ -30,24 +30,6 @@ type translatesTestCase struct {
 	checkTranslateRow func([]util.TranslatesReturn, error)
 }
 
-//type MockStubs struct {
-//	MockQuerier      *mockdb.MockQuerier
-//	TranslateX       *mockt.MockTranslateX
-//	TranslateClientX *mockc.MockTranslateClientX
-//	TtsClientX       *mockc.MockTTSClientX
-//	AudioFileX       *mocka.MockAudioFileX
-//}
-//
-//func NewMockStubs(ctrl *gomock.Controller) MockStubs {
-//	return MockStubs{
-//		MockQuerier:      mockdb.NewMockQuerier(ctrl),
-//		TranslateX:       mockt.NewMockTranslateX(ctrl),
-//		TranslateClientX: mockc.NewMockTranslateClientX(ctrl),
-//		TtsClientX:       mockc.NewMockTTSClientX(ctrl),
-//		AudioFileX:       mocka.NewMockAudioFileX(ctrl),
-//	}
-//}
-
 func TestInsertNewPhrases(t *testing.T) {
 	title := RandomTitle()
 	title.OgLanguageID = 27

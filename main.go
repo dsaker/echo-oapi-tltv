@@ -68,8 +68,10 @@ func main() {
 	}
 	t := translates.New(transClient, ttsClient)
 
+	//initialize audiofile with the real command runner
+	af := audiofile.NewAudioFile(&audiofile.RealCmdRunner{})
 	// initialize api server
-	api.NewServer(e, cfg, q, t, &audiofile.AudioFile{})
+	api.NewServer(e, cfg, q, t, af)
 
 	e.Logger.Fatal(e.Start(net.JoinHostPort("0.0.0.0", cfg.Port)))
 }

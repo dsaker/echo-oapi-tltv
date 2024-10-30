@@ -33,7 +33,7 @@ func TestAudioFromTitle(t *testing.T) {
 
 	//create a base path for storing mp3 audio files
 	// TODO delete in cleanup
-	tmpAudioBasePath := test.AudioBasePath + "TestAudioFromTitle/" + strconv.Itoa(int(title.ID)) + "/"
+	tmpAudioBasePath := test.AudioBasePath + strconv.Itoa(int(title.ID)) + "/"
 	err := os.MkdirAll(tmpAudioBasePath, 0777)
 	require.NoError(t, err)
 
@@ -186,7 +186,7 @@ func TestAudioFromFile(t *testing.T) {
 
 	//create a base path for storing mp3 audio files
 	// TODO delete in cleanup
-	tmpAudioBasePath := test.AudioBasePath + "TestAudioFromFile/" + strconv.Itoa(int(title.ID)) + "/"
+	tmpAudioBasePath := test.AudioBasePath + strconv.Itoa(int(title.ID)) + "/"
 	err := os.MkdirAll(tmpAudioBasePath, 0777)
 	require.NoError(t, err)
 

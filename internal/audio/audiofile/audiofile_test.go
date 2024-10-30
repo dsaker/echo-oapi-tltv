@@ -8,15 +8,20 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	db "talkliketv.click/tltv/db/sqlc"
+	mocka "talkliketv.click/tltv/internal/mock/audiofile"
 	"talkliketv.click/tltv/internal/test"
 	"talkliketv.click/tltv/internal/util"
 	"testing"
 )
 
 type audioFileTestCase struct {
-	name       string
-	buildFile  func(*testing.T) *os.File
-	checkLines func([]string, error)
+	name        string
+	buildFile   func(*testing.T) *os.File
+	checkLines  func([]string, error)
+	buildStubs  func(*mocka.MockcmdRunnerX)
+	createTitle func(*testing.T) (db.Title, string)
+	checkReturn func(*testing.T, *os.File, error)
 }
 
 func TestGetLines(t *testing.T) {
@@ -25,7 +30,7 @@ func TestGetLines(t *testing.T) {
 		{
 			name: "No error",
 			buildFile: func(t *testing.T) *os.File {
-				return createFile(
+				return createTmpFile(
 					t,
 					"noerror",
 					"This is the first sentence.\nThis is the second sentence.\n")
@@ -52,7 +57,7 @@ func TestGetLines(t *testing.T) {
 				00:34:29,192 > 00:34:31,444
 				Déjala pasar, mi Johnny.
 					Gracias.`
-				return createFile(
+				return createTmpFile(
 					t,
 					"parsesrt",
 					srtString)
@@ -65,7 +70,7 @@ func TestGetLines(t *testing.T) {
 		{
 			name: "Multi newline",
 			buildFile: func(t *testing.T) *os.File {
-				return createFile(
+				return createTmpFile(
 					t,
 					"noerror",
 					"This is the first sentence.\n\n\n\n\n\n\nThis is the second sentence.\n")
@@ -78,7 +83,7 @@ func TestGetLines(t *testing.T) {
 		{
 			name: "paragraph",
 			buildFile: func(t *testing.T) *os.File {
-				return createFile(
+				return createTmpFile(
 					t,
 					"noerror",
 					"This is the first. This is the second. This is the third. this is the fourth\nThis is the fifth")
@@ -91,7 +96,7 @@ func TestGetLines(t *testing.T) {
 		{
 			name: "too short",
 			buildFile: func(t *testing.T) *os.File {
-				return createFile(
+				return createTmpFile(
 					t,
 					"noerror",
 					"This is the. This is. This is the. this is the\nThis is the")
@@ -103,7 +108,7 @@ func TestGetLines(t *testing.T) {
 		{
 			name: "empty file",
 			buildFile: func(t *testing.T) *os.File {
-				return createFile(
+				return createTmpFile(
 					t,
 					"noerror",
 					"")
@@ -186,11 +191,93 @@ func TestBuildAudioInputFiles(t *testing.T) {
 	}
 }
 
-func createFile(t *testing.T, filename, fileString string) *os.File {
+func TestCreateMp3ZipWithFfmpeg(t *testing.T) {
+
+	testCases := []audioFileTestCase{
+		{
+			name: "No error",
+			createTitle: func(t *testing.T) (db.Title, string) {
+				title := test.RandomTitle()
+				tmpDir := test.AudioBasePath + "TestCreateMp3ZipWithFfmpeg/" + title.Title + "/"
+				err := os.MkdirAll(tmpDir, 0777)
+				require.NoError(t, err)
+				file := createFile(
+					t,
+					tmpDir+"noerror.txt",
+					"This is the first sentence.\nThis is the second sentence.\n")
+				require.FileExists(t, file.Name())
+				return title, tmpDir
+			},
+			buildStubs: func(ma *mocka.MockcmdRunnerX) {
+				ma.EXPECT().
+					CombinedOutput(gomock.Any()).Times(1).
+					Return([]byte{}, nil)
+			},
+			checkReturn: func(t *testing.T, file *os.File, err error) {
+				require.NoError(t, err)
+				require.FileExists(t, file.Name())
+			},
+		},
+		{
+			name: "No files",
+			createTitle: func(t *testing.T) (db.Title, string) {
+				title := test.RandomTitle()
+				tmpDir := test.AudioBasePath + "TestCreateMp3ZipWithFfmpeg/" + title.Title + "/"
+				err := os.MkdirAll(tmpDir, 0777)
+				require.NoError(t, err)
+				return title, tmpDir
+			},
+			buildStubs: func(ma *mocka.MockcmdRunnerX) {
+			},
+			checkReturn: func(t *testing.T, file *os.File, err error) {
+				require.Contains(t, err.Error(), "no files found in CreateMp3ZipWithFfmpeg")
+			},
+		},
+	}
+
+	for i := range testCases {
+		tc := testCases[i]
+
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			cmdX := mocka.NewMockcmdRunnerX(ctrl)
+			tc.buildStubs(cmdX)
+			defer ctrl.Finish()
+
+			e := echo.New()
+			req := httptest.NewRequest(http.MethodGet, "/fakeurl", nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+
+			audioFile := NewAudioFile(cmdX)
+			title, tmpDir := tc.createTitle(t)
+			osFile, err := audioFile.CreateMp3ZipWithFfmpeg(c, title, tmpDir)
+			tc.checkReturn(t, osFile, err)
+		})
+	}
+}
+
+func createTmpFile(t *testing.T, filename, fileString string) *os.File {
 	// Create a new file
 	file, err := os.Create(filename)
 	require.NoError(t, err)
 	defer os.Remove(filename)
+
+	// Write to the file
+	_, err = file.WriteString(fileString)
+	require.NoError(t, err)
+	// Ensure data is written to disk
+	err = file.Sync()
+	require.NoError(t, err)
+
+	return file
+}
+
+func createFile(t *testing.T, filename, fileString string) *os.File {
+	// Create a new file
+	file, err := os.Create(filename)
+	require.NoError(t, err)
+	defer file.Close()
 
 	// Write to the file
 	_, err = file.WriteString(fileString)

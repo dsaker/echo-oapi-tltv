@@ -42,6 +42,21 @@ type AudioFileX interface {
 }
 
 type AudioFile struct {
+	cmdX cmdRunnerX
+}
+
+type cmdRunnerX interface {
+	CombinedOutput(cmd *exec.Cmd) ([]byte, error)
+}
+
+func NewAudioFile(cmdX cmdRunnerX) *AudioFile {
+	return &AudioFile{cmdX: cmdX}
+}
+
+type RealCmdRunner struct{}
+
+func (r *RealCmdRunner) CombinedOutput(cmd *exec.Cmd) ([]byte, error) {
+	return cmd.Output()
 }
 
 func (a *AudioFile) GetLines(e echo.Context, f multipart.File) ([]string, error) {
@@ -218,6 +233,13 @@ func replaceFmt(line string) string {
 func (a *AudioFile) CreateMp3ZipWithFfmpeg(e echo.Context, t db.Title, tmpDir string) (*os.File, error) {
 	// get a list of files from the temp directory
 	files, err := os.ReadDir(tmpDir)
+	if err != nil {
+		e.Logger().Error(err)
+		return nil, err
+	}
+	if len(files) == 0 {
+		return nil, errors.New("no files found in CreateMp3ZipWithFfmpeg")
+	}
 	// create outputs folder to hold all the mp3's to zip
 	outDirPath := tmpDir + "outputs"
 	err = os.MkdirAll(outDirPath, 0777)
@@ -232,7 +254,7 @@ func (a *AudioFile) CreateMp3ZipWithFfmpeg(e echo.Context, t db.Title, tmpDir st
 		cmd := exec.Command("ffmpeg", "-f", "concat", "-safe", "0", "-i", tmpDir+f.Name(), "-c", "copy", outputString)
 
 		//Execute the command and get the output
-		output, err := cmd.CombinedOutput()
+		output, err := a.cmdX.CombinedOutput(cmd)
 		if err != nil {
 			e.Logger().Error(err)
 			e.Logger().Error(string(output))

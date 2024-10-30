@@ -137,7 +137,7 @@ func TestAddTitle(t *testing.T) {
 
 	err := os.MkdirAll(test.AudioBasePath, 0777)
 	require.NoError(t, err)
-	filename := test.AudioBasePath + "/TestAddTitle/testAddTitle.txt"
+	filename := test.AudioBasePath + "testAddTitle.txt"
 	stringsSlice := []string{"This is the first sentence.", "This is the second sentence."}
 
 	insertTitle := db.InsertTitleParams{
