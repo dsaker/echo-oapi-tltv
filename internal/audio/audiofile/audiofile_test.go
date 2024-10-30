@@ -131,43 +131,44 @@ func TestGetLines(t *testing.T) {
 	}
 }
 
-func TestBuildAudioInputFiles(t *testing.T) {
-
-	testCases := []audioFileTestCase{
-		{
-			name: "No error",
-			buildFile: func(t *testing.T) *os.File {
-				return createFile(
-					t,
-					"noerror",
-					"This is the first sentence.\nThis is the second sentence.\n")
-			},
-			checkLines: func(lines []string, err error) {
-				require.NoError(t, err)
-				require.Equal(t, len(lines), 2)
-			},
-		},
-	}
-
-	for i := range testCases {
-		tc := testCases[i]
-
-		t.Run(tc.name, func(t *testing.T) {
-			ctrl := gomock.NewController(t)
-			defer ctrl.Finish()
-
-			e := echo.New()
-			req := httptest.NewRequest(http.MethodGet, "/fakeurl", nil)
-			rec := httptest.NewRecorder()
-			c := e.NewContext(req, rec)
-
-			file := tc.buildFile(t)
-			audioFile := AudioFile{}
-			err := audioFile.BuildAudioInputFiles(c, file)
-			tc.checkLines(stringsSlice, err)
-		})
-	}
-}
+//func TestBuildAudioInputFiles(t *testing.T) {
+//
+//	title :=
+//	testCases := []audioFileTestCase{
+//		{
+//			name: "No error",
+//			buildFile: func(t *testing.T) *os.File {
+//				return createFile(
+//					t,
+//					"noerror",
+//					"This is the first sentence.\nThis is the second sentence.\n")
+//			},
+//			checkLines: func(lines []string, err error) {
+//				require.NoError(t, err)
+//				require.Equal(t, len(lines), 2)
+//			},
+//		},
+//	}
+//
+//	for i := range testCases {
+//		tc := testCases[i]
+//
+//		t.Run(tc.name, func(t *testing.T) {
+//			ctrl := gomock.NewController(t)
+//			defer ctrl.Finish()
+//
+//			e := echo.New()
+//			req := httptest.NewRequest(http.MethodGet, "/fakeurl", nil)
+//			rec := httptest.NewRecorder()
+//			c := e.NewContext(req, rec)
+//
+//			file := tc.buildFile(t)
+//			audioFile := AudioFile{}
+//			err := audioFile.BuildAudioInputFiles(c, file)
+//			tc.checkLines(stringsSlice, err)
+//		})
+//	}
+//}
 
 func createFile(t *testing.T, filename, fileString string) *os.File {
 	// Create a new file

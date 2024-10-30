@@ -282,7 +282,8 @@ func TestTextToSpeech(t *testing.T) {
 			rec := httptest.NewRecorder()
 			newE := e.NewContext(req, rec)
 
-			translates := &Translate{}
+			translates := New(trc, tts)
+
 			err = translates.TextToSpeech(newE, []db.Translate{translate1}, basepath, newLanguage.String())
 			tc.checkTranslate(nil, err)
 		})
@@ -331,16 +332,16 @@ func TestTranslatePhrases(t *testing.T) {
 
 			text := mockt.NewMockTranslateX(ctrl)
 			store := mockdb.NewMockQuerier(ctrl)
-			client := mockc.NewMockTranslateClientX(ctrl)
+			trc := mockc.NewMockTranslateClientX(ctrl)
 			tts := mockc.NewMockTTSClientX(ctrl)
-			tc.buildStubs(store, text, client, tts)
+			tc.buildStubs(store, text, trc, tts)
 
 			e := echo.New()
 			req := httptest.NewRequest(http.MethodPost, "/titles/translates", nil)
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			translate2 := Translate{}
+			translate2 := New(trc, tts)
 			translatesRow, err := translate2.TranslatePhrases(c, []db.Translate{translate1}, newLanguage)
 			tc.checkTranslateRow(translatesRow, err)
 		})

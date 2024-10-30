@@ -67,10 +67,10 @@ func TestAudioFromTitle(t *testing.T) {
 					Return(toLang, nil)
 				// CreateTTSForLang(echo.Context, db.Querier, db.Language, db.Title, string) error
 				stubs.TranslateX.EXPECT().
-					CreateTTSForLang(gomock.Any(), stubs.MockQuerier, toLang, title, toAudioBasePath).
+					CreateTTS(gomock.Any(), stubs.MockQuerier, fromLang, title, fromAudioBasePath).
 					Return(nil)
 				stubs.TranslateX.EXPECT().
-					CreateTTSForLang(gomock.Any(), stubs.MockQuerier, fromLang, title, fromAudioBasePath).
+					CreateTTS(gomock.Any(), stubs.MockQuerier, toLang, title, toAudioBasePath).
 					Return(nil)
 				// SelectPhraseIdsByTitleId(ctx context.Context, titleID int64) ([]int64, error)
 				stubs.MockQuerier.EXPECT().
