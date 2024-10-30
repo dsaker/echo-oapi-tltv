@@ -18,6 +18,17 @@ import (
 	audio "talkliketv.click/tltv/internal/audio/pattern"
 )
 
+var AudioPauseFilePath = map[int]string{
+	3:  "silence/3SecSilence.mp3",
+	4:  "silence/4SecSilence.mp3",
+	5:  "silence/5SecSilence.mp3",
+	6:  "silence/6SecSilence.mp3",
+	7:  "silence/7SecSilence.mp3",
+	8:  "silence/8SecSilence.mp3",
+	9:  "silence/9SecSilence.mp3",
+	10: "silence/10SecSilence.mp3",
+}
+
 var endSentenceMap = map[rune]bool{
 	'!': true,
 	'.': true,
@@ -38,6 +49,12 @@ func (a *AudioFile) GetLines(e echo.Context, f multipart.File) ([]string, error)
 	// get file type, options are srt, single line text or paragraph
 	fileType := ""
 	scanner := bufio.NewScanner(f)
+	//start at the first line again
+	_, err := f.Seek(0, 0)
+	if err != nil {
+		e.Logger().Error(err)
+		return nil, err
+	}
 	count := 0
 	var line string
 
@@ -61,7 +78,7 @@ func (a *AudioFile) GetLines(e echo.Context, f multipart.File) ([]string, error)
 		count++
 	}
 	//start at the first line again
-	_, err := f.Seek(0, 0)
+	_, err = f.Seek(0, 0)
 	if err != nil {
 		e.Logger().Error(err)
 		return nil, err
@@ -82,7 +99,7 @@ func (a *AudioFile) GetLines(e echo.Context, f multipart.File) ([]string, error)
 		}
 		count++
 	}
-	// TODO somehow verify single phrase per line form (these can be multiple sentences
+	// TODO somehow verify single phrase per line form (these can be multiple sentences)
 	_, err = f.Seek(0, 0)
 	if err != nil {
 		e.Logger().Error(err)
@@ -150,17 +167,15 @@ func parseParagraph(f multipart.File) []string {
 		last := 0
 		for i, c := range line {
 			if i == len(line)-1 {
-				sentence := strings.TrimSpace(line[last+1 : i+1])
-				fmt.Println(sentence)
-				last = i
+				sentence := strings.TrimSpace(line[last : i+1])
+				last = i + 1
 				words := strings.Fields(sentence)
 				if len(words) > 3 {
 					stringsSlice = append(stringsSlice, line)
 				}
 			} else if endSentenceMap[c] {
-				sentence := strings.TrimSpace(line[last+1 : i+1])
-				fmt.Println(sentence)
-				last = i
+				sentence := strings.TrimSpace(line[last : i+1])
+				last = i + 1
 				words := strings.Fields(sentence)
 				if len(words) > 3 {
 					stringsSlice = append(stringsSlice, line)
@@ -284,9 +299,8 @@ func addFileToZip(e echo.Context, zipWriter *zip.Writer, filename string) error 
 // TODO shorten the parameters
 func (a *AudioFile) BuildAudioInputFiles(e echo.Context, ids []int64, t db.Title, pause, from, to, tmpDir string) error {
 
-	pMap := make(map[int]int64)
-
 	// map phrase ids to zero through len(phrase ids) to map correctly to pattern.Pattern
+	pMap := make(map[int]int64)
 	for i, pid := range ids {
 		pMap[i] = pid
 	}
@@ -309,7 +323,7 @@ func (a *AudioFile) BuildAudioInputFiles(e echo.Context, ids []int64, t db.Title
 
 		for _, audioStruct := range chunk {
 			// if: we have reached the highest phrase id then this will be the last audio block
-			// this will also skip non-existent phrase ids
+			// else if: skip if phraseId does not exist (is greater than maxP)
 			// else if: native language then we add filepath for from audio mp3
 			// else: add audio filepath for language you want to learn
 			phraseId := pMap[audioStruct.Id]

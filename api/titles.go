@@ -84,7 +84,7 @@ func (s *Server) AddTitle(e echo.Context) error {
 		return e.String(http.StatusInternalServerError, err.Error())
 	}
 
-	// insert phrases into mockQuerier as translates object of OgLanguage
+	// insert phrases into MockQuerier as translates object of OgLanguage
 	_, err = s.translates.InsertNewPhrases(e, title, s.queries, stringsSlice)
 	if err != nil {
 		dbErr := s.queries.DeleteTitleById(e.Request().Context(), title.ID)

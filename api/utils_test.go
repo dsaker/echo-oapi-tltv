@@ -25,7 +25,6 @@ import (
 	"talkliketv.click/tltv/internal/token"
 	"talkliketv.click/tltv/internal/util"
 	"testing"
-	"time"
 )
 
 var (
@@ -44,21 +43,21 @@ const (
 	testAudioBasePath       = "../tmp/test/audio/"
 )
 
-type mockStubs struct {
-	mockQuerier      *mockdb.MockQuerier
-	translateX       *mockt.MockTranslateX
-	translateClientX *mockc.MockTranslateClientX
-	ttsClientX       *mockc.MockTTSClientX
-	audioFileX       *mocka.MockAudioFileX
+type MockStubs struct {
+	MockQuerier      *mockdb.MockQuerier
+	TranslateX       *mockt.MockTranslateX
+	TranslateClientX *mockc.MockTranslateClientX
+	TtsClientX       *mockc.MockTTSClientX
+	AudioFileX       *mocka.MockAudioFileX
 }
 
-func newMockStubs(ctrl *gomock.Controller) mockStubs {
-	return mockStubs{
-		mockQuerier:      mockdb.NewMockQuerier(ctrl),
-		translateX:       mockt.NewMockTranslateX(ctrl),
-		translateClientX: mockc.NewMockTranslateClientX(ctrl),
-		ttsClientX:       mockc.NewMockTTSClientX(ctrl),
-		audioFileX:       mocka.NewMockAudioFileX(ctrl),
+func NewMockStubs(ctrl *gomock.Controller) MockStubs {
+	return MockStubs{
+		MockQuerier:      mockdb.NewMockQuerier(ctrl),
+		TranslateX:       mockt.NewMockTranslateX(ctrl),
+		TranslateClientX: mockc.NewMockTranslateClientX(ctrl),
+		TtsClientX:       mockc.NewMockTTSClientX(ctrl),
+		AudioFileX:       mocka.NewMockAudioFileX(ctrl),
 	}
 }
 
@@ -67,7 +66,7 @@ type testCase struct {
 	body          interface{}
 	user          db.User
 	extraInt      int64
-	buildStubs    func(stubs mockStubs)
+	buildStubs    func(stubs MockStubs)
 	multipartBody func(t *testing.T) (*bytes.Buffer, *multipart.Writer)
 	checkRecorder func(rec *httptest.ResponseRecorder)
 	checkResponse func(res *http.Response)
@@ -77,24 +76,10 @@ type testCase struct {
 }
 
 func TestMain(m *testing.M) {
-	testCfg = SetTestConfigs()
+	testCfg, _ = config.SetConfigs()
 	flag.Parse()
+	testCfg.TTSBasePath = testAudioBasePath
 	os.Exit(m.Run())
-}
-
-func SetTestConfigs() (config config.Config) {
-
-	// get port and debug from commandline flags... if not present use defaults
-	flag.StringVar(&config.Port, "port", "8080", "API server port")
-
-	flag.StringVar(&config.Env, "env", "development", "Environment (development|staging|cloud)")
-	flag.DurationVar(&config.CtxTimeout, "ctx-timeout", 3*time.Second, "Context timeout for db queries in seconds")
-
-	flag.StringVar(&config.TTSBasePath, "tts-base-path", testAudioBasePath, "text-to-speech base path temporary storage of mp3 audio files")
-
-	flag.Int64Var(&config.FileUploadLimit, "upload-size-limit", 8, "File upload size limit in KB (default is 4)")
-	return config
-
 }
 
 func readBody(t *testing.T, rs *http.Response) string {
@@ -161,11 +146,11 @@ func randomLanguage() (language db.Language) {
 }
 
 func setupHandlerTest(t *testing.T, ctrl *gomock.Controller, tc testCase, urlBasePath, body, method string) (*Server, echo.Context, *httptest.ResponseRecorder) {
-	stubs := newMockStubs(ctrl)
+	stubs := NewMockStubs(ctrl)
 	tc.buildStubs(stubs)
 
 	e := echo.New()
-	srv := NewServer(e, testCfg, stubs.mockQuerier, stubs.translateX, stubs.audioFileX)
+	srv := NewServer(e, testCfg, stubs.MockQuerier, stubs.TranslateX, stubs.AudioFileX)
 
 	jwsToken, err := srv.fa.CreateJWSWithClaims(tc.permissions, tc.user)
 	require.NoError(t, err)
@@ -182,11 +167,11 @@ func setupHandlerTest(t *testing.T, ctrl *gomock.Controller, tc testCase, urlBas
 
 func setupServerTest(t *testing.T, ctrl *gomock.Controller, tc testCase) (*httptest.Server, string) {
 
-	stubs := newMockStubs(ctrl)
+	stubs := NewMockStubs(ctrl)
 	tc.buildStubs(stubs)
 
 	e := echo.New()
-	srv := NewServer(e, testCfg, stubs.mockQuerier, stubs.translateX, stubs.audioFileX)
+	srv := NewServer(e, testCfg, stubs.MockQuerier, stubs.TranslateX, stubs.AudioFileX)
 
 	ts := httptest.NewServer(e)
 

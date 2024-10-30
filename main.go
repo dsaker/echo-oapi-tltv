@@ -9,7 +9,6 @@ import (
 	"database/sql"
 	"flag"
 	"talkliketv.click/tltv/internal/translates"
-
 	//"github.com/kataras/iris/v12/context"
 	"github.com/labstack/echo/v4"
 	"net"
@@ -24,8 +23,10 @@ import (
 func main() {
 
 	e := echo.New()
-	cfg := config.SetConfigs()
-
+	cfg, err := config.SetConfigs()
+	if err != nil {
+		e.Logger.Fatal(err)
+	}
 	flag.Parse()
 
 	// if ffmpeg is not installed and in PATH of host machine fail immediately
@@ -52,9 +53,11 @@ func main() {
 
 	e.Logger.Info("database connection pool established")
 
+	// create db connection
 	q := db.New(conn)
+
+	// create google translate and text-to-speech clients
 	ctx := context.Background()
-	// create translate client
 	transClient, err := translate.NewClient(ctx)
 	if err != nil {
 		e.Logger.Fatal("Error creating google api translate client\n: %s", err)
@@ -64,6 +67,8 @@ func main() {
 		e.Logger.Fatal("Error creating google api translate client\n: %s", err)
 	}
 	t := translates.New(transClient, ttsClient)
+
+	// initialize api server
 	api.NewServer(e, cfg, q, t, &audiofile.AudioFile{})
 
 	e.Logger.Fatal(e.Start(net.JoinHostPort("0.0.0.0", cfg.Port)))

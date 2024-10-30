@@ -30,6 +30,24 @@ type translatesTestCase struct {
 	checkTranslateRow func([]util.TranslatesReturn, error)
 }
 
+//type MockStubs struct {
+//	MockQuerier      *mockdb.MockQuerier
+//	TranslateX       *mockt.MockTranslateX
+//	TranslateClientX *mockc.MockTranslateClientX
+//	TtsClientX       *mockc.MockTTSClientX
+//	AudioFileX       *mocka.MockAudioFileX
+//}
+//
+//func NewMockStubs(ctrl *gomock.Controller) MockStubs {
+//	return MockStubs{
+//		MockQuerier:      mockdb.NewMockQuerier(ctrl),
+//		TranslateX:       mockt.NewMockTranslateX(ctrl),
+//		TranslateClientX: mockc.NewMockTranslateClientX(ctrl),
+//		TtsClientX:       mockc.NewMockTTSClientX(ctrl),
+//		AudioFileX:       mocka.NewMockAudioFileX(ctrl),
+//	}
+//}
+
 func TestInsertNewPhrases(t *testing.T) {
 	title := RandomTitle()
 	title.OgLanguageID = 27
@@ -186,9 +204,9 @@ func TestInsertTranslates(t *testing.T) {
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			translate := Translate{}
-			translates, err := translate.InsertTranslates(c, store, int16(newLanguageId), []util.TranslatesReturn{translatesReturn})
-			tc.checkTranslate(translates, err)
+			translate2 := Translate{}
+			dbTranslates, err := translate2.InsertTranslates(c, store, int16(newLanguageId), []util.TranslatesReturn{translatesReturn})
+			tc.checkTranslate(dbTranslates, err)
 		})
 	}
 }
@@ -265,7 +283,7 @@ func TestTextToSpeech(t *testing.T) {
 			newE := e.NewContext(req, rec)
 
 			translates := &Translate{}
-			err = translates.TextToSpeech(newE, []db.Translate{translate1}, tts, basepath, newLanguage.String())
+			err = translates.TextToSpeech(newE, []db.Translate{translate1}, basepath, newLanguage.String())
 			tc.checkTranslate(nil, err)
 		})
 	}
@@ -322,8 +340,8 @@ func TestTranslatePhrases(t *testing.T) {
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			translate := Translate{}
-			translatesRow, err := translate.TranslatePhrases(c, []db.Translate{translate1}, newLanguage, client)
+			translate2 := Translate{}
+			translatesRow, err := translate2.TranslatePhrases(c, []db.Translate{translate1}, newLanguage)
 			tc.checkTranslateRow(translatesRow, err)
 		})
 	}

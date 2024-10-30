@@ -42,8 +42,8 @@ func TestGetPhrases(t *testing.T) {
 			name:   "OK",
 			user:   user,
 			values: map[string]any{"limit": true},
-			buildStubs: func(stubs mockStubs) {
-				stubs.mockQuerier.EXPECT().
+			buildStubs: func(stubs MockStubs) {
+				stubs.MockQuerier.EXPECT().
 					SelectPhrasesFromTranslatesWithCorrect(gomock.Any(), selectPhrasesFromTranslatesParams).
 					Times(1).
 					Return(selectPhrasesFromTranslatesRowList, nil)
@@ -62,8 +62,8 @@ func TestGetPhrases(t *testing.T) {
 			name:   "No limit set",
 			user:   user,
 			values: map[string]any{"limit": false},
-			buildStubs: func(stubs mockStubs) {
-				stubs.mockQuerier.EXPECT().
+			buildStubs: func(stubs MockStubs) {
+				stubs.MockQuerier.EXPECT().
 					SelectPhrasesFromTranslatesWithCorrect(gomock.Any(), selectPhrasesFromTranslatesParams).
 					Times(1).
 					Return(selectPhrasesFromTranslatesRowList, nil)
@@ -134,7 +134,7 @@ func TestUpdateUsersPhrases(t *testing.T) {
 				"value": 1
 			}
 		]`,
-			buildStubs: func(stubs mockStubs) {
+			buildStubs: func(stubs MockStubs) {
 				args := db.SelectUsersPhrasesByIdsParams{
 					UserID:     user1.ID,
 					LanguageID: user1.NewLanguageID,
@@ -144,11 +144,11 @@ func TestUpdateUsersPhrases(t *testing.T) {
 				paramsCopy := updateUsersPhrasesParams
 				paramsCopy.PhraseCorrect = 1
 				usersPhraseCopy.PhraseCorrect = 1
-				stubs.mockQuerier.EXPECT().
+				stubs.MockQuerier.EXPECT().
 					SelectUsersPhrasesByIds(gomock.Any(), args).
 					Times(1).
 					Return(usersPhrase, nil)
-				stubs.mockQuerier.EXPECT().
+				stubs.MockQuerier.EXPECT().
 					UpdateUsersPhrasesByThreeIds(gomock.Any(), paramsCopy).
 					Times(1).
 					Return(usersPhraseCopy, nil)
@@ -178,7 +178,7 @@ func TestUpdateUsersPhrases(t *testing.T) {
 				"value": 1
 			}
 		]`,
-			buildStubs: func(stubs mockStubs) {
+			buildStubs: func(stubs MockStubs) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)

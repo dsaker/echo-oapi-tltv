@@ -51,37 +51,37 @@ func TestAudioFromTitle(t *testing.T) {
 				"toLanguageId":   toLang.ID,
 			},
 			user: user,
-			buildStubs: func(stubs mockStubs) {
+			buildStubs: func(stubs MockStubs) {
 				file, err := os.Create(filename)
 				require.NoError(t, err)
 				defer file.Close()
-				stubs.mockQuerier.EXPECT().
+				stubs.MockQuerier.EXPECT().
 					SelectTitleById(gomock.Any(), title.ID).
 					Return(title, nil)
 				// SelectLanguagesById(ctx context.Context, id int16) (Language, error)
-				stubs.mockQuerier.EXPECT().
+				stubs.MockQuerier.EXPECT().
 					SelectLanguagesById(gomock.Any(), fromLang.ID).
 					Return(fromLang, nil)
-				stubs.mockQuerier.EXPECT().
+				stubs.MockQuerier.EXPECT().
 					SelectLanguagesById(gomock.Any(), toLang.ID).
 					Return(toLang, nil)
 				// CreateTTSForLang(echo.Context, db.Querier, db.Language, db.Title, string) error
-				stubs.translateX.EXPECT().
-					CreateTTSForLang(gomock.Any(), stubs.mockQuerier, toLang, title, toAudioBasePath).
+				stubs.TranslateX.EXPECT().
+					CreateTTSForLang(gomock.Any(), stubs.MockQuerier, toLang, title, toAudioBasePath).
 					Return(nil)
-				stubs.translateX.EXPECT().
-					CreateTTSForLang(gomock.Any(), stubs.mockQuerier, fromLang, title, fromAudioBasePath).
+				stubs.TranslateX.EXPECT().
+					CreateTTSForLang(gomock.Any(), stubs.MockQuerier, fromLang, title, fromAudioBasePath).
 					Return(nil)
 				// SelectPhraseIdsByTitleId(ctx context.Context, titleID int64) ([]int64, error)
-				stubs.mockQuerier.EXPECT().
+				stubs.MockQuerier.EXPECT().
 					SelectPhraseIdsByTitleId(gomock.Any(), title.ID).
 					Return(phraseIDs, nil)
 				// BuildAudioInputFiles(echo.Context, []int64, db.Title, string, string, string, string) error
-				stubs.audioFileX.EXPECT().
+				stubs.AudioFileX.EXPECT().
 					BuildAudioInputFiles(gomock.Any(), phraseIDs, title, silenceBasePath, fromAudioBasePath, toAudioBasePath, gomock.Any()).
 					Return(nil)
 				// CreateMp3ZipWithFfmpeg(echo.Context, db.Title, string) (*os.File, error)
-				stubs.audioFileX.EXPECT().
+				stubs.AudioFileX.EXPECT().
 					CreateMp3ZipWithFfmpeg(gomock.Any(), title, gomock.Any()).
 					Return(file, nil)
 
@@ -99,7 +99,7 @@ func TestAudioFromTitle(t *testing.T) {
 				"toLanguage":     toLang.ID,
 			},
 			user: user,
-			buildStubs: func(stubs mockStubs) {
+			buildStubs: func(stubs MockStubs) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)
@@ -116,8 +116,8 @@ func TestAudioFromTitle(t *testing.T) {
 				"toLanguageId":   toLang.ID,
 			},
 			user: user,
-			buildStubs: func(stubs mockStubs) {
-				stubs.mockQuerier.EXPECT().
+			buildStubs: func(stubs MockStubs) {
+				stubs.MockQuerier.EXPECT().
 					SelectTitleById(gomock.Any(), title.ID).
 					Return(db.Title{}, sql.ErrConnDone)
 			},
@@ -136,7 +136,7 @@ func TestAudioFromTitle(t *testing.T) {
 				"titleId":        title.ID,
 				"toLanguage":     toLang.ID,
 			},
-			buildStubs: func(stubs mockStubs) {
+			buildStubs: func(stubs MockStubs) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusForbidden, res.StatusCode)
@@ -206,44 +206,44 @@ func TestAudioFromFile(t *testing.T) {
 		{
 			name: "OK",
 			user: user,
-			buildStubs: func(stubs mockStubs) {
+			buildStubs: func(stubs MockStubs) {
 				file, err := os.Create(filename)
 				require.NoError(t, err)
 				defer file.Close()
 				// GetLines(echo.Context, multipart.File) ([]string, error)
-				stubs.audioFileX.EXPECT().
+				stubs.AudioFileX.EXPECT().
 					GetLines(gomock.Any(), gomock.Any()).
 					Return(stringsSlice, nil)
-				stubs.mockQuerier.EXPECT().
+				stubs.MockQuerier.EXPECT().
 					InsertTitle(gomock.Any(), insertTitle).
 					Times(1).Return(title, nil)
-				stubs.translateX.EXPECT().
-					InsertNewPhrases(gomock.Any(), title, stubs.mockQuerier, stringsSlice).
+				stubs.TranslateX.EXPECT().
+					InsertNewPhrases(gomock.Any(), title, stubs.MockQuerier, stringsSlice).
 					Times(1).Return(dbTranslates, nil)
 				// SelectLanguagesById(ctx context.Context, id int16) (Language, error)
-				stubs.mockQuerier.EXPECT().
+				stubs.MockQuerier.EXPECT().
 					SelectLanguagesById(gomock.Any(), fromLang.ID).
 					Return(fromLang, nil)
-				stubs.mockQuerier.EXPECT().
+				stubs.MockQuerier.EXPECT().
 					SelectLanguagesById(gomock.Any(), toLang.ID).
 					Return(toLang, nil)
 				// CreateTTSForLang(echo.Context, db.Querier, db.Language, db.Title, string) error
-				stubs.translateX.EXPECT().
-					CreateTTSForLang(gomock.Any(), stubs.mockQuerier, toLang, title, toAudioBasePath).
+				stubs.TranslateX.EXPECT().
+					CreateTTS(gomock.Any(), stubs.MockQuerier, fromLang, title, fromAudioBasePath).
 					Return(nil)
-				stubs.translateX.EXPECT().
-					CreateTTSForLang(gomock.Any(), stubs.mockQuerier, fromLang, title, fromAudioBasePath).
+				stubs.TranslateX.EXPECT().
+					CreateTTS(gomock.Any(), stubs.MockQuerier, toLang, title, toAudioBasePath).
 					Return(nil)
 				// SelectPhraseIdsByTitleId(ctx context.Context, titleID int64) ([]int64, error)
-				stubs.mockQuerier.EXPECT().
+				stubs.MockQuerier.EXPECT().
 					SelectPhraseIdsByTitleId(gomock.Any(), title.ID).
 					Return(phraseIDs, nil)
 				// BuildAudioInputFiles(echo.Context, []int64, db.Title, string, string, string, string) error
-				stubs.audioFileX.EXPECT().
+				stubs.AudioFileX.EXPECT().
 					BuildAudioInputFiles(gomock.Any(), phraseIDs, title, silenceBasePath, fromAudioBasePath, toAudioBasePath, gomock.Any()).
 					Return(nil)
 				// CreateMp3ZipWithFfmpeg(echo.Context, db.Title, string) (*os.File, error)
-				stubs.audioFileX.EXPECT().
+				stubs.AudioFileX.EXPECT().
 					CreateMp3ZipWithFfmpeg(gomock.Any(), title, gomock.Any()).
 					Return(file, nil)
 
@@ -275,7 +275,7 @@ func TestAudioFromFile(t *testing.T) {
 				}
 				return createMultiPartBody(t, data, filename, formMap)
 			},
-			buildStubs: func(stubs mockStubs) {
+			buildStubs: func(stubs MockStubs) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)
@@ -320,7 +320,7 @@ func TestAudioFromFile(t *testing.T) {
 				require.NoError(t, multiWriter.Close())
 				return body, multiWriter
 			},
-			buildStubs: func(stubs mockStubs) {
+			buildStubs: func(stubs MockStubs) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)
@@ -342,11 +342,11 @@ func TestAudioFromFile(t *testing.T) {
 					"titleName":      title.Title}
 				return createMultiPartBody(t, data, filename, formMap)
 			},
-			buildStubs: func(stubs mockStubs) {
-				stubs.audioFileX.EXPECT().
+			buildStubs: func(stubs MockStubs) {
+				stubs.AudioFileX.EXPECT().
 					GetLines(gomock.Any(), gomock.Any()).
 					Return(stringsSlice, nil)
-				stubs.mockQuerier.EXPECT().
+				stubs.MockQuerier.EXPECT().
 					InsertTitle(gomock.Any(), insertTitle).
 					Times(1).Return(db.Title{}, sql.ErrConnDone)
 			},
@@ -370,7 +370,7 @@ func TestAudioFromFile(t *testing.T) {
 					"titleName":      title.Title}
 				return createMultiPartBody(t, data, filename, formMap)
 			},
-			buildStubs: func(stubs mockStubs) {
+			buildStubs: func(stubs MockStubs) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusForbidden, res.StatusCode)

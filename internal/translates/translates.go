@@ -22,9 +22,6 @@ type TranslateX interface {
 	InsertTranslates(echo.Context, db.Querier, int16, []util.TranslatesReturn) ([]db.Translate, error)
 	CreateTTS(echo.Context, db.Querier, db.Language, db.Title, string) error
 	TranslatePhrases(echo.Context, []db.Translate, db.Language) ([]util.TranslatesReturn, error)
-	//CreateGoogleTranslateClient(echo.Context) (TranslateClientX, error)
-	//CreateGoogleTTSClient(echo.Context) (TTSClientX, error)
-	//CreateTTSForLang(echo.Context, db.Querier, db.Language, db.Title, string) error
 }
 
 type Translate struct {
@@ -194,7 +191,7 @@ func (t *Translate) GetTranslate(e echo.Context,
 
 func (t *Translate) CreateTTS(e echo.Context, q db.Querier, lang db.Language, title db.Title, basepath string) error {
 	// if the audio files already exist no need to request them again
-	skip, err := pathExists(basepath)
+	skip, err := util.PathExists(basepath)
 	if err != nil {
 		e.Logger().Error(err)
 		return err
@@ -272,18 +269,6 @@ func (t *Translate) GetOrCreateTranslates(e echo.Context, q db.Querier, titleId 
 	return dbTranslates, nil
 }
 
-// pathExists returns whether the given file or directory exists
-func pathExists(path string) (bool, error) {
-	_, err := os.Stat(path)
-	if err == nil {
-		return true, nil
-	}
-	if os.IsNotExist(err) {
-		return false, nil
-	}
-	return false, err
-}
-
 func (t *Translate) InsertNewPhrases(e echo.Context, title db.Title, q db.Querier, stringsSlice []string) ([]db.Translate, error) {
 	dbTranslates := make([]db.Translate, len(stringsSlice))
 	for i, str := range stringsSlice {
@@ -334,52 +319,6 @@ func (t *Translate) InsertTranslates(e echo.Context, q db.Querier, langId int16,
 
 	return dbTranslates, nil
 }
-
-//func (t *Translate) CreateGoogleTranslateClient(e echo.Context) (TranslateClientX, error) {
-//	ctx := e.Request().Context()
-//	// create translate client
-//	transClient, err := translate.NewClient(ctx)
-//	if err != nil {
-//		e.Logger().Error(fmt.Errorf("error creating translate client: %s", err))
-//		return nil, err
-//	}
-//	defer transClient.Close()
-//
-//	return transClient, nil
-//}
-
-//func (t *Translate) CreateGoogleTTSClient(e echo.Context) (TTSClientX, error) {
-//	ctx := e.Request().Context()
-//
-//	//create text-to-speech client
-//	ttsClient, err := texttospeech.NewClient(ctx)
-//	if err != nil {
-//		e.Logger().Error(fmt.Errorf("error creating texttospeech client: %s", err))
-//		return nil, err
-//	}
-//	defer ttsClient.Close()
-//
-//	return ttsClient, nil
-//}
-
-//func (t *Translate) CreateTTSForLang(e echo.Context, q db.Querier, l db.Language, title db.Title, abp string) error {
-//	trClient, err := t.CreateGoogleTranslateClient(e)
-//	if err != nil {
-//		e.Logger().Error(err)
-//		return err
-//	}
-//	ttsClient, err := t.CreateGoogleTTSClient(e)
-//	if err != nil {
-//		e.Logger().Error(err)
-//		return err
-//	}
-//	// create TTS for fromLanguage
-//	if err = t.CreateTTS(e, q, ttsClient, trClient, l, title, abp); err != nil {
-//		e.Logger().Error(err)
-//		return err
-//	}
-//	return nil
-//}
 
 func makeHintString(s string) string {
 	hintString := ""

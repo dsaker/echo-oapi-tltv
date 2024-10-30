@@ -32,8 +32,8 @@ func TestAddUserPermission(t *testing.T) {
 				"permissionId": 1,
 				"userId":       user.ID,
 			},
-			buildStubs: func(stubs mockStubs) {
-				stubs.mockQuerier.EXPECT().
+			buildStubs: func(stubs MockStubs) {
+				stubs.MockQuerier.EXPECT().
 					InsertUserPermission(gomock.Any(), insertUsersPermission).
 					Times(1).
 					Return(userPermission, nil)
@@ -55,7 +55,7 @@ func TestAddUserPermission(t *testing.T) {
 				"permission": 1,
 				"userId":     user.ID,
 			},
-			buildStubs: func(stubs mockStubs) {
+			buildStubs: func(stubs MockStubs) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)
@@ -65,14 +65,14 @@ func TestAddUserPermission(t *testing.T) {
 			permissions: []string{db.GlobalAdminCode},
 		},
 		{
-			name: "mockQuerier connection closed",
+			name: "MockQuerier connection closed",
 			user: user,
 			body: map[string]any{
 				"permissionId": 1,
 				"userId":       user.ID,
 			},
-			buildStubs: func(stubs mockStubs) {
-				stubs.mockQuerier.EXPECT().
+			buildStubs: func(stubs MockStubs) {
+				stubs.MockQuerier.EXPECT().
 					InsertUserPermission(gomock.Any(), gomock.Any()).
 					Times(1).
 					Return(db.UsersPermission{}, sql.ErrConnDone)
@@ -91,7 +91,7 @@ func TestAddUserPermission(t *testing.T) {
 				"permissionId": 1,
 				"userId":       user.ID,
 			},
-			buildStubs: func(stubs mockStubs) {
+			buildStubs: func(stubs MockStubs) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusForbidden, res.StatusCode)
@@ -107,8 +107,8 @@ func TestAddUserPermission(t *testing.T) {
 				"permissionId": 1,
 				"userId":       user.ID,
 			},
-			buildStubs: func(stubs mockStubs) {
-				stubs.mockQuerier.EXPECT().
+			buildStubs: func(stubs MockStubs) {
+				stubs.MockQuerier.EXPECT().
 					InsertUserPermission(gomock.Any(), gomock.Any()).
 					Times(1).
 					Return(db.UsersPermission{}, db.ErrForeignKeyViolation)

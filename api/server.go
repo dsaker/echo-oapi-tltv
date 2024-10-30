@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
 	ui "github.com/go-openapi/runtime/middleware"
@@ -9,13 +10,17 @@ import (
 	v4mw "github.com/labstack/echo/v4/middleware"
 	mw "github.com/oapi-codegen/echo-middleware"
 	"log"
+	"os"
+	"strconv"
 	"sync"
 	db "talkliketv.click/tltv/db/sqlc"
+	"talkliketv.click/tltv/internal/audio"
 	"talkliketv.click/tltv/internal/audio/audiofile"
 	"talkliketv.click/tltv/internal/config"
 	"talkliketv.click/tltv/internal/oapi"
 	"talkliketv.click/tltv/internal/token"
 	"talkliketv.click/tltv/internal/translates"
+	"talkliketv.click/tltv/internal/util"
 )
 
 type Server struct {
@@ -60,6 +65,9 @@ func NewServer(e *echo.Echo, cfg config.Config, q db.Querier, t translates.Trans
 
 	spec.Servers = openapi3.Servers{&openapi3.Server{URL: "/v1"}}
 
+	// make sure silence mp3s exist in your base path
+	initSilence(e, cfg)
+
 	// Create middleware for validating tokens.
 	middle, err := createMiddleware(fa, spec)
 	if err != nil {
@@ -96,4 +104,40 @@ func createMiddleware(v token.JWSValidator, spec *openapi3.T) ([]echo.Middleware
 		})
 
 	return []echo.MiddlewareFunc{validator}, nil
+}
+
+func initSilence(e *echo.Echo, cfg config.Config) {
+	// check if silence mp3s exist in your base path
+	silencePath := cfg.TTSBasePath + audiofile.AudioPauseFilePath[cfg.PhrasePause]
+	exists, err := util.PathExists(silencePath)
+	if err != nil {
+		e.Logger.Fatal(err)
+	}
+	// if it doesn't exist copy it from embedded FS to TTSBasePath
+	if !exists {
+		err = os.MkdirAll(cfg.TTSBasePath+"silence/", 0777)
+		for key, value := range audiofile.AudioPauseFilePath {
+			fmt.Printf(strconv.Itoa(key))
+			pause, err := audio.Silence.ReadFile(value)
+			if err != nil {
+				e.Logger.Fatal(err)
+			}
+			// Create a new file
+			file, err := os.Create(cfg.TTSBasePath + value)
+			if err != nil {
+				e.Logger.Fatal(err)
+			}
+			defer file.Close()
+			// Write to the file
+			_, err = file.Write(pause)
+			if err != nil {
+				e.Logger.Fatal(err)
+			}
+			// Ensure data is written to disk
+			err = file.Sync()
+			if err != nil {
+				e.Logger.Fatal(err)
+			}
+		}
+	}
 }

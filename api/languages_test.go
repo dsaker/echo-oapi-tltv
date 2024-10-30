@@ -21,8 +21,8 @@ func TestListLanguages(t *testing.T) {
 		{
 			name: "OK",
 			user: user,
-			buildStubs: func(stubs mockStubs) {
-				stubs.mockQuerier.EXPECT().
+			buildStubs: func(stubs MockStubs) {
+				stubs.MockQuerier.EXPECT().
 					ListLanguages(gomock.Any()).
 					Times(1).
 					Return(languages, nil)
