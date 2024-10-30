@@ -10,22 +10,22 @@ import (
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/audio/audiofile"
 	"talkliketv.click/tltv/internal/oapi"
-	"talkliketv.click/tltv/internal/test"
+	"talkliketv.click/tltv/internal/util"
 )
 
 func (s *Server) AudioFromFile(e echo.Context) error {
 	// get values from multipart form
 	titleName := e.FormValue("titleName")
 	// convert strings from multipart form to int16's
-	fileLangId, err := test.ConvertStringInt16(e.FormValue("fileLanguageId"))
+	fileLangId, err := util.ConvertStringInt16(e.FormValue("fileLanguageId"))
 	if err != nil {
 		return e.String(http.StatusBadRequest, fmt.Sprintf("error converting fileLanguageId to int16: %s", err.Error()))
 	}
-	fromLangId, err := test.ConvertStringInt16(e.FormValue("fromLanguageId"))
+	fromLangId, err := util.ConvertStringInt16(e.FormValue("fromLanguageId"))
 	if err != nil {
 		return e.String(http.StatusBadRequest, fmt.Sprintf("error converting fromLanguageId to int16: %s", err.Error()))
 	}
-	toLangId, err := test.ConvertStringInt16(e.FormValue("toLanguageId"))
+	toLangId, err := util.ConvertStringInt16(e.FormValue("toLanguageId"))
 	if err != nil {
 		return e.String(http.StatusBadRequest, fmt.Sprintf("error converting toLanguageId to int16: %s", err.Error()))
 	}
@@ -179,7 +179,7 @@ func (s *Server) createAudioFromTitle(e echo.Context, title db.Title, r oapi.Aud
 	}
 	fullPausePath := s.config.TTSBasePath + pausePath
 
-	tmpDirPath := fmt.Sprintf("%s/%s-%s/", s.config.TTSBasePath, title.Title, test.RandomString(4))
+	tmpDirPath := fmt.Sprintf("%s/%s-%s/", s.config.TTSBasePath, title.Title, util.RandomString(4))
 	err = os.MkdirAll(tmpDirPath, 0777)
 	if err != nil {
 		e.Logger().Error(err)

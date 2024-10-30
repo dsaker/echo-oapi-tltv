@@ -3,16 +3,16 @@ package db
 import (
 	"context"
 	"github.com/stretchr/testify/require"
-	"talkliketv.click/tltv/internal/test"
+	"talkliketv.click/tltv/internal/util"
 	"testing"
 )
 
 func createRandomTitle(t *testing.T) Title {
 
 	args := InsertTitleParams{
-		Title:        test.RandomString(8),
-		NumSubs:      test.RandomInt16(),
-		OgLanguageID: test.ValidOgLanguageId,
+		Title:        util.RandomString(8),
+		NumSubs:      util.RandomInt16(),
+		OgLanguageID: util.ValidOgLanguageId,
 	}
 
 	title, err := testQueries.InsertTitle(context.Background(), args)

@@ -15,15 +15,16 @@ import (
 	"strconv"
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/test"
+	"talkliketv.click/tltv/internal/util"
 	"testing"
 )
 
 func TestAudioFromTitle(t *testing.T) {
 
 	user, _ := randomUser(t)
-	title := RandomTitle()
-	translate1 := randomTranslate(test.RandomPhrase(), title.OgLanguageID)
-	translate2 := randomTranslate(test.RandomPhrase(), title.OgLanguageID)
+	title := test.RandomTitle()
+	translate1 := randomTranslate(util.RandomPhrase(), title.OgLanguageID)
+	translate2 := randomTranslate(util.RandomPhrase(), title.OgLanguageID)
 
 	phraseIDs := []int64{translate1.PhraseID, translate2.PhraseID}
 	fromLang := randomLanguage()
@@ -32,13 +33,13 @@ func TestAudioFromTitle(t *testing.T) {
 
 	//create a base path for storing mp3 audio files
 	// TODO delete in cleanup
-	tmpAudioBasePath := testAudioBasePath + strconv.Itoa(int(title.ID)) + "/"
+	tmpAudioBasePath := test.AudioBasePath + "TestAudioFromTitle/" + strconv.Itoa(int(title.ID)) + "/"
 	err := os.MkdirAll(tmpAudioBasePath, 0777)
 	require.NoError(t, err)
 
 	filename := tmpAudioBasePath + "TestAudioFromTitle.txt"
 
-	silenceBasePath := testAudioBasePath + "silence/4SecSilence.mp3"
+	silenceBasePath := test.AudioBasePath + "silence/4SecSilence.mp3"
 	fromAudioBasePath := fmt.Sprintf("%s%d/", tmpAudioBasePath, fromLang.ID)
 	toAudioBasePath := fmt.Sprintf("%s%d/", tmpAudioBasePath, toLang.ID)
 
@@ -174,9 +175,9 @@ func TestAudioFromTitle(t *testing.T) {
 func TestAudioFromFile(t *testing.T) {
 
 	user, _ := randomUser(t)
-	title := RandomTitle()
-	translate1 := randomTranslate(test.RandomPhrase(), title.OgLanguageID)
-	translate2 := randomTranslate(test.RandomPhrase(), title.OgLanguageID)
+	title := test.RandomTitle()
+	translate1 := randomTranslate(util.RandomPhrase(), title.OgLanguageID)
+	translate2 := randomTranslate(util.RandomPhrase(), title.OgLanguageID)
 
 	phraseIDs := []int64{translate1.PhraseID, translate2.PhraseID}
 	fromLang := randomLanguage()
@@ -185,14 +186,14 @@ func TestAudioFromFile(t *testing.T) {
 
 	//create a base path for storing mp3 audio files
 	// TODO delete in cleanup
-	tmpAudioBasePath := testAudioBasePath + strconv.Itoa(int(title.ID)) + "/"
+	tmpAudioBasePath := test.AudioBasePath + "TestAudioFromFile/" + strconv.Itoa(int(title.ID)) + "/"
 	err := os.MkdirAll(tmpAudioBasePath, 0777)
 	require.NoError(t, err)
 
 	filename := tmpAudioBasePath + "TestAudioFromFile.txt"
 	stringsSlice := []string{"This is the first sentence.", "This is the second sentence."}
 
-	silenceBasePath := testAudioBasePath + "silence/4SecSilence.mp3"
+	silenceBasePath := test.AudioBasePath + "silence/4SecSilence.mp3"
 	fromAudioBasePath := fmt.Sprintf("%s%d/", tmpAudioBasePath, fromLang.ID)
 	toAudioBasePath := fmt.Sprintf("%s%d/", tmpAudioBasePath, toLang.ID)
 
@@ -288,7 +289,7 @@ func TestAudioFromFile(t *testing.T) {
 			name: "File Too Big",
 			user: user,
 			multipartBody: func(t *testing.T) (*bytes.Buffer, *multipart.Writer) {
-				tooBigFile := testAudioBasePath + "tooBigFile.txt"
+				tooBigFile := test.AudioBasePath + "tooBigFile.txt"
 				file, err := os.Create(tooBigFile)
 				require.NoError(t, err)
 				defer file.Close()

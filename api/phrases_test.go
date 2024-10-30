@@ -10,12 +10,13 @@ import (
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/oapi"
 	"talkliketv.click/tltv/internal/test"
+	"talkliketv.click/tltv/internal/util"
 	"testing"
 )
 
 func TestGetPhrases(t *testing.T) {
 	user, _ := randomUser(t)
-	phrase := test.RandomPhrase()
+	phrase := util.RandomPhrase()
 	ogTranslate := randomTranslate(phrase, user.OgLanguageID)
 	newTranslate := randomTranslate(phrase, user.NewLanguageID)
 
@@ -107,7 +108,7 @@ func TestGetPhrases(t *testing.T) {
 
 func TestUpdateUsersPhrases(t *testing.T) {
 	user1, _ := randomUser(t)
-	phrase := test.RandomPhrase()
+	phrase := util.RandomPhrase()
 	usersPhrase := randomUsersPhrase(user1, phrase)
 
 	updateUsersPhrasesParams := db.UpdateUsersPhrasesByThreeIdsParams{

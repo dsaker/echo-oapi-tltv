@@ -51,7 +51,7 @@ type translatesTestCase struct {
 func TestInsertNewPhrases(t *testing.T) {
 	title := RandomTitle()
 	title.OgLanguageID = 27
-	randomPhrase1 := test.RandomPhrase()
+	randomPhrase1 := util.RandomPhrase()
 	text1 := "This is sentence one."
 	hintString1 := makeHintString(text1)
 	translate1 := db.Translate{
@@ -215,7 +215,7 @@ func TestTextToSpeech(t *testing.T) {
 	title := RandomTitle()
 	title.OgLanguageID = 27
 
-	basepath := "/tmp/" + strconv.FormatInt(title.ID, 10) + "/"
+	basepath := test.AudioBasePath + strconv.FormatInt(title.ID, 10) + "/"
 	err := os.MkdirAll(basepath, 0777)
 	require.NoError(t, err)
 	defer os.RemoveAll(basepath)
@@ -365,17 +365,17 @@ func IsDirectoryEmpty(dirPath string) (bool, error) {
 
 func RandomPhrase() oapi.Phrase {
 	return oapi.Phrase{
-		Id:      test.RandomInt64(),
-		TitleId: test.RandomInt64(),
+		Id:      util.RandomInt64(),
+		TitleId: util.RandomInt64(),
 	}
 }
 
 func RandomTitle() (title db.Title) {
 
 	return db.Title{
-		ID:           test.RandomInt64(),
-		Title:        test.RandomString(8),
-		NumSubs:      test.RandomInt16(),
-		OgLanguageID: test.ValidOgLanguageId,
+		ID:           util.RandomInt64(),
+		Title:        util.RandomString(8),
+		NumSubs:      util.RandomInt16(),
+		OgLanguageID: util.ValidOgLanguageId,
 	}
 }

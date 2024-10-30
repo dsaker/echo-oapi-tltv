@@ -2,19 +2,23 @@ package test
 
 import (
 	"github.com/stretchr/testify/require"
+	"path/filepath"
 	"reflect"
+	"runtime"
 	"slices"
-	"talkliketv.click/tltv/internal/oapi"
+	db "talkliketv.click/tltv/db/sqlc"
+	"talkliketv.click/tltv/internal/util"
 	"testing"
 )
 
-const (
-	ValidTitleId       = -1
-	ValidOgLanguageId  = -1
-	ValidNewLanguageId = -1
-	ValidPermissionId  = 1
-	InvalidUserId      = -2
+var (
+	AudioBasePath = GetProjectRoot() + "/../tmp/test/audio/"
 )
+
+func GetProjectRoot() string {
+	_, filename, _, _ := runtime.Caller(0)
+	return filepath.Dir(filepath.Dir(filename))
+}
 
 func RequireMatchAnyExcept(t *testing.T, model any, response any, skip []string, except string, shouldEqual any) {
 
@@ -44,9 +48,12 @@ func RequireMatchAnyExcept(t *testing.T, model any, response any, skip []string,
 	}
 }
 
-func RandomPhrase() oapi.Phrase {
-	return oapi.Phrase{
-		Id:      RandomInt64(),
-		TitleId: RandomInt64(),
+func RandomTitle() (title db.Title) {
+
+	return db.Title{
+		ID:           util.RandomInt64(),
+		Title:        util.RandomString(8),
+		NumSubs:      util.RandomInt16(),
+		OgLanguageID: util.ValidOgLanguageId,
 	}
 }

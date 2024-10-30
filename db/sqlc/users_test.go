@@ -3,22 +3,21 @@ package db
 import (
 	"context"
 	"github.com/stretchr/testify/require"
-	"talkliketv.click/tltv/internal/test"
 	"talkliketv.click/tltv/internal/util"
 	"testing"
 )
 
 func createRandomUser(t *testing.T) User {
-	hashedPassword, err := util.HashPassword(test.RandomString(6))
+	hashedPassword, err := util.HashPassword(util.RandomString(6))
 	require.NoError(t, err)
 
 	newUser := InsertUserParams{
-		Name:           test.RandomString(8),
+		Name:           util.RandomString(8),
 		HashedPassword: hashedPassword,
-		Email:          test.RandomEmail(),
-		TitleID:        test.ValidTitleId,
-		OgLanguageID:   test.ValidOgLanguageId,
-		NewLanguageID:  test.ValidNewLanguageId,
+		Email:          util.RandomEmail(),
+		TitleID:        util.ValidTitleId,
+		OgLanguageID:   util.ValidOgLanguageId,
+		NewLanguageID:  util.ValidNewLanguageId,
 	}
 
 	user, err := testQueries.InsertUser(context.Background(), newUser)
@@ -52,7 +51,7 @@ func TestSelectUserById(t *testing.T) {
 	require.Equal(t, newUser.NewLanguageID, user.NewLanguageID)
 	require.NotZero(t, user.Created)
 
-	_, err = testQueries.SelectUserById(context.Background(), test.InvalidUserId)
+	_, err = testQueries.SelectUserById(context.Background(), util.InvalidUserId)
 
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "sql: no rows in result set")
@@ -72,7 +71,7 @@ func TestSelectUserByName(t *testing.T) {
 	require.Equal(t, newUser.NewLanguageID, user.NewLanguageID)
 	require.NotZero(t, user.Created)
 
-	_, err = testQueries.SelectUserByName(context.Background(), string(rune(test.InvalidUserId)))
+	_, err = testQueries.SelectUserByName(context.Background(), string(rune(util.InvalidUserId)))
 
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "sql: no rows in result set")
@@ -100,7 +99,7 @@ func TestUpdateUserById(t *testing.T) {
 	require.Equal(t, newUser.NewLanguageID, user.NewLanguageID)
 	require.NotZero(t, user.Created)
 
-	updateUserByIdParams.ID = test.InvalidUserId
+	updateUserByIdParams.ID = util.InvalidUserId
 	_, err = testQueries.UpdateUserById(context.Background(), updateUserByIdParams)
 
 	require.Error(t, err)

@@ -1,4 +1,4 @@
-package test
+package util
 
 import (
 	"fmt"
@@ -6,6 +6,15 @@ import (
 	"math/rand"
 	"strconv"
 	"strings"
+	"talkliketv.click/tltv/internal/oapi"
+)
+
+const (
+	ValidTitleId       = -1
+	ValidOgLanguageId  = -1
+	ValidNewLanguageId = -1
+	ValidPermissionId  = 1
+	InvalidUserId      = -2
 )
 
 const alphabet = "abcdefghijklmnopqrstuvwxyz"
@@ -49,4 +58,11 @@ func ConvertStringInt16(s string) (int16, error) {
 		return -1, err
 	}
 	return int16(i), nil
+}
+
+func RandomPhrase() oapi.Phrase {
+	return oapi.Phrase{
+		Id:      RandomInt64(),
+		TitleId: RandomInt64(),
+	}
 }

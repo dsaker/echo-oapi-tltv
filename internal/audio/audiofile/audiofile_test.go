@@ -1,12 +1,15 @@
 package audiofile
 
 import (
+	"fmt"
 	"github.com/golang/mock/gomock"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"talkliketv.click/tltv/internal/test"
+	"talkliketv.click/tltv/internal/util"
 	"testing"
 )
 
@@ -131,44 +134,57 @@ func TestGetLines(t *testing.T) {
 	}
 }
 
-//func TestBuildAudioInputFiles(t *testing.T) {
-//
-//	title :=
-//	testCases := []audioFileTestCase{
-//		{
-//			name: "No error",
-//			buildFile: func(t *testing.T) *os.File {
-//				return createFile(
-//					t,
-//					"noerror",
-//					"This is the first sentence.\nThis is the second sentence.\n")
-//			},
-//			checkLines: func(lines []string, err error) {
-//				require.NoError(t, err)
-//				require.Equal(t, len(lines), 2)
-//			},
-//		},
-//	}
-//
-//	for i := range testCases {
-//		tc := testCases[i]
-//
-//		t.Run(tc.name, func(t *testing.T) {
-//			ctrl := gomock.NewController(t)
-//			defer ctrl.Finish()
-//
-//			e := echo.New()
-//			req := httptest.NewRequest(http.MethodGet, "/fakeurl", nil)
-//			rec := httptest.NewRecorder()
-//			c := e.NewContext(req, rec)
-//
-//			file := tc.buildFile(t)
-//			audioFile := AudioFile{}
-//			err := audioFile.BuildAudioInputFiles(c, file)
-//			tc.checkLines(stringsSlice, err)
-//		})
-//	}
-//}
+func TestBuildAudioInputFiles(t *testing.T) {
+	// BuildAudioInputFiles(e echo.Context, ids []int64, t db.Title, pause, from, to, tmpDir string)
+
+	title := test.RandomTitle()
+	pause := util.RandomString(4)
+	from := util.RandomString(4)
+	to := util.RandomString(4)
+	tmpDir := test.AudioBasePath + "TestBuildAudioInputFiles/" + title.Title + "/"
+	fromPath := fmt.Sprintf("%s%s/", tmpDir, from)
+	toPath := fmt.Sprintf("%s%s/", tmpDir, to)
+	err := os.MkdirAll(tmpDir, 0777)
+	require.NoError(t, err)
+	testCases := []audioFileTestCase{
+		{
+			name: "No error",
+			checkLines: func(lines []string, err error) {
+				require.NoError(t, err)
+				require.Equal(t, len(lines), 2)
+			},
+		},
+	}
+
+	for i := range testCases {
+		tc := testCases[i]
+
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			e := echo.New()
+			req := httptest.NewRequest(http.MethodGet, "/fakeurl", nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+
+			audioFile := AudioFile{}
+			err := audioFile.BuildAudioInputFiles(
+				c,
+				[]int64{util.RandomInt64(),
+					util.RandomInt64()},
+				title,
+				pause,
+				fromPath,
+				toPath,
+				tmpDir,
+			)
+			require.NoError(t, err)
+			filePath := tmpDir + title.Title + "-input-1"
+			require.FileExists(t, filePath)
+		})
+	}
+}
 
 func createFile(t *testing.T, filename, fileString string) *os.File {
 	// Create a new file

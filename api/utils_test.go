@@ -39,8 +39,6 @@ const (
 	phrasesBasePath         = "/v1/phrases"
 	usersPhrasesBasePath    = "/v1/usersphrases"
 	languagesBasePath       = "/v1/languages"
-	validLanguageId         = 27
-	testAudioBasePath       = "../tmp/test/audio/"
 )
 
 type MockStubs struct {
@@ -78,7 +76,7 @@ type testCase struct {
 func TestMain(m *testing.M) {
 	testCfg, _ = config.SetConfigs()
 	flag.Parse()
-	testCfg.TTSBasePath = testAudioBasePath
+	testCfg.TTSBasePath = test.AudioBasePath
 	os.Exit(m.Run())
 }
 
@@ -101,17 +99,17 @@ func readBody(t *testing.T, rs *http.Response) string {
 }
 
 func randomUser(t *testing.T) (user db.User, password string) {
-	password = test.RandomString(8)
+	password = util.RandomString(8)
 	hashedPassword, err := util.HashPassword(password)
 	require.NoError(t, err)
 
 	user = db.User{
-		ID:             test.RandomInt64(),
-		Name:           test.RandomString(8),
-		Email:          test.RandomEmail(),
-		TitleID:        test.ValidTitleId,
-		OgLanguageID:   test.ValidOgLanguageId,
-		NewLanguageID:  test.ValidNewLanguageId,
+		ID:             util.RandomInt64(),
+		Name:           util.RandomString(8),
+		Email:          util.RandomEmail(),
+		TitleID:        util.ValidTitleId,
+		OgLanguageID:   util.ValidOgLanguageId,
+		NewLanguageID:  util.ValidNewLanguageId,
 		HashedPassword: hashedPassword,
 	}
 	return
@@ -122,25 +120,25 @@ func randomTranslate(phrase oapi.Phrase, languageId int16) db.Translate {
 	return db.Translate{
 		PhraseID:   phrase.Id,
 		LanguageID: languageId,
-		Phrase:     test.RandomString(8),
-		PhraseHint: test.RandomString(8),
+		Phrase:     util.RandomString(8),
+		PhraseHint: util.RandomString(8),
 	}
 }
 
-func RandomTitle() (title db.Title) {
-
-	return db.Title{
-		ID:           test.RandomInt64(),
-		Title:        test.RandomString(8),
-		NumSubs:      test.RandomInt16(),
-		OgLanguageID: validLanguageId,
-	}
-}
+//func RandomTitle() (title db.Title) {
+//
+//	return db.Title{
+//		ID:           test.RandomInt64(),
+//		Title:        test.RandomString(8),
+//		NumSubs:      test.RandomInt16(),
+//		OgLanguageID: validLanguageId,
+//	}
+//}
 
 func randomLanguage() (language db.Language) {
 	return db.Language{
-		ID:       test.RandomInt16(),
-		Language: test.RandomString(6),
+		ID:       util.RandomInt16(),
+		Language: util.RandomString(6),
 		Tag:      "en",
 	}
 }

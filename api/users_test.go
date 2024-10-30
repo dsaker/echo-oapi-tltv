@@ -207,7 +207,7 @@ func TestCreateUser(t *testing.T) {
 				}
 				arg2 := db.InsertUserPermissionParams{
 					UserID:       user.ID,
-					PermissionID: test.ValidPermissionId,
+					PermissionID: util.ValidPermissionId,
 				}
 				stubs.MockQuerier.EXPECT().
 					InsertUser(gomock.Any(), EqCreateUserParams(arg, password)).
@@ -216,11 +216,11 @@ func TestCreateUser(t *testing.T) {
 					SelectPermissionByCode(
 						gomock.Any(),
 						db.ReadTitlesCode).
-					Return(db.Permission{ID: test.ValidPermissionId, Code: ""}, nil)
+					Return(db.Permission{ID: util.ValidPermissionId, Code: ""}, nil)
 				stubs.MockQuerier.EXPECT().
 					InsertUserPermission(gomock.Any(), arg2).
 					Times(1).
-					Return(db.UsersPermission{UserID: user.ID, PermissionID: test.ValidPermissionId}, nil)
+					Return(db.UsersPermission{UserID: user.ID, PermissionID: util.ValidPermissionId}, nil)
 			},
 			checkRecorder: func(rec *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusOK, rec.Code)

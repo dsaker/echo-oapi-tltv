@@ -14,12 +14,13 @@ import (
 	"strconv"
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/test"
+	"talkliketv.click/tltv/internal/util"
 	"testing"
 )
 
 func TestFindTitles(t *testing.T) {
 	user, _ := randomUser(t)
-	title := RandomTitle()
+	title := test.RandomTitle()
 	listTitleParams := db.ListTitlesParams{
 		Similarity: "similar",
 		Limit:      10,
@@ -128,15 +129,15 @@ func TestFindTitles(t *testing.T) {
 func TestAddTitle(t *testing.T) {
 
 	user, _ := randomUser(t)
-	title := RandomTitle()
-	translate1 := randomTranslate(test.RandomPhrase(), title.OgLanguageID)
-	translate2 := randomTranslate(test.RandomPhrase(), title.OgLanguageID)
+	title := test.RandomTitle()
+	translate1 := randomTranslate(util.RandomPhrase(), title.OgLanguageID)
+	translate2 := randomTranslate(util.RandomPhrase(), title.OgLanguageID)
 
 	dbTranslates := []db.Translate{translate1, translate2}
 
-	err := os.MkdirAll(testAudioBasePath, 0777)
+	err := os.MkdirAll(test.AudioBasePath, 0777)
 	require.NoError(t, err)
-	filename := testAudioBasePath + "testAddTitle.txt"
+	filename := test.AudioBasePath + "/TestAddTitle/testAddTitle.txt"
 	stringsSlice := []string{"This is the first sentence.", "This is the second sentence."}
 
 	insertTitle := db.InsertTitleParams{
@@ -201,7 +202,7 @@ func TestAddTitle(t *testing.T) {
 			name: "File Too Big",
 			user: user,
 			multipartBody: func(t *testing.T) (*bytes.Buffer, *multipart.Writer) {
-				tooBigFile := testAudioBasePath + "tooBigFile.txt"
+				tooBigFile := test.AudioBasePath + "tooBigFile.txt"
 				file, err := os.Create(tooBigFile)
 				require.NoError(t, err)
 				defer file.Close()
@@ -308,7 +309,7 @@ func TestAddTitle(t *testing.T) {
 
 func TestFindTitleById(t *testing.T) {
 	user, _ := randomUser(t)
-	title := RandomTitle()
+	title := test.RandomTitle()
 
 	testCases := []testCase{
 		{
@@ -369,7 +370,7 @@ func TestFindTitleById(t *testing.T) {
 
 func TestDeleteTitleById(t *testing.T) {
 	user, _ := randomUser(t)
-	title := RandomTitle()
+	title := test.RandomTitle()
 
 	testCases := []testCase{
 		{
