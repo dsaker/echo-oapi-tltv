@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -414,6 +415,277 @@ func TestDeleteTitleById(t *testing.T) {
 			urlPath := titlesBasePath + "/" + strconv.FormatInt(title.ID, 10)
 			ts, jwsToken := setupServerTest(t, ctrl, tc)
 			req := jsonRequest(t, []byte(""), ts, urlPath, http.MethodDelete, jwsToken)
+			res, err := ts.Client().Do(req)
+			require.NoError(t, err)
+
+			tc.checkResponse(res)
+		})
+	}
+}
+
+func TestTitlesTranslate(t *testing.T) {
+	user, _ := randomUser(t)
+	title := test.RandomTitle()
+	lang := randomLanguage()
+
+	phrase1 := util.RandomPhrase()
+	phrase2 := util.RandomPhrase()
+	translate1 := db.Translate{
+		PhraseID:   phrase1.Id,
+		LanguageID: lang.ID,
+		Phrase:     util.RandomString(8),
+		PhraseHint: util.RandomString(8),
+	}
+	translate2 := db.Translate{
+		PhraseID:   phrase2.Id,
+		LanguageID: lang.ID,
+		Phrase:     util.RandomString(8),
+		PhraseHint: util.RandomString(8),
+	}
+	translates := []db.Translate{translate1, translate2}
+
+	translatesReturn := []util.TranslatesReturn{
+		{PhraseId: phrase1.Id,
+			Text: util.RandomString(8)},
+		{PhraseId: phrase2.Id, Text: util.RandomString(8)},
+	}
+	selectExistsTranslatesParams := db.SelectExistsTranslatesParams{
+		LanguageID: lang.ID,
+		ID:         title.ID,
+	}
+	selectTranslatesByTitleIdLangIdParams := db.SelectTranslatesByTitleIdLangIdParams{
+		LanguageID: title.OgLanguageID,
+		ID:         title.ID,
+	}
+	testCases := []testCase{
+		{
+			name: "OK",
+			user: user,
+			body: map[string]any{
+				"newLanguageId": lang.ID,
+				"titleId":       title.ID,
+			},
+			buildStubs: func(stubs MockStubs) {
+				stubs.MockQuerier.EXPECT().
+					SelectExistsTranslates(gomock.Any(), selectExistsTranslatesParams).
+					Return(false, nil)
+				stubs.MockQuerier.EXPECT().
+					SelectTitleById(gomock.Any(), title.ID).
+					Return(title, nil)
+				stubs.MockQuerier.EXPECT().
+					SelectLanguagesById(gomock.Any(), lang.ID).
+					Return(lang, nil)
+				stubs.MockQuerier.EXPECT().
+					SelectTranslatesByTitleIdLangId(gomock.Any(), selectTranslatesByTitleIdLangIdParams).
+					Return(translates, nil)
+				stubs.TranslateX.EXPECT().
+					TranslatePhrases(gomock.Any(), translates, lang).
+					Return(translatesReturn, nil)
+				stubs.TranslateX.EXPECT().
+					InsertTranslates(gomock.Any(), stubs.MockQuerier, lang.ID, translatesReturn).
+					Return(translates, nil)
+
+			},
+			checkResponse: func(res *http.Response) {
+				require.Equal(t, http.StatusCreated, res.StatusCode)
+			},
+			permissions: []string{"titles:w"},
+		},
+		{
+			name: "Insert Translates Error",
+			user: user,
+			body: map[string]any{
+				"newLanguageId": lang.ID,
+				"titleId":       title.ID,
+			},
+			buildStubs: func(stubs MockStubs) {
+				stubs.MockQuerier.EXPECT().
+					SelectExistsTranslates(gomock.Any(), selectExistsTranslatesParams).
+					Return(false, nil)
+				stubs.MockQuerier.EXPECT().
+					SelectTitleById(gomock.Any(), title.ID).
+					Return(title, nil)
+				stubs.MockQuerier.EXPECT().
+					SelectLanguagesById(gomock.Any(), lang.ID).
+					Return(lang, nil)
+				stubs.MockQuerier.EXPECT().
+					SelectTranslatesByTitleIdLangId(gomock.Any(), selectTranslatesByTitleIdLangIdParams).
+					Return(translates, nil)
+				stubs.TranslateX.EXPECT().
+					TranslatePhrases(gomock.Any(), translates, lang).
+					Return(translatesReturn, nil)
+				stubs.TranslateX.EXPECT().
+					InsertTranslates(gomock.Any(), stubs.MockQuerier, lang.ID, translatesReturn).
+					Return([]db.Translate{}, sql.ErrConnDone)
+				stubs.MockQuerier.EXPECT().
+					DeleteTranslatesByLanguageId(
+						gomock.Any(),
+						db.DeleteTranslatesByLanguageIdParams{
+							LanguageID: lang.ID,
+							TitleID:    title.ID,
+						}).
+					Return(nil)
+
+			},
+			checkResponse: func(res *http.Response) {
+				require.Equal(t, http.StatusInternalServerError, res.StatusCode)
+				body := readBody(t, res)
+				require.Contains(t, body, "sql: connection is already closed")
+			},
+			permissions: []string{"titles:w"},
+		},
+		{
+			name: "empty translates return",
+			user: user,
+			body: map[string]any{
+				"newLanguageId": lang.ID,
+				"titleId":       title.ID,
+			},
+			buildStubs: func(stubs MockStubs) {
+				stubs.MockQuerier.EXPECT().
+					SelectExistsTranslates(gomock.Any(), selectExistsTranslatesParams).
+					Return(false, nil)
+				stubs.MockQuerier.EXPECT().
+					SelectTitleById(gomock.Any(), title.ID).
+					Return(title, nil)
+				stubs.MockQuerier.EXPECT().
+					SelectLanguagesById(gomock.Any(), lang.ID).
+					Return(lang, nil)
+				stubs.MockQuerier.EXPECT().
+					SelectTranslatesByTitleIdLangId(gomock.Any(), selectTranslatesByTitleIdLangIdParams).
+					Return(translates, nil)
+				stubs.TranslateX.EXPECT().
+					TranslatePhrases(gomock.Any(), translates, lang).
+					Return([]util.TranslatesReturn{}, nil)
+
+			},
+			checkResponse: func(res *http.Response) {
+				require.Equal(t, http.StatusInternalServerError, res.StatusCode)
+				body := readBody(t, res)
+				require.Contains(t, body, "something went wrong")
+			},
+			permissions: []string{"titles:w"},
+		},
+		{
+			name: "translates return error",
+			user: user,
+			body: map[string]any{
+				"newLanguageId": lang.ID,
+				"titleId":       title.ID,
+			},
+			buildStubs: func(stubs MockStubs) {
+				stubs.MockQuerier.EXPECT().
+					SelectExistsTranslates(gomock.Any(), selectExistsTranslatesParams).
+					Return(false, nil)
+				stubs.MockQuerier.EXPECT().
+					SelectTitleById(gomock.Any(), title.ID).
+					Return(title, nil)
+				stubs.MockQuerier.EXPECT().
+					SelectLanguagesById(gomock.Any(), lang.ID).
+					Return(lang, nil)
+				stubs.MockQuerier.EXPECT().
+					SelectTranslatesByTitleIdLangId(gomock.Any(), selectTranslatesByTitleIdLangIdParams).
+					Return(translates, nil)
+				stubs.TranslateX.EXPECT().
+					TranslatePhrases(gomock.Any(), translates, lang).
+					Return([]util.TranslatesReturn{}, errors.New("new error for testing"))
+
+			},
+			checkResponse: func(res *http.Response) {
+				require.Equal(t, http.StatusInternalServerError, res.StatusCode)
+				body := readBody(t, res)
+				require.Contains(t, body, "new error for testing")
+			},
+			permissions: []string{"titles:w"},
+		},
+		{
+			name: "Already Exists",
+			user: user,
+			body: map[string]any{
+				"newLanguageId": lang.ID,
+				"titleId":       title.ID,
+			},
+			buildStubs: func(stubs MockStubs) {
+				stubs.MockQuerier.EXPECT().
+					SelectExistsTranslates(gomock.Any(), selectExistsTranslatesParams).
+					Return(true, nil)
+			},
+			checkResponse: func(res *http.Response) {
+				require.Equal(t, http.StatusBadRequest, res.StatusCode)
+				body := readBody(t, res)
+				require.Contains(t, body, "title already exists in that language")
+			},
+			permissions: []string{"titles:w"},
+		},
+		{
+			name: "title not found",
+			user: user,
+			body: map[string]any{
+				"newLanguageId": lang.ID,
+				"titleId":       title.ID,
+			},
+			buildStubs: func(stubs MockStubs) {
+				stubs.MockQuerier.EXPECT().
+					SelectExistsTranslates(gomock.Any(), selectExistsTranslatesParams).
+					Return(false, nil)
+				stubs.MockQuerier.EXPECT().
+					SelectTitleById(gomock.Any(), title.ID).
+					Return(db.Title{}, sql.ErrNoRows)
+			},
+			checkResponse: func(res *http.Response) {
+				require.Equal(t, http.StatusBadRequest, res.StatusCode)
+				body := readBody(t, res)
+				require.Contains(t, body, "invalid title id")
+			},
+			permissions: []string{"titles:w"},
+		},
+		{
+			name: "wrong permission",
+			user: user,
+			body: map[string]any{
+				"newLanguageId": lang.ID,
+				"titleId":       title.ID,
+			},
+			buildStubs: func(stubs MockStubs) {
+			},
+			checkResponse: func(res *http.Response) {
+				require.Equal(t, http.StatusForbidden, res.StatusCode)
+				body := readBody(t, res)
+				require.Contains(t, body, "security requirements failed: token claims don't match: provided claims do not match expected scopes")
+			},
+			permissions: []string{"titles:r"},
+		},
+		{
+			name: "bad request body",
+			user: user,
+			body: map[string]any{
+				"newLanguage": lang.ID,
+				"titleId":     title.ID,
+			},
+			buildStubs: func(stubs MockStubs) {
+			},
+			checkResponse: func(res *http.Response) {
+				require.Equal(t, http.StatusBadRequest, res.StatusCode)
+				body := readBody(t, res)
+				require.Contains(t, body, "request body has an error: doesn't match schema #/components/schemas/TitlesTranslateRequest: Error at \\\"/newLanguageId\\\"")
+			},
+			permissions: []string{"titles:w"},
+		},
+	}
+
+	for i := range testCases {
+		tc := testCases[i]
+
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			urlPath := titlesBasePath + "/translate"
+			ts, jwsToken := setupServerTest(t, ctrl, tc)
+			// Marshal body data to JSON
+			data, err := json.Marshal(tc.body)
+			require.NoError(t, err)
+			req := jsonRequest(t, data, ts, urlPath, http.MethodPost, jwsToken)
 			res, err := ts.Client().Do(req)
 			require.NoError(t, err)
 

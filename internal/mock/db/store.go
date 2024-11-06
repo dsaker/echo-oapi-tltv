@@ -49,6 +49,20 @@ func (mr *MockQuerierMockRecorder) DeleteTitleById(arg0, arg1 interface{}) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteTitleById", reflect.TypeOf((*MockQuerier)(nil).DeleteTitleById), arg0, arg1)
 }
 
+// DeleteTranslatesByLanguageId mocks base method.
+func (m *MockQuerier) DeleteTranslatesByLanguageId(arg0 context.Context, arg1 db.DeleteTranslatesByLanguageIdParams) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteTranslatesByLanguageId", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteTranslatesByLanguageId indicates an expected call of DeleteTranslatesByLanguageId.
+func (mr *MockQuerierMockRecorder) DeleteTranslatesByLanguageId(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteTranslatesByLanguageId", reflect.TypeOf((*MockQuerier)(nil).DeleteTranslatesByLanguageId), arg0, arg1)
+}
+
 // DeleteUserById mocks base method.
 func (m *MockQuerier) DeleteUserById(arg0 context.Context, arg1 int64) error {
 	m.ctrl.T.Helper()
@@ -257,36 +271,6 @@ func (mr *MockQuerierMockRecorder) SelectPhraseIdsByTitleId(arg0, arg1 interface
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectPhraseIdsByTitleId", reflect.TypeOf((*MockQuerier)(nil).SelectPhraseIdsByTitleId), arg0, arg1)
 }
 
-// SelectPhrasesFromTranslates mocks base method.
-func (m *MockQuerier) SelectPhrasesFromTranslates(arg0 context.Context, arg1 db.SelectPhrasesFromTranslatesParams) ([]db.SelectPhrasesFromTranslatesRow, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SelectPhrasesFromTranslates", arg0, arg1)
-	ret0, _ := ret[0].([]db.SelectPhrasesFromTranslatesRow)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// SelectPhrasesFromTranslates indicates an expected call of SelectPhrasesFromTranslates.
-func (mr *MockQuerierMockRecorder) SelectPhrasesFromTranslates(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectPhrasesFromTranslates", reflect.TypeOf((*MockQuerier)(nil).SelectPhrasesFromTranslates), arg0, arg1)
-}
-
-// SelectPhrasesFromTranslatesWithCorrect mocks base method.
-func (m *MockQuerier) SelectPhrasesFromTranslatesWithCorrect(arg0 context.Context, arg1 db.SelectPhrasesFromTranslatesWithCorrectParams) ([]db.SelectPhrasesFromTranslatesWithCorrectRow, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SelectPhrasesFromTranslatesWithCorrect", arg0, arg1)
-	ret0, _ := ret[0].([]db.SelectPhrasesFromTranslatesWithCorrectRow)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// SelectPhrasesFromTranslatesWithCorrect indicates an expected call of SelectPhrasesFromTranslatesWithCorrect.
-func (mr *MockQuerierMockRecorder) SelectPhrasesFromTranslatesWithCorrect(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectPhrasesFromTranslatesWithCorrect", reflect.TypeOf((*MockQuerier)(nil).SelectPhrasesFromTranslatesWithCorrect), arg0, arg1)
-}
-
 // SelectTitleById mocks base method.
 func (m *MockQuerier) SelectTitleById(arg0 context.Context, arg1 int64) (db.Title, error) {
 	m.ctrl.T.Helper()
@@ -315,6 +299,21 @@ func (m *MockQuerier) SelectTranslatesByTitleIdLangId(arg0 context.Context, arg1
 func (mr *MockQuerierMockRecorder) SelectTranslatesByTitleIdLangId(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectTranslatesByTitleIdLangId", reflect.TypeOf((*MockQuerier)(nil).SelectTranslatesByTitleIdLangId), arg0, arg1)
+}
+
+// SelectTranslatesWithCorrect mocks base method.
+func (m *MockQuerier) SelectTranslatesWithCorrect(arg0 context.Context, arg1 db.SelectTranslatesWithCorrectParams) ([]db.SelectTranslatesWithCorrectRow, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SelectTranslatesWithCorrect", arg0, arg1)
+	ret0, _ := ret[0].([]db.SelectTranslatesWithCorrectRow)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SelectTranslatesWithCorrect indicates an expected call of SelectTranslatesWithCorrect.
+func (mr *MockQuerierMockRecorder) SelectTranslatesWithCorrect(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectTranslatesWithCorrect", reflect.TypeOf((*MockQuerier)(nil).SelectTranslatesWithCorrect), arg0, arg1)
 }
 
 // SelectUserById mocks base method.

@@ -15,8 +15,6 @@ import (
 	db "talkliketv.click/tltv/db/sqlc"
 )
 
-const JWTClaimsContextKey = "jwt_claims"
-
 // JWSValidator is used to validate JWS payloads and return a JWT if they're
 // valid
 type JWSValidator interface {

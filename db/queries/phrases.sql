@@ -9,29 +9,7 @@ SELECT * from users_phrases
 WHERE user_id = $1 and language_id = $2 and phrase_id = $3;
 
 
--- name: SelectPhrasesFromTranslates :many
-SELECT og.phrase_id, og.phrase, og.phrase_hint, new.phrase, new.phrase_hint
-FROM
-    (
-        SELECT phrase_id, phrase, phrase_hint
-        FROM translates t
-        where t.language_id = $1
-    ) og
-    JOIN (
-        SELECT phrase, phrase_hint, phrase_id
-        FROM translates t
-        WHERE t.language_id = $2
-    ) new
-ON og.phrase_id = new.phrase_id
-WHERE og.phrase_id
-IN (
-    SELECT phrase_id from users_phrases
-    WHERE user_id = $3 AND title_id = $4 AND language_id = $2
-    ORDER BY  phrase_correct, phrase_id
-    LIMIT $5
-    );
-
--- name: SelectPhrasesFromTranslatesWithCorrect :many
+-- name: SelectTranslatesWithCorrect :many
 SELECT og.phrase_id, og.phrase, og.phrase_hint, new.phrase, new.phrase_hint, up.phrase_correct
 FROM
     (

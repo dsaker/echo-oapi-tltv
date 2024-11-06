@@ -49,6 +49,7 @@ type MockStubs struct {
 	AudioFileX       *mocka.MockAudioFileX
 }
 
+// NewMockStubs creates instantiates new instances of all the mock interfaces for testing
 func NewMockStubs(ctrl *gomock.Controller) MockStubs {
 	return MockStubs{
 		MockQuerier:      mockdb.NewMockQuerier(ctrl),
@@ -59,6 +60,8 @@ func NewMockStubs(ctrl *gomock.Controller) MockStubs {
 	}
 }
 
+// testCase struct groups together the fields necessary for running most of the test
+// cases
 type testCase struct {
 	name          string
 	body          interface{}
@@ -80,6 +83,7 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+// readBody reads the http response body and returns it as a string
 func readBody(t *testing.T, rs *http.Response) string {
 	// Read the checkResponse body from the test server.
 	defer func(Body io.ReadCloser) {
@@ -98,6 +102,7 @@ func readBody(t *testing.T, rs *http.Response) string {
 	return string(body)
 }
 
+// randomUser creates a random user for testing
 func randomUser(t *testing.T) (user db.User, password string) {
 	password = util.RandomString(8)
 	hashedPassword, err := util.HashPassword(password)
@@ -115,6 +120,7 @@ func randomUser(t *testing.T) (user db.User, password string) {
 	return
 }
 
+// randomTranslate create a random db Translate for testing
 func randomTranslate(phrase oapi.Phrase, languageId int16) db.Translate {
 
 	return db.Translate{
@@ -125,16 +131,7 @@ func randomTranslate(phrase oapi.Phrase, languageId int16) db.Translate {
 	}
 }
 
-//func RandomTitle() (title db.Title) {
-//
-//	return db.Title{
-//		ID:           test.RandomInt64(),
-//		Title:        test.RandomString(8),
-//		NumSubs:      test.RandomInt16(),
-//		OgLanguageID: validLanguageId,
-//	}
-//}
-
+// randomLanguage creates a random db Language for testing
 func randomLanguage() (language db.Language) {
 	return db.Language{
 		ID:       util.RandomInt16(),
@@ -143,6 +140,9 @@ func randomLanguage() (language db.Language) {
 	}
 }
 
+// setupHandlerTest sets up a testCase that will be run through the handler
+// these tests will not include the middleware JWT verification or the automated validation
+// through openapi
 func setupHandlerTest(t *testing.T, ctrl *gomock.Controller, tc testCase, urlBasePath, body, method string) (*Server, echo.Context, *httptest.ResponseRecorder) {
 	stubs := NewMockStubs(ctrl)
 	tc.buildStubs(stubs)
@@ -156,6 +156,7 @@ func setupHandlerTest(t *testing.T, ctrl *gomock.Controller, tc testCase, urlBas
 	urlPath := urlBasePath + strconv.FormatInt(tc.extraInt, 10)
 
 	req := handlerRequest(body, urlPath, method, string(jwsToken))
+
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	c.Set(token.UserIdContextKey, strconv.FormatInt(tc.user.ID, 10))
@@ -163,6 +164,7 @@ func setupHandlerTest(t *testing.T, ctrl *gomock.Controller, tc testCase, urlBas
 	return srv, c, rec
 }
 
+// setupServerTest sets up testCase that will include the middleware not included in handler tests
 func setupServerTest(t *testing.T, ctrl *gomock.Controller, tc testCase) (*httptest.Server, string) {
 
 	stubs := NewMockStubs(ctrl)
@@ -179,6 +181,7 @@ func setupServerTest(t *testing.T, ctrl *gomock.Controller, tc testCase) (*httpt
 	return ts, string(jwsToken)
 }
 
+// handlerRequest is a helper function for setupHandlerTest
 func handlerRequest(json string, urlPath, method, authToken string) *http.Request {
 	req := httptest.NewRequest(method, urlPath, strings.NewReader(json))
 
@@ -191,6 +194,8 @@ func handlerRequest(json string, urlPath, method, authToken string) *http.Reques
 	return req
 }
 
+// jsonRequest creates a new request which has json as the body and sets the Header content type to
+// application/json
 func jsonRequest(t *testing.T, json []byte, ts *httptest.Server, urlPath, method, authToken string) *http.Request {
 
 	req, err := http.NewRequest(method, ts.URL+urlPath, bytes.NewBuffer(json))
@@ -205,8 +210,10 @@ func jsonRequest(t *testing.T, json []byte, ts *httptest.Server, urlPath, method
 	return req
 }
 
+// createMultiPartBody creates and returns a multipart Writer.
+// data is the data you want to write to the file.
+// m is the map[string][string] of the fields, values you want to write to the multipart body
 func createMultiPartBody(t *testing.T, data []byte, filename string, m map[string]string) (*bytes.Buffer, *multipart.Writer) {
-	//data := []byte("This is the first sentence.\nThis is the second sentence.\n")
 	err := os.WriteFile(filename, data, 0777)
 	file, err := os.Open(filename)
 	fmt.Println(file.Name())

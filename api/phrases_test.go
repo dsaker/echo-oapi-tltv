@@ -20,7 +20,7 @@ func TestGetPhrases(t *testing.T) {
 	ogTranslate := randomTranslate(phrase, user.OgLanguageID)
 	newTranslate := randomTranslate(phrase, user.NewLanguageID)
 
-	selectPhrasesFromTranslatesParams := db.SelectPhrasesFromTranslatesWithCorrectParams{
+	selectPhrasesFromTranslatesParams := db.SelectTranslatesWithCorrectParams{
 		LanguageID:   user.OgLanguageID,
 		LanguageID_2: user.OgLanguageID,
 		UserID:       user.ID,
@@ -28,7 +28,7 @@ func TestGetPhrases(t *testing.T) {
 		Limit:        10,
 	}
 
-	selectPhrasesFromTranslatesRow := db.SelectPhrasesFromTranslatesWithCorrectRow{
+	selectPhrasesFromTranslatesRow := db.SelectTranslatesWithCorrectRow{
 		PhraseID:     phrase.Id,
 		Phrase:       ogTranslate.Phrase,
 		PhraseHint:   ogTranslate.PhraseHint,
@@ -36,7 +36,7 @@ func TestGetPhrases(t *testing.T) {
 		PhraseHint_2: newTranslate.PhraseHint,
 	}
 
-	selectPhrasesFromTranslatesRowList := []db.SelectPhrasesFromTranslatesWithCorrectRow{selectPhrasesFromTranslatesRow}
+	selectTranslatesWithCorrectRowList := []db.SelectTranslatesWithCorrectRow{selectPhrasesFromTranslatesRow}
 
 	testCases := []testCase{
 		{
@@ -45,17 +45,17 @@ func TestGetPhrases(t *testing.T) {
 			values: map[string]any{"limit": true},
 			buildStubs: func(stubs MockStubs) {
 				stubs.MockQuerier.EXPECT().
-					SelectPhrasesFromTranslatesWithCorrect(gomock.Any(), selectPhrasesFromTranslatesParams).
+					SelectTranslatesWithCorrect(gomock.Any(), selectPhrasesFromTranslatesParams).
 					Times(1).
-					Return(selectPhrasesFromTranslatesRowList, nil)
+					Return(selectTranslatesWithCorrectRowList, nil)
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusOK, res.StatusCode)
 				body := readBody(t, res)
-				var got []db.SelectPhrasesFromTranslatesRow
+				var got []db.SelectTranslatesWithCorrectRow
 				err := json.Unmarshal([]byte(body), &got)
 				require.NoError(t, err)
-				test.RequireMatchAnyExcept(t, selectPhrasesFromTranslatesRowList[0], got[0], nil, "", "")
+				test.RequireMatchAnyExcept(t, selectTranslatesWithCorrectRowList[0], got[0], nil, "", "")
 			},
 			permissions: []string{db.ReadTitlesCode},
 		},
@@ -65,17 +65,17 @@ func TestGetPhrases(t *testing.T) {
 			values: map[string]any{"limit": false},
 			buildStubs: func(stubs MockStubs) {
 				stubs.MockQuerier.EXPECT().
-					SelectPhrasesFromTranslatesWithCorrect(gomock.Any(), selectPhrasesFromTranslatesParams).
+					SelectTranslatesWithCorrect(gomock.Any(), selectPhrasesFromTranslatesParams).
 					Times(1).
-					Return(selectPhrasesFromTranslatesRowList, nil)
+					Return(selectTranslatesWithCorrectRowList, nil)
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusOK, res.StatusCode)
 				body := readBody(t, res)
-				var got []db.SelectPhrasesFromTranslatesWithCorrectRow
+				var got []db.SelectTranslatesWithCorrectRow
 				err := json.Unmarshal([]byte(body), &got)
 				require.NoError(t, err)
-				test.RequireMatchAnyExcept(t, selectPhrasesFromTranslatesRowList[0], got[0], nil, "", "")
+				test.RequireMatchAnyExcept(t, selectTranslatesWithCorrectRowList[0], got[0], nil, "", "")
 			},
 			permissions: []string{db.ReadTitlesCode},
 		},

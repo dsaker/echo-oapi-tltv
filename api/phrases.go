@@ -12,6 +12,9 @@ import (
 	"talkliketv.click/tltv/internal/token"
 )
 
+// GetPhrases gets the next set limit or default ten phrases for user title and language ids
+// sorted by ascending correctness (correctness is how many times a user has guessed a phrase
+// correctly)
 func (s *Server) GetPhrases(e echo.Context, params oapi.GetPhrasesParams) error {
 
 	if params.Limit == nil {
@@ -24,9 +27,9 @@ func (s *Server) GetPhrases(e echo.Context, params oapi.GetPhrasesParams) error 
 		return e.String(http.StatusBadRequest, err.Error())
 	}
 
-	usersPhrases, err := s.queries.SelectPhrasesFromTranslatesWithCorrect(
+	usersPhrases, err := s.queries.SelectTranslatesWithCorrect(
 		e.Request().Context(),
-		db.SelectPhrasesFromTranslatesWithCorrectParams{
+		db.SelectTranslatesWithCorrectParams{
 			UserID:       user.ID,
 			TitleID:      user.TitleID,
 			LanguageID:   user.OgLanguageID,
@@ -42,6 +45,8 @@ func (s *Server) GetPhrases(e echo.Context, params oapi.GetPhrasesParams) error 
 	return e.JSON(http.StatusOK, usersPhrases)
 }
 
+// UpdateUsersPhrases performs a PATCH request on the users_phrases table. It will
+// mostly be used to increase the correct column by one.
 func (s *Server) UpdateUsersPhrases(e echo.Context, phraseId int64, languageId int16) error {
 	user, err := token.GetUserFromContext(e)
 	if err != nil {

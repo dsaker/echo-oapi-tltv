@@ -7,6 +7,8 @@ import (
 	"talkliketv.click/tltv/internal/oapi"
 )
 
+// AddUserPermission allows user with global:admin permission to add any
+// permission to any user
 func (s *Server) AddUserPermission(e echo.Context) error {
 	// We expect a NewTitle object in the request body.
 	var newUserPermission oapi.NewUserPermission

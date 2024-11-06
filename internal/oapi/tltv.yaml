@@ -705,7 +705,6 @@ components:
       required:
         - titleId
         - newLanguageId
-        - oldLanguageId
       properties:
         titleId:
           type: integer
@@ -715,10 +714,6 @@ components:
           type: integer
           format: int16
           description: id of language to translate to
-        oldLanguageId:
-          type: integer
-          format: int16
-          description: id of language to translate from
     Translates:
       required:
         - phraseId

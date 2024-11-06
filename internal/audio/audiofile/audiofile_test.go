@@ -230,7 +230,7 @@ func TestCreateMp3ZipWithFfmpeg(t *testing.T) {
 			buildStubs: func(ma *mocka.MockcmdRunnerX) {
 			},
 			checkReturn: func(t *testing.T, file *os.File, err error) {
-				require.Contains(t, err.Error(), "no files found in CreateMp3ZipWithFfmpeg")
+				require.Contains(t, err.Error(), "no files found in CreateMp3Zip")
 			},
 		},
 	}
@@ -249,9 +249,9 @@ func TestCreateMp3ZipWithFfmpeg(t *testing.T) {
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			audioFile := NewAudioFile(cmdX)
+			audioFile := New(cmdX)
 			title, tmpDir := tc.createTitle(t)
-			osFile, err := audioFile.CreateMp3ZipWithFfmpeg(c, title, tmpDir)
+			osFile, err := audioFile.CreateMp3Zip(c, title, tmpDir)
 			tc.checkReturn(t, osFile, err)
 		})
 	}

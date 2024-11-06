@@ -94,6 +94,8 @@ func NewServer(e *echo.Echo, cfg config.Config, q db.Querier, t translates.Trans
 // Make sure we conform to ServerInterface
 var _ oapi.ServerInterface = (*Server)(nil)
 
+// createMiddleware creates the JWS middleware function that will validate the JWT token
+// and store data in echo context for use in echo handlers
 func createMiddleware(v token.JWSValidator, spec *openapi3.T) ([]echo.MiddlewareFunc, error) {
 	validator := mw.OapiRequestValidatorWithOptions(spec,
 		&mw.Options{
@@ -106,6 +108,7 @@ func createMiddleware(v token.JWSValidator, spec *openapi3.T) ([]echo.Middleware
 	return []echo.MiddlewareFunc{validator}, nil
 }
 
+// initSilence copies the silence mp3's from the embedded filesystem to the config TTSBasePath
 func initSilence(e *echo.Echo, cfg config.Config) {
 	// check if silence mp3s exist in your base path
 	silencePath := cfg.TTSBasePath + audiofile.AudioPauseFilePath[cfg.PhrasePause]

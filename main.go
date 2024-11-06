@@ -69,7 +69,7 @@ func main() {
 	t := translates.New(transClient, ttsClient)
 
 	//initialize audiofile with the real command runner
-	af := audiofile.NewAudioFile(&audiofile.RealCmdRunner{})
+	af := audiofile.New(&audiofile.RealCmdRunner{})
 	// initialize api server
 	api.NewServer(e, cfg, q, t, af)
 

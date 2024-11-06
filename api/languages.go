@@ -5,6 +5,8 @@ import (
 	"net/http"
 )
 
+// GetLanguages returns a list of all the available languages for the
+// translate functions
 func (s *Server) GetLanguages(e echo.Context) error {
 	languages, err := s.queries.ListLanguages(e.Request().Context())
 

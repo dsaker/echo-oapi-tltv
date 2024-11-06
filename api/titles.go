@@ -30,8 +30,7 @@ func (s *Server) FindTitles(ctx echo.Context, params oapi.FindTitlesParams) erro
 }
 
 // AddTitle takes your uploaded file, filename, and title and adds it to the database,
-// along with adding the phrases in the original language and getting the text-to-speech
-// and saving it to the file path set in config.TTSBasePath
+// along with adding the phrases in the original language to the translates table
 func (s *Server) AddTitle(e echo.Context) error {
 
 	// get lang id and title from multipart form
@@ -117,6 +116,8 @@ func (s *Server) DeleteTitle(e echo.Context, id int64) error {
 	return e.NoContent(http.StatusNoContent)
 }
 
+// TitlesTranslate translates the phrases of a title from the original language
+// of the title to any available language by id and stores them in the translates table
 func (s *Server) TitlesTranslate(e echo.Context) error {
 
 	var newTranslateTitle oapi.TitlesTranslateRequest
@@ -175,15 +176,24 @@ func (s *Server) TitlesTranslate(e echo.Context) error {
 	// get the translates from the phrases
 	newTranslates, err := s.translates.TranslatePhrases(e, phrasesToTranslate, dbLang)
 	if err != nil {
-		e.Logger().Error(err)
 		return e.String(http.StatusInternalServerError, err.Error())
+	}
+
+	// check if returned translates is empty
+	if len(newTranslates) == 0 {
+		return e.String(http.StatusInternalServerError, "something went wrong")
 	}
 
 	// insert new translated phrases into the database
 	insertTranslates, err := s.translates.InsertTranslates(e, s.queries, dbLang.ID, newTranslates)
 	if err != nil {
 		e.Logger().Info(fmt.Sprintf("Error inserting translates -- titleId: %d -- languageId: %d -- error: %s", title.ID, dbLang.ID, err.Error()))
-		// TODO		delete translates where language id and phrase id in ( select by title id)
+		// roll back by deleting any translates that were inserted
+		_ = s.queries.DeleteTranslatesByLanguageId(e.Request().Context(),
+			db.DeleteTranslatesByLanguageIdParams{
+				LanguageID: dbLang.ID,
+				TitleID:    title.ID,
+			})
 		return e.String(http.StatusInternalServerError, err.Error())
 	}
 

@@ -81,7 +81,7 @@ func TestAudioFromTitle(t *testing.T) {
 				stubs.AudioFileX.EXPECT().
 					BuildAudioInputFiles(gomock.Any(), phraseIDs, title, silenceBasePath, fromAudioBasePath, toAudioBasePath, gomock.Any()).
 					Return(nil)
-				// CreateMp3ZipWithFfmpeg(echo.Context, db.Title, string) (*os.File, error)
+				// CreateMp3Zip(echo.Context, db.Title, string) (*os.File, error)
 				stubs.AudioFileX.EXPECT().
 					CreateMp3ZipWithFfmpeg(gomock.Any(), title, gomock.Any()).
 					Return(file, nil)
@@ -243,7 +243,7 @@ func TestAudioFromFile(t *testing.T) {
 				stubs.AudioFileX.EXPECT().
 					BuildAudioInputFiles(gomock.Any(), phraseIDs, title, silenceBasePath, fromAudioBasePath, toAudioBasePath, gomock.Any()).
 					Return(nil)
-				// CreateMp3ZipWithFfmpeg(echo.Context, db.Title, string) (*os.File, error)
+				// CreateMp3Zip(echo.Context, db.Title, string) (*os.File, error)
 				stubs.AudioFileX.EXPECT().
 					CreateMp3ZipWithFfmpeg(gomock.Any(), title, gomock.Any()).
 					Return(file, nil)

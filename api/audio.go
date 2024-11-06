@@ -13,6 +13,8 @@ import (
 	"talkliketv.click/tltv/internal/util"
 )
 
+// AudioFromFile accepts a file in srt, phrase per line, or paragraph form and
+// sends a zip file of mp3 audio tracks for learning a language that you choose
 func (s *Server) AudioFromFile(e echo.Context) error {
 	// get values from multipart form
 	titleName := e.FormValue("titleName")
@@ -103,6 +105,8 @@ func (s *Server) AudioFromFile(e echo.Context) error {
 	return e.Attachment(zipFile.Name(), title.Title+".zip")
 }
 
+// AudioFromTitle accepts a title id sends a zip file of mp3 audio track for
+// learning a language that you choose
 func (s *Server) AudioFromTitle(e echo.Context) error {
 	var audioFromTitleRequest oapi.AudioFromTitleJSONRequestBody
 	err := e.Bind(&audioFromTitleRequest)
@@ -127,6 +131,8 @@ func (s *Server) AudioFromTitle(e echo.Context) error {
 	return e.Attachment(zipFile.Name(), title.Title+".zip")
 }
 
+// createAudioFromTitle is a helper function that performs the tasks shared by
+// AudioFromFile and AudioFromTitle
 func (s *Server) createAudioFromTitle(e echo.Context, title db.Title, r oapi.AudioFromTitleJSONRequestBody) (*os.File, error) {
 
 	// get MockQuerier.Language for from language from id
@@ -191,7 +197,7 @@ func (s *Server) createAudioFromTitle(e echo.Context, title db.Title, r oapi.Aud
 		return nil, err
 	}
 
-	zipFile, err := s.af.CreateMp3ZipWithFfmpeg(e, title, tmpDirPath)
+	zipFile, err := s.af.CreateMp3Zip(e, title, tmpDirPath)
 	if err != nil {
 		return nil, err
 	}

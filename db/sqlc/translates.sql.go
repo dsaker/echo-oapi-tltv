@@ -9,6 +9,23 @@ import (
 	"context"
 )
 
+const deleteTranslatesByLanguageId = `-- name: DeleteTranslatesByLanguageId :exec
+DELETE FROM translates
+WHERE language_id =$1 and phrase_id in (
+    SELECT FROM phrases WHERE title_id = $2
+    )
+`
+
+type DeleteTranslatesByLanguageIdParams struct {
+	LanguageID int16 `json:"language_id"`
+	TitleID    int64 `json:"title_id"`
+}
+
+func (q *Queries) DeleteTranslatesByLanguageId(ctx context.Context, arg DeleteTranslatesByLanguageIdParams) error {
+	_, err := q.db.ExecContext(ctx, deleteTranslatesByLanguageId, arg.LanguageID, arg.TitleID)
+	return err
+}
+
 const insertTranslates = `-- name: InsertTranslates :one
 INSERT INTO translates (phrase_id, language_id, phrase, phrase_hint)
 VALUES ($1, $2, $3, $4)
@@ -42,8 +59,8 @@ func (q *Queries) InsertTranslates(ctx context.Context, arg InsertTranslatesPara
 const selectExistsTranslates = `-- name: SelectExistsTranslates :one
 SELECT EXISTS(
     SELECT 1 FROM titles t
-                      JOIN phrases p ON t.id = p.title_id
-                      JOIN translates tr ON p.id = tr.phrase_id AND tr.language_id = $1
+      JOIN phrases p ON t.id = p.title_id
+      JOIN translates tr ON p.id = tr.phrase_id AND tr.language_id = $1
     WHERE tr.language_id = $1 and t.id = $2 ) AS "exists"
 `
 
@@ -61,8 +78,8 @@ func (q *Queries) SelectExistsTranslates(ctx context.Context, arg SelectExistsTr
 
 const selectTranslatesByTitleIdLangId = `-- name: SelectTranslatesByTitleIdLangId :many
 SELECT tr.phrase_id, tr.language_id, tr.phrase, tr.phrase_hint FROM titles t
-                                        JOIN phrases p ON t.id = p.title_id
-                                        JOIN translates tr ON p.id = tr.phrase_id AND tr.language_id = $1
+    JOIN phrases p ON t.id = p.title_id
+    JOIN translates tr ON p.id = tr.phrase_id AND tr.language_id = $1
 WHERE tr.language_id = $1 and t.id = $2
 `
 

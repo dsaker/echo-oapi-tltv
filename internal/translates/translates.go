@@ -2,9 +2,11 @@ package translates
 
 import (
 	"cloud.google.com/go/texttospeech/apiv1/texttospeechpb"
+	"cloud.google.com/go/translate"
 	"context"
 	"errors"
 	"fmt"
+	"github.com/googleapis/gax-go/v2"
 	"github.com/labstack/echo/v4"
 	"golang.org/x/text/language"
 	"os"
@@ -17,6 +19,20 @@ import (
 	"unicode"
 )
 
+// TranslateClientX creates an interface for google translate.Translate so it can
+// be mocked for testing
+type TranslateClientX interface {
+	Translate(context.Context, []string, language.Tag, *translate.Options) ([]translate.Translation, error)
+}
+
+// TTSClientX creates an interface for google texttospeechpb.SynthesizeSpeech so
+// it can be mocked for testing
+type TTSClientX interface {
+	SynthesizeSpeech(context.Context, *texttospeechpb.SynthesizeSpeechRequest, ...gax.CallOption) (*texttospeechpb.SynthesizeSpeechResponse, error)
+}
+
+// TranslateX creates an interface for Translate methods that deal with creating/inserting
+// translates and phrases
 type TranslateX interface {
 	InsertNewPhrases(echo.Context, db.Title, db.Querier, []string) ([]db.Translate, error)
 	InsertTranslates(echo.Context, db.Querier, int16, []util.TranslatesReturn) ([]db.Translate, error)
@@ -36,6 +52,8 @@ func New(trc TranslateClientX, ttsc TTSClientX) *Translate {
 	}
 }
 
+// TextToSpeech takes a slice of db.Translate and get the speech mp3's adding them
+// to the machines local file system
 func (t *Translate) TextToSpeech(e echo.Context, ts []db.Translate, bp, tag string) error {
 
 	// concurrently get all the audio content from Google text-to-speech
@@ -63,6 +81,9 @@ func (t *Translate) TextToSpeech(e echo.Context, ts []db.Translate, bp, tag stri
 	return nil
 }
 
+// GetSpeech is a helper function for TextToSpeech that is run concurrently.
+// it is passed a cancel context, so if one routine fails, the following routines can
+// be canceled
 func (t *Translate) GetSpeech(
 	e echo.Context,
 	ctx context.Context,
@@ -114,11 +135,14 @@ func (t *Translate) GetSpeech(
 	}
 }
 
+// TranslatePhrases takes a slice of db.Translate{} and a db.Language and returns a slice
+// of util.TranslatesReturn to be inserted into the db
 func (t *Translate) TranslatePhrases(e echo.Context, ts []db.Translate, dbLang db.Language) ([]util.TranslatesReturn, error) {
 
 	// get language tag to translate to
 	langTag, err := language.Parse(dbLang.Tag)
 	if err != nil {
+		e.Logger().Error(err)
 		return nil, err
 	}
 
@@ -148,6 +172,10 @@ func (t *Translate) TranslatePhrases(e echo.Context, ts []db.Translate, dbLang d
 	return responses, nil
 }
 
+// GetTranslate is a helper function for TranslatePhrases that allows concurrent calls to
+// google translate.Translate.
+// It receives a context.CancelFunc that is invoked on an error so all subsequent calls to
+// google translate.Translate can be aborted
 func (t *Translate) GetTranslate(e echo.Context,
 	ctx context.Context,
 	cancel context.CancelFunc,
@@ -189,6 +217,8 @@ func (t *Translate) GetTranslate(e echo.Context,
 	}
 }
 
+// CreateTTS is called from api.createAudioFromTitle.
+// It checks if the mp3 audio files exist and if not it creates them.
 func (t *Translate) CreateTTS(e echo.Context, q db.Querier, lang db.Language, title db.Title, basepath string) error {
 	// if the audio files already exist no need to request them again
 	skip, err := util.PathExists(basepath)
@@ -197,7 +227,7 @@ func (t *Translate) CreateTTS(e echo.Context, q db.Querier, lang db.Language, ti
 		return err
 	}
 
-	// if they do not exist then request them
+	// if they do not exist, then request them
 	if !skip {
 		fromTranslates, err := t.GetOrCreateTranslates(e, q, title.ID, lang, title.OgLanguageID)
 		if err != nil {
@@ -219,6 +249,8 @@ func (t *Translate) CreateTTS(e echo.Context, q db.Querier, lang db.Language, ti
 	return nil
 }
 
+// GetOrCreateTranslates checks if the translates for the title already exists in the db.
+// If they do not exist, then it creates and returns them.
 func (t *Translate) GetOrCreateTranslates(e echo.Context, q db.Querier, titleId int64, toLang db.Language, fromLangId int16) ([]db.Translate, error) {
 	// see if translates exist for title for language
 	exists, err := q.SelectExistsTranslates(
@@ -269,6 +301,7 @@ func (t *Translate) GetOrCreateTranslates(e echo.Context, q db.Querier, titleId 
 	return dbTranslates, nil
 }
 
+// InsertNewPhrases accepts a slice of phrases and inserts them into the db as translates
 func (t *Translate) InsertNewPhrases(e echo.Context, title db.Title, q db.Querier, stringsSlice []string) ([]db.Translate, error) {
 	dbTranslates := make([]db.Translate, len(stringsSlice))
 	for i, str := range stringsSlice {
@@ -296,6 +329,7 @@ func (t *Translate) InsertNewPhrases(e echo.Context, title db.Title, q db.Querie
 	return dbTranslates, nil
 }
 
+// InsertTranslates accepts a slice of util.TranslatedReturns and inserts them into the db
 func (t *Translate) InsertTranslates(e echo.Context, q db.Querier, langId int16, trr []util.TranslatesReturn) ([]db.Translate, error) {
 	dbTranslates := make([]db.Translate, len(trr))
 	for i, row := range trr {
@@ -320,6 +354,8 @@ func (t *Translate) InsertTranslates(e echo.Context, q db.Querier, langId int16,
 	return dbTranslates, nil
 }
 
+// makeHintString creates a hint string that is the first character of each word of a phrase
+// and an underscore for every following character giving the user help when requested.
 func makeHintString(s string) string {
 	hintString := ""
 	words := strings.Fields(s)

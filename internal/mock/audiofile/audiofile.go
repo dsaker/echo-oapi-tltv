@@ -53,9 +53,9 @@ func (mr *MockAudioFileXMockRecorder) BuildAudioInputFiles(arg0, arg1, arg2, arg
 }
 
 // CreateMp3ZipWithFfmpeg mocks base method.
-func (m *MockAudioFileX) CreateMp3ZipWithFfmpeg(arg0 echo.Context, arg1 db.Title, arg2 string) (*os.File, error) {
+func (m *MockAudioFileX) CreateMp3Zip(arg0 echo.Context, arg1 db.Title, arg2 string) (*os.File, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateMp3ZipWithFfmpeg", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "CreateMp3Zip", arg0, arg1, arg2)
 	ret0, _ := ret[0].(*os.File)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
@@ -64,7 +64,7 @@ func (m *MockAudioFileX) CreateMp3ZipWithFfmpeg(arg0 echo.Context, arg1 db.Title
 // CreateMp3ZipWithFfmpeg indicates an expected call of CreateMp3ZipWithFfmpeg.
 func (mr *MockAudioFileXMockRecorder) CreateMp3ZipWithFfmpeg(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateMp3ZipWithFfmpeg", reflect.TypeOf((*MockAudioFileX)(nil).CreateMp3ZipWithFfmpeg), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateMp3Zip", reflect.TypeOf((*MockAudioFileX)(nil).CreateMp3Zip), arg0, arg1, arg2)
 }
 
 // GetLines mocks base method.

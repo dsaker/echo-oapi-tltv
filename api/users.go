@@ -38,6 +38,7 @@ func newUserResponse(user db.User) userResponse {
 	}
 }
 
+// CreateUser registers a new user
 func (s *Server) CreateUser(e echo.Context) error {
 	// We expect a NewUser object in the request body.
 	var newUser oapi.NewUser
@@ -129,6 +130,7 @@ func (s *Server) FindUserByID(e echo.Context, id int64) error {
 	return e.JSON(http.StatusOK, rsp)
 }
 
+// UpdateUser accepts a Patch request to update the user values
 func (s *Server) UpdateUser(e echo.Context, id int64) error {
 
 	err := token.CheckJWTUserIDFromRequest(e, id)

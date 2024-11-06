@@ -18,6 +18,9 @@ import (
 	audio "talkliketv.click/tltv/internal/audio/pattern"
 )
 
+// AudioPauseFilePath is a map to the silence mp3's of the embedded FS in
+// internal/audio/silence/efs.go and after application startup will be stored
+// at config.TTSBasePath
 var AudioPauseFilePath = map[int]string{
 	3:  "silence/3SecSilence.mp3",
 	4:  "silence/4SecSilence.mp3",
@@ -29,6 +32,7 @@ var AudioPauseFilePath = map[int]string{
 	10: "silence/10SecSilence.mp3",
 }
 
+// endSentenceMap is a map to find the ending punctuation of a sentence
 var endSentenceMap = map[rune]bool{
 	'!': true,
 	'.': true,
@@ -37,7 +41,7 @@ var endSentenceMap = map[rune]bool{
 
 type AudioFileX interface {
 	GetLines(echo.Context, multipart.File) ([]string, error)
-	CreateMp3ZipWithFfmpeg(echo.Context, db.Title, string) (*os.File, error)
+	CreateMp3Zip(echo.Context, db.Title, string) (*os.File, error)
 	BuildAudioInputFiles(echo.Context, []int64, db.Title, string, string, string, string) error
 }
 
@@ -45,20 +49,27 @@ type AudioFile struct {
 	cmdX cmdRunnerX
 }
 
+// cmdRunnerX creates an interface to allow for unit testing without having ffmpeg installed
 type cmdRunnerX interface {
 	CombinedOutput(cmd *exec.Cmd) ([]byte, error)
 }
 
-func NewAudioFile(cmdX cmdRunnerX) *AudioFile {
+func New(cmdX cmdRunnerX) *AudioFile {
 	return &AudioFile{cmdX: cmdX}
 }
 
 type RealCmdRunner struct{}
 
+// CombinedOutput is a wrapper function for cmd.CombinedOutput() so this function
+// can be interfaced for testing (ffmpeg will not have to be installed on machine
+// for unit testing)
 func (r *RealCmdRunner) CombinedOutput(cmd *exec.Cmd) ([]byte, error) {
 	return cmd.Output()
 }
 
+// GetLines determines if the uploaded file is an srt, in paragraph form, or one phrase per
+// line and then parses the file accordingly, returning a string slice containing the
+// phrases to be translated
 func (a *AudioFile) GetLines(e echo.Context, f multipart.File) ([]string, error) {
 
 	// get file type, options are srt, single line text or paragraph
@@ -137,6 +148,7 @@ func (a *AudioFile) GetLines(e echo.Context, f multipart.File) ([]string, error)
 	return stringsSlice, nil
 }
 
+// parseSrt takes a srt multipart file and parses it into a slice of strings
 func parseSrt(f multipart.File) []string {
 	var stringsSlice []string
 	scanner := bufio.NewScanner(f)
@@ -173,6 +185,7 @@ func parseSrt(f multipart.File) []string {
 	return stringsSlice
 }
 
+// parseParagraph takes a txt multipart file in paragraph form and returns a slice of strings
 func parseParagraph(f multipart.File) []string {
 	var stringsSlice []string
 	scanner := bufio.NewScanner(f)
@@ -202,6 +215,8 @@ func parseParagraph(f multipart.File) []string {
 	return stringsSlice
 }
 
+// parseSingle takes a txt multipart file with one phrase per line and parses it
+// into a slice of strings
 func parseSingle(f multipart.File) []string {
 	var stringsSlice []string
 	scanner := bufio.NewScanner(f)
@@ -216,6 +231,8 @@ func parseSingle(f multipart.File) []string {
 	return stringsSlice
 }
 
+// replaceFmt is a helper function for parseSrt that replaces characters that are not part
+// of the phrase like descriptions or tags
 func replaceFmt(line string) string {
 	// remove any characters between brackets and brackets [...] or {...} or <...>
 	re := regexp.MustCompile("\\[.*?]")
@@ -230,7 +247,10 @@ func replaceFmt(line string) string {
 	return line
 }
 
-func (a *AudioFile) CreateMp3ZipWithFfmpeg(e echo.Context, t db.Title, tmpDir string) (*os.File, error) {
+// CreateMp3Zip takes the input txt files created with BuildAudioInputFiles and uses ffmpeg
+// to build an output mp3's file and the zips them into a single file to be returned to the
+// requester
+func (a *AudioFile) CreateMp3Zip(e echo.Context, t db.Title, tmpDir string) (*os.File, error) {
 	// get a list of files from the temp directory
 	files, err := os.ReadDir(tmpDir)
 	if err != nil {
@@ -238,7 +258,7 @@ func (a *AudioFile) CreateMp3ZipWithFfmpeg(e echo.Context, t db.Title, tmpDir st
 		return nil, err
 	}
 	if len(files) == 0 {
-		return nil, errors.New("no files found in CreateMp3ZipWithFfmpeg")
+		return nil, errors.New("no files found in CreateMp3Zip")
 	}
 	// create outputs folder to hold all the mp3's to zip
 	outDirPath := tmpDir + "outputs"
@@ -284,6 +304,8 @@ func (a *AudioFile) CreateMp3ZipWithFfmpeg(e echo.Context, t db.Title, tmpDir st
 	return zipFile, err
 }
 
+// addFileToZip is a helper function for CreateMp3Zip that adds each file to
+// the zip.Writer
 func addFileToZip(e echo.Context, zipWriter *zip.Writer, filename string) error {
 	file, err := os.Open(filename)
 	if err != nil {
@@ -318,7 +340,7 @@ func addFileToZip(e echo.Context, zipWriter *zip.Writer, filename string) error 
 	return err
 }
 
-// TODO shorten the parameters
+// BuildAudioInputFiles
 func (a *AudioFile) BuildAudioInputFiles(e echo.Context, ids []int64, t db.Title, pause, from, to, tmpDir string) error {
 
 	// map phrase ids to zero through len(phrase ids) to map correctly to pattern.Pattern
