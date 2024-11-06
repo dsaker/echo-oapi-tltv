@@ -28,7 +28,9 @@ go.work.sum
 .DS_Store
 .vscode/
 bin/
-audio/
+tmp/
 
 scratch.txt
 .envrc
+
+~/tmp/

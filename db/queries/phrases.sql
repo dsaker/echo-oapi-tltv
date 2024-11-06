@@ -9,29 +9,7 @@ SELECT * from users_phrases
 WHERE user_id = $1 and language_id = $2 and phrase_id = $3;
 
 
--- name: SelectPhrasesFromTranslates :many
-SELECT og.phrase_id, og.phrase, og.phrase_hint, new.phrase, new.phrase_hint
-FROM
-    (
-        SELECT phrase_id, phrase, phrase_hint
-        FROM translates t
-        where t.language_id = $1
-    ) og
-    JOIN (
-        SELECT phrase, phrase_hint, phrase_id
-        FROM translates t
-        WHERE t.language_id = $2
-    ) new
-ON og.phrase_id = new.phrase_id
-WHERE og.phrase_id
-IN (
-    SELECT phrase_id from users_phrases
-    WHERE user_id = $3 AND title_id = $4 AND language_id = $2
-    ORDER BY  phrase_correct, phrase_id
-    LIMIT $5
-    );
-
--- name: SelectPhrasesFromTranslatesWithCorrect :many
+-- name: SelectTranslatesWithCorrect :many
 SELECT og.phrase_id, og.phrase, og.phrase_hint, new.phrase, new.phrase_hint, up.phrase_correct
 FROM
     (
@@ -71,21 +49,9 @@ INSERT INTO phrases (title_id)
 VALUES ($1)
 RETURNING *;
 
--- name: InsertTranslates :one
-INSERT INTO translates (phrase_id, language_id, phrase, phrase_hint)
-VALUES ($1, $2, $3, $4)
-RETURNING *;
+-- name: SelectPhraseIdsByTitleId :many
+SELECT id FROM phrases
+WHERE title_id = $1
+ORDER BY id;
 
--- name: SelectTranslatesByTitleIdLangId :many
-SELECT tr.phrase_id, tr.phrase FROM titles t
-JOIN phrases p ON t.id = p.title_id
-JOIN translates tr ON p.id = tr.phrase_id AND tr.language_id = $1
-WHERE tr.language_id = $1 and t.id = $2;
-
--- name: SelectExistsTranslates :one
-SELECT EXISTS(
-    SELECT 1 FROM titles t
-    JOIN phrases p ON t.id = p.title_id
-    JOIN translates tr ON p.id = tr.phrase_id AND tr.language_id = $1
-    WHERE tr.language_id = $1 and t.id = $2 ) AS "exists";
 

@@ -5,24 +5,23 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/text/language"
 	"io"
 	"mime/multipart"
 	"net/http"
 	"os"
 	"strconv"
-	mockdb "talkliketv.click/tltv/db/mock"
 	db "talkliketv.click/tltv/db/sqlc"
-	mock "talkliketv.click/tltv/internal/mock"
+	"talkliketv.click/tltv/internal/test"
 	"talkliketv.click/tltv/internal/util"
 	"testing"
 )
 
 func TestFindTitles(t *testing.T) {
 	user, _ := randomUser(t)
-	title := randomTitle()
+	title := test.RandomTitle()
 	listTitleParams := db.ListTitlesParams{
 		Similarity: "similar",
 		Limit:      10,
@@ -43,8 +42,8 @@ func TestFindTitles(t *testing.T) {
 			name:   "OK",
 			user:   user,
 			values: map[string]any{"similarity": true, "limit": true},
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
-				store.EXPECT().
+			buildStubs: func(stubs MockStubs) {
+				stubs.MockQuerier.EXPECT().
 					ListTitles(gomock.Any(), listTitleParams).
 					Times(1).
 					Return(listTitlesRow, nil)
@@ -55,7 +54,7 @@ func TestFindTitles(t *testing.T) {
 				var gotTitlesRow []db.ListTitlesRow
 				err := json.Unmarshal([]byte(body), &gotTitlesRow)
 				require.NoError(t, err)
-				requireMatchAnyExcept(t, listTitlesRow[0], gotTitlesRow[0], nil, "", "")
+				test.RequireMatchAnyExcept(t, listTitlesRow[0], gotTitlesRow[0], nil, "", "")
 			},
 			permissions: []string{db.ReadTitlesCode},
 		},
@@ -63,7 +62,7 @@ func TestFindTitles(t *testing.T) {
 			name:   "Missing similarity value",
 			user:   user,
 			values: map[string]any{"similarity": false, "limit": true},
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
+			buildStubs: func(stubs MockStubs) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)
@@ -76,7 +75,7 @@ func TestFindTitles(t *testing.T) {
 			name:   "Missing permission",
 			user:   user,
 			values: map[string]any{"similarity": false, "limit": true},
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
+			buildStubs: func(stubs MockStubs) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusForbidden, res.StatusCode)
@@ -90,7 +89,7 @@ func TestFindTitles(t *testing.T) {
 			name:   "Missing limit value",
 			user:   user,
 			values: map[string]any{"similarity": true, "limit": false},
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
+			buildStubs: func(stubs MockStubs) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)
@@ -131,19 +130,16 @@ func TestFindTitles(t *testing.T) {
 func TestAddTitle(t *testing.T) {
 
 	user, _ := randomUser(t)
-	title := randomTitle()
-	translate1 := randomTranslate(randomPhrase(), title.OgLanguageID)
-	translate2 := randomTranslate(randomPhrase(), title.OgLanguageID)
+	title := test.RandomTitle()
+	translate1 := randomTranslate(util.RandomPhrase(), title.OgLanguageID)
+	translate2 := randomTranslate(util.RandomPhrase(), title.OgLanguageID)
 
 	dbTranslates := []db.Translate{translate1, translate2}
 
-	filename := "/tmp/sentences2.txt"
+	err := os.MkdirAll(test.AudioBasePath, 0777)
+	require.NoError(t, err)
+	filename := test.AudioBasePath + "testAddTitle.txt"
 	stringsSlice := []string{"This is the first sentence.", "This is the second sentence."}
-
-	//create a base path for storing mp3 audio files
-	audioBasePath := "/tmp/audio/" +
-		strconv.Itoa(int(title.ID)) + "/" +
-		strconv.Itoa(int(title.OgLanguageID)) + "/"
 
 	insertTitle := db.InsertTitleParams{
 		Title:        title.Title,
@@ -151,41 +147,28 @@ func TestAddTitle(t *testing.T) {
 		OgLanguageID: title.OgLanguageID,
 	}
 
-	filename = "/tmp/filename.txt"
-
 	testCases := []testCase{
 		{
 			name: "OK",
 			user: user,
 			multipartBody: func(t *testing.T) (*bytes.Buffer, *multipart.Writer) {
 				data := []byte("This is the first sentence.\nThis is the second sentence.\n")
-				err := os.WriteFile(filename, data, 0777)
-				file, err := os.Open(filename)
-				body := new(bytes.Buffer)
-				writer := multipart.NewWriter(body)
-				part, err := writer.CreateFormFile("filePath", filename)
-				require.NoError(t, err)
-				_, err = io.Copy(part, file)
-				require.NoError(t, err)
-				err = writer.WriteField("titleName", title.Title)
-				err = writer.WriteField("languageId", strconv.Itoa(int(title.OgLanguageID)))
-				require.NoError(t, writer.Close())
-				return body, writer
+				fields := map[string]string{
+					"titleName":  title.Title,
+					"languageId": strconv.Itoa(int(title.OgLanguageID)),
+				}
+				return createMultiPartBody(t, data, filename, fields)
 			},
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
-				store.EXPECT().
-					SelectLanguagesById(gomock.Any(), title.OgLanguageID).
-					Times(1).Return(validLanguageModel, nil)
-				store.EXPECT().
+			buildStubs: func(stubs MockStubs) {
+				stubs.AudioFileX.EXPECT().
+					GetLines(gomock.Any(), gomock.Any()).
+					Return(stringsSlice, nil)
+				stubs.MockQuerier.EXPECT().
 					InsertTitle(gomock.Any(), insertTitle).
 					Times(1).Return(title, nil)
-				text.EXPECT().
-					InsertNewPhrases(gomock.Any(), title, store, stringsSlice).
+				stubs.TranslateX.EXPECT().
+					InsertNewPhrases(gomock.Any(), title, stubs.MockQuerier, stringsSlice).
 					Times(1).Return(dbTranslates, nil)
-				text.EXPECT().
-					TextToSpeech(gomock.Any(), dbTranslates, audioBasePath, validLanguageModel.Tag).
-					Times(1).Return(nil)
-
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusOK, res.StatusCode)
@@ -193,7 +176,7 @@ func TestAddTitle(t *testing.T) {
 				var gotTitle db.Title
 				err := json.Unmarshal([]byte(body), &gotTitle)
 				require.NoError(t, err)
-				requireMatchAnyExcept(t, title, gotTitle, nil, "", "")
+				test.RequireMatchAnyExcept(t, title, gotTitle, nil, "", "")
 			},
 			permissions: []string{db.WriteTitlesCode},
 		},
@@ -202,19 +185,12 @@ func TestAddTitle(t *testing.T) {
 			user: user,
 			multipartBody: func(t *testing.T) (*bytes.Buffer, *multipart.Writer) {
 				data := []byte("This is the first sentence.\nThis is the second sentence.\n")
-				err := os.WriteFile(filename, data, 0644)
-				file, err := os.Open(filename)
-				body := new(bytes.Buffer)
-				writer := multipart.NewWriter(body)
-				part, err := writer.CreateFormFile("filePath", filename)
-				require.NoError(t, err)
-				_, err = io.Copy(part, file)
-				require.NoError(t, err)
-				err = writer.WriteField("languageId", strconv.Itoa(int(title.OgLanguageID)))
-				require.NoError(t, writer.Close())
-				return body, writer
+				fields := map[string]string{
+					"languageId": strconv.Itoa(int(title.OgLanguageID)),
+				}
+				return createMultiPartBody(t, data, filename, fields)
 			},
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
+			buildStubs: func(stubs MockStubs) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)
@@ -227,11 +203,12 @@ func TestAddTitle(t *testing.T) {
 			name: "File Too Big",
 			user: user,
 			multipartBody: func(t *testing.T) (*bytes.Buffer, *multipart.Writer) {
-				file, err := os.Create(filename)
+				tooBigFile := test.AudioBasePath + "tooBigFile.txt"
+				file, err := os.Create(tooBigFile)
 				require.NoError(t, err)
 				defer file.Close()
 				writer := bufio.NewWriter(file)
-				for i := 0; i < 32100; i++ {
+				for i := 0; i < 64100; i++ {
 					// Write random characters to the file
 					char := byte('a')
 					err = writer.WriteByte(char)
@@ -239,10 +216,10 @@ func TestAddTitle(t *testing.T) {
 				}
 				writer.Flush()
 
-				multiFile, err := os.Open(filename)
+				multiFile, err := os.Open(tooBigFile)
 				body := new(bytes.Buffer)
 				multiWriter := multipart.NewWriter(body)
-				part, err := multiWriter.CreateFormFile("filePath", filename)
+				part, err := multiWriter.CreateFormFile("filePath", tooBigFile)
 				require.NoError(t, err)
 				_, err = io.Copy(part, multiFile)
 				require.NoError(t, err)
@@ -251,7 +228,7 @@ func TestAddTitle(t *testing.T) {
 				require.NoError(t, multiWriter.Close())
 				return body, multiWriter
 			},
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
+			buildStubs: func(stubs MockStubs) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)
@@ -265,23 +242,19 @@ func TestAddTitle(t *testing.T) {
 			user: user,
 			multipartBody: func(t *testing.T) (*bytes.Buffer, *multipart.Writer) {
 				data := []byte("This is the first sentence.\nThis is the second sentence.\n")
-				err := os.WriteFile(filename, data, 0644)
-				file, err := os.Open(filename)
-				body := new(bytes.Buffer)
-				writer := multipart.NewWriter(body)
-				part, err := writer.CreateFormFile("filePath", filename)
-				require.NoError(t, err)
-				_, err = io.Copy(part, file)
-				require.NoError(t, err)
-				err = writer.WriteField("titleName", title.Title)
-				err = writer.WriteField("languageId", strconv.Itoa(int(title.OgLanguageID)))
-				require.NoError(t, writer.Close())
-				return body, writer
+				fields := map[string]string{
+					"titleName":  title.Title,
+					"languageId": strconv.Itoa(int(title.OgLanguageID)),
+				}
+				return createMultiPartBody(t, data, filename, fields)
 			},
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
-				store.EXPECT().
-					SelectLanguagesById(gomock.Any(), title.OgLanguageID).
-					Times(1).Return(db.Language{}, sql.ErrConnDone)
+			buildStubs: func(stubs MockStubs) {
+				stubs.AudioFileX.EXPECT().
+					GetLines(gomock.Any(), gomock.Any()).
+					Return(stringsSlice, nil)
+				stubs.MockQuerier.EXPECT().
+					InsertTitle(gomock.Any(), insertTitle).
+					Times(1).Return(db.Title{}, sql.ErrConnDone)
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusInternalServerError, res.StatusCode)
@@ -293,22 +266,15 @@ func TestAddTitle(t *testing.T) {
 		{
 			name: "missing permission",
 			user: user,
+			buildStubs: func(stubs MockStubs) {
+			},
 			multipartBody: func(t *testing.T) (*bytes.Buffer, *multipart.Writer) {
 				data := []byte("This is the first sentence.\nThis is the second sentence.\n")
-				err := os.WriteFile(filename, data, 0644)
-				file, err := os.Open(filename)
-				body := new(bytes.Buffer)
-				writer := multipart.NewWriter(body)
-				part, err := writer.CreateFormFile("filePath", filename)
-				require.NoError(t, err)
-				_, err = io.Copy(part, file)
-				require.NoError(t, err)
-				err = writer.WriteField("titleName", title.Title)
-				err = writer.WriteField("languageId", strconv.Itoa(int(title.OgLanguageID)))
-				require.NoError(t, writer.Close())
-				return body, writer
-			},
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
+				fields := map[string]string{
+					"titleName":  title.Title,
+					"languageId": strconv.Itoa(int(title.OgLanguageID)),
+				}
+				return createMultiPartBody(t, data, filename, fields)
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusForbidden, res.StatusCode)
@@ -338,24 +304,20 @@ func TestAddTitle(t *testing.T) {
 			require.NoError(t, err)
 
 			tc.checkResponse(res)
-			err = os.RemoveAll(audioBasePath)
-			require.NoError(t, err)
-			err = os.Remove(filename)
-			require.NoError(t, err)
 		})
 	}
 }
 
 func TestFindTitleById(t *testing.T) {
 	user, _ := randomUser(t)
-	title := randomTitle()
+	title := test.RandomTitle()
 
 	testCases := []testCase{
 		{
 			name: "OK",
 			user: user,
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
-				store.EXPECT().
+			buildStubs: func(stubs MockStubs) {
+				stubs.MockQuerier.EXPECT().
 					SelectTitleById(gomock.Any(), title.ID).
 					Times(1).
 					Return(title, nil)
@@ -366,15 +328,15 @@ func TestFindTitleById(t *testing.T) {
 				var gotTitle db.Title
 				err := json.Unmarshal([]byte(body), &gotTitle)
 				require.NoError(t, err)
-				requireMatchAnyExcept(t, title, gotTitle, nil, "", "")
+				test.RequireMatchAnyExcept(t, title, gotTitle, nil, "", "")
 			},
 			permissions: []string{},
 		},
 		{
 			name: "id not found",
 			user: user,
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
-				store.EXPECT().
+			buildStubs: func(stubs MockStubs) {
+				stubs.MockQuerier.EXPECT().
 					SelectTitleById(gomock.Any(), title.ID).
 					Times(1).
 					Return(db.Title{}, sql.ErrNoRows)
@@ -409,14 +371,14 @@ func TestFindTitleById(t *testing.T) {
 
 func TestDeleteTitleById(t *testing.T) {
 	user, _ := randomUser(t)
-	title := randomTitle()
+	title := test.RandomTitle()
 
 	testCases := []testCase{
 		{
 			name: "OK",
 			user: user,
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
-				store.EXPECT().
+			buildStubs: func(stubs MockStubs) {
+				stubs.MockQuerier.EXPECT().
 					DeleteTitleById(gomock.Any(), title.ID).
 					Times(1).Return(nil)
 			},
@@ -428,8 +390,8 @@ func TestDeleteTitleById(t *testing.T) {
 		{
 			name: "id not found",
 			user: user,
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
-				store.EXPECT().
+			buildStubs: func(stubs MockStubs) {
+				stubs.MockQuerier.EXPECT().
 					DeleteTitleById(gomock.Any(), title.ID).
 					Times(1).
 					Return(sql.ErrNoRows)
@@ -461,216 +423,253 @@ func TestDeleteTitleById(t *testing.T) {
 	}
 }
 
-func TestTranslateTitle(t *testing.T) {
-
+func TestTitlesTranslate(t *testing.T) {
 	user, _ := randomUser(t)
-	title := randomTitle()
-	newLanguage := randomLanguage()
-	phrase1 := randomPhrase()
-	translate1 := randomTranslate(phrase1, newLanguage.ID)
-	phrase2 := randomPhrase()
-	translate2 := randomTranslate(phrase2, newLanguage.ID)
+	title := test.RandomTitle()
+	lang := randomLanguage()
 
-	translateTitleBody := TitlesTranslateRequest{
-		TitleId:       title.ID,
-		OldLanguageId: title.OgLanguageID,
-		NewLanguageId: newLanguage.ID,
+	phrase1 := util.RandomPhrase()
+	phrase2 := util.RandomPhrase()
+	translate1 := db.Translate{
+		PhraseID:   phrase1.Id,
+		LanguageID: lang.ID,
+		Phrase:     util.RandomString(8),
+		PhraseHint: util.RandomString(8),
 	}
+	translate2 := db.Translate{
+		PhraseID:   phrase2.Id,
+		LanguageID: lang.ID,
+		Phrase:     util.RandomString(8),
+		PhraseHint: util.RandomString(8),
+	}
+	translates := []db.Translate{translate1, translate2}
 
+	translatesReturn := []util.TranslatesReturn{
+		{PhraseId: phrase1.Id,
+			Text: util.RandomString(8)},
+		{PhraseId: phrase2.Id, Text: util.RandomString(8)},
+	}
 	selectExistsTranslatesParams := db.SelectExistsTranslatesParams{
-		LanguageID: newLanguage.ID,
+		LanguageID: lang.ID,
 		ID:         title.ID,
 	}
-
 	selectTranslatesByTitleIdLangIdParams := db.SelectTranslatesByTitleIdLangIdParams{
-		LanguageID: translateTitleBody.OldLanguageId,
+		LanguageID: title.OgLanguageID,
 		ID:         title.ID,
 	}
-
-	selectTranslatesByTitleIdLangIdRow1 := db.SelectTranslatesByTitleIdLangIdRow{
-		Phrase:   translate1.Phrase,
-		PhraseID: phrase1.Id,
-	}
-	selectTranslatesByTitleIdLangIdRow2 := db.SelectTranslatesByTitleIdLangIdRow{
-		Phrase:   translate2.Phrase,
-		PhraseID: phrase2.Id,
-	}
-	selectTranslatesByTitleIdLangIdRows := []db.SelectTranslatesByTitleIdLangIdRow{
-		selectTranslatesByTitleIdLangIdRow1, selectTranslatesByTitleIdLangIdRow2}
-
-	langTag := language.English
-	translatesReturn1 := util.TranslatesReturn{PhraseId: phrase1.Id, Text: util.RandomString(8)}
-	translatesReturn2 := util.TranslatesReturn{PhraseId: phrase2.Id, Text: util.RandomString(8)}
-	translatesReturns := []util.TranslatesReturn{translatesReturn1, translatesReturn2}
-
-	translatesSlice := []db.Translate{randomTranslate(phrase1, newLanguage.ID), randomTranslate(phrase2, newLanguage.ID)}
-
 	testCases := []testCase{
 		{
-			name: "Created",
+			name: "OK",
 			user: user,
 			body: map[string]any{
-				"titleId":       translateTitleBody.TitleId,
-				"oldLanguageId": translateTitleBody.OldLanguageId,
-				"newLanguageId": translateTitleBody.NewLanguageId,
+				"newLanguageId": lang.ID,
+				"titleId":       title.ID,
 			},
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
-				store.EXPECT().
+			buildStubs: func(stubs MockStubs) {
+				stubs.MockQuerier.EXPECT().
 					SelectExistsTranslates(gomock.Any(), selectExistsTranslatesParams).
-					Times(1).Return(false, nil)
-				store.EXPECT().
-					SelectTitleById(gomock.Any(), translateTitleBody.TitleId).
-					Times(1).Return(title, nil)
-				store.EXPECT().
-					SelectLanguagesById(gomock.Any(), translateTitleBody.NewLanguageId).
-					Times(1).Return(newLanguage, nil)
-				store.EXPECT().
+					Return(false, nil)
+				stubs.MockQuerier.EXPECT().
+					SelectTitleById(gomock.Any(), title.ID).
+					Return(title, nil)
+				stubs.MockQuerier.EXPECT().
+					SelectLanguagesById(gomock.Any(), lang.ID).
+					Return(lang, nil)
+				stubs.MockQuerier.EXPECT().
 					SelectTranslatesByTitleIdLangId(gomock.Any(), selectTranslatesByTitleIdLangIdParams).
-					Times(1).Return(selectTranslatesByTitleIdLangIdRows, nil)
-				text.EXPECT().TranslatePhrases(
-					gomock.Any(),
-					selectTranslatesByTitleIdLangIdRows,
-					langTag).Times(1).
-					Return(translatesReturns, nil)
-				text.EXPECT().
-					InsertTranslates(gomock.Any(), store, translateTitleBody.NewLanguageId, translatesReturns).
-					Return(translatesSlice, nil)
+					Return(translates, nil)
+				stubs.TranslateX.EXPECT().
+					TranslatePhrases(gomock.Any(), translates, lang).
+					Return(translatesReturn, nil)
+				stubs.TranslateX.EXPECT().
+					InsertTranslates(gomock.Any(), stubs.MockQuerier, lang.ID, translatesReturn).
+					Return(translates, nil)
+
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusCreated, res.StatusCode)
-				body := readBody(t, res)
-				var gotTranslates []db.Translate
-				err := json.Unmarshal([]byte(body), &gotTranslates)
-				require.NoError(t, err)
-				requireMatchAnyExcept(t, translatesSlice[0], gotTranslates[0], nil, "", "")
 			},
-			permissions: []string{db.WriteTitlesCode},
+			permissions: []string{"titles:w"},
 		},
 		{
-			name: "Bad Request Body",
+			name: "Insert Translates Error",
 			user: user,
 			body: map[string]any{
-				"title":         translateTitleBody.TitleId,
-				"oldLanguageId": translateTitleBody.OldLanguageId,
-				"newLanguageId": translateTitleBody.NewLanguageId,
+				"newLanguageId": lang.ID,
+				"titleId":       title.ID,
 			},
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
-			},
-			checkResponse: func(res *http.Response) {
-				require.Equal(t, http.StatusBadRequest, res.StatusCode)
-				body := readBody(t, res)
-				require.Contains(t, body, "request body has an error: doesn't match schema #/components/schemas/TitlesTranslateRequest: Error at")
-			},
-			permissions: []string{db.WriteTitlesCode},
-		},
-		{
-			name: "Wrong Permission",
-			user: user,
-			body: map[string]any{
-				"title":         translateTitleBody.TitleId,
-				"oldLanguageId": translateTitleBody.OldLanguageId,
-				"newLanguageId": translateTitleBody.NewLanguageId,
-			},
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
-			},
-			checkResponse: func(res *http.Response) {
-				require.Equal(t, http.StatusForbidden, res.StatusCode)
-				body := readBody(t, res)
-				require.Contains(t, body, "security requirements failed: token claims don't match: provided claims do not match expected scopes")
-			},
-			permissions: []string{db.ReadTitlesCode},
-		},
-		{
-			name: "Translates Already Exist",
-			user: user,
-			body: map[string]any{
-				"titleId":       translateTitleBody.TitleId,
-				"oldLanguageId": translateTitleBody.OldLanguageId,
-				"newLanguageId": translateTitleBody.NewLanguageId,
-			},
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
-				store.EXPECT().
+			buildStubs: func(stubs MockStubs) {
+				stubs.MockQuerier.EXPECT().
 					SelectExistsTranslates(gomock.Any(), selectExistsTranslatesParams).
-					Times(1).Return(true, nil)
-			},
-			checkResponse: func(res *http.Response) {
-				require.Equal(t, http.StatusBadRequest, res.StatusCode)
-				body := readBody(t, res)
-				require.Contains(t, body, "title already exists in that language")
-			},
-			permissions: []string{db.WriteTitlesCode},
-		},
-		{
-			name: "Invalid Title Id",
-			user: user,
-			body: map[string]any{
-				"titleId":       translateTitleBody.TitleId,
-				"oldLanguageId": translateTitleBody.OldLanguageId,
-				"newLanguageId": translateTitleBody.NewLanguageId,
-			},
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
-				store.EXPECT().
-					SelectExistsTranslates(gomock.Any(), selectExistsTranslatesParams).
-					Times(1).Return(false, nil)
-				store.EXPECT().
-					SelectTitleById(gomock.Any(), translateTitleBody.TitleId).
-					Times(1).Return(db.Title{}, sql.ErrNoRows)
-			},
-			checkResponse: func(res *http.Response) {
-				require.Equal(t, http.StatusBadRequest, res.StatusCode)
-				body := readBody(t, res)
-				require.Contains(t, body, "invalid title id")
-			},
-			permissions: []string{db.WriteTitlesCode},
-		},
-		{
-			name: "DB Connection Closed",
-			user: user,
-			body: map[string]any{
-				"titleId":       translateTitleBody.TitleId,
-				"oldLanguageId": translateTitleBody.OldLanguageId,
-				"newLanguageId": translateTitleBody.NewLanguageId,
-			},
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
-				store.EXPECT().
-					SelectExistsTranslates(gomock.Any(), selectExistsTranslatesParams).
-					Times(1).Return(false, nil)
-				store.EXPECT().
-					SelectTitleById(gomock.Any(), translateTitleBody.TitleId).
-					Times(1).Return(db.Title{}, sql.ErrConnDone)
+					Return(false, nil)
+				stubs.MockQuerier.EXPECT().
+					SelectTitleById(gomock.Any(), title.ID).
+					Return(title, nil)
+				stubs.MockQuerier.EXPECT().
+					SelectLanguagesById(gomock.Any(), lang.ID).
+					Return(lang, nil)
+				stubs.MockQuerier.EXPECT().
+					SelectTranslatesByTitleIdLangId(gomock.Any(), selectTranslatesByTitleIdLangIdParams).
+					Return(translates, nil)
+				stubs.TranslateX.EXPECT().
+					TranslatePhrases(gomock.Any(), translates, lang).
+					Return(translatesReturn, nil)
+				stubs.TranslateX.EXPECT().
+					InsertTranslates(gomock.Any(), stubs.MockQuerier, lang.ID, translatesReturn).
+					Return([]db.Translate{}, sql.ErrConnDone)
+				stubs.MockQuerier.EXPECT().
+					DeleteTranslatesByLanguageId(
+						gomock.Any(),
+						db.DeleteTranslatesByLanguageIdParams{
+							LanguageID: lang.ID,
+							TitleID:    title.ID,
+						}).
+					Return(nil)
+
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusInternalServerError, res.StatusCode)
 				body := readBody(t, res)
 				require.Contains(t, body, "sql: connection is already closed")
 			},
-			permissions: []string{db.WriteTitlesCode},
+			permissions: []string{"titles:w"},
 		},
 		{
-			name: "Invalid Language Id",
+			name: "empty translates return",
 			user: user,
 			body: map[string]any{
-				"titleId":       translateTitleBody.TitleId,
-				"oldLanguageId": translateTitleBody.OldLanguageId,
-				"newLanguageId": translateTitleBody.NewLanguageId,
+				"newLanguageId": lang.ID,
+				"titleId":       title.ID,
 			},
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
-				store.EXPECT().
+			buildStubs: func(stubs MockStubs) {
+				stubs.MockQuerier.EXPECT().
 					SelectExistsTranslates(gomock.Any(), selectExistsTranslatesParams).
-					Times(1).Return(false, nil)
-				store.EXPECT().
-					SelectTitleById(gomock.Any(), translateTitleBody.TitleId).
-					Times(1).Return(title, nil)
-				store.EXPECT().
-					SelectLanguagesById(gomock.Any(), translateTitleBody.NewLanguageId).
-					Times(1).Return(db.Language{}, sql.ErrNoRows)
+					Return(false, nil)
+				stubs.MockQuerier.EXPECT().
+					SelectTitleById(gomock.Any(), title.ID).
+					Return(title, nil)
+				stubs.MockQuerier.EXPECT().
+					SelectLanguagesById(gomock.Any(), lang.ID).
+					Return(lang, nil)
+				stubs.MockQuerier.EXPECT().
+					SelectTranslatesByTitleIdLangId(gomock.Any(), selectTranslatesByTitleIdLangIdParams).
+					Return(translates, nil)
+				stubs.TranslateX.EXPECT().
+					TranslatePhrases(gomock.Any(), translates, lang).
+					Return([]util.TranslatesReturn{}, nil)
+
+			},
+			checkResponse: func(res *http.Response) {
+				require.Equal(t, http.StatusInternalServerError, res.StatusCode)
+				body := readBody(t, res)
+				require.Contains(t, body, "something went wrong")
+			},
+			permissions: []string{"titles:w"},
+		},
+		{
+			name: "translates return error",
+			user: user,
+			body: map[string]any{
+				"newLanguageId": lang.ID,
+				"titleId":       title.ID,
+			},
+			buildStubs: func(stubs MockStubs) {
+				stubs.MockQuerier.EXPECT().
+					SelectExistsTranslates(gomock.Any(), selectExistsTranslatesParams).
+					Return(false, nil)
+				stubs.MockQuerier.EXPECT().
+					SelectTitleById(gomock.Any(), title.ID).
+					Return(title, nil)
+				stubs.MockQuerier.EXPECT().
+					SelectLanguagesById(gomock.Any(), lang.ID).
+					Return(lang, nil)
+				stubs.MockQuerier.EXPECT().
+					SelectTranslatesByTitleIdLangId(gomock.Any(), selectTranslatesByTitleIdLangIdParams).
+					Return(translates, nil)
+				stubs.TranslateX.EXPECT().
+					TranslatePhrases(gomock.Any(), translates, lang).
+					Return([]util.TranslatesReturn{}, errors.New("new error for testing"))
+
+			},
+			checkResponse: func(res *http.Response) {
+				require.Equal(t, http.StatusInternalServerError, res.StatusCode)
+				body := readBody(t, res)
+				require.Contains(t, body, "new error for testing")
+			},
+			permissions: []string{"titles:w"},
+		},
+		{
+			name: "Already Exists",
+			user: user,
+			body: map[string]any{
+				"newLanguageId": lang.ID,
+				"titleId":       title.ID,
+			},
+			buildStubs: func(stubs MockStubs) {
+				stubs.MockQuerier.EXPECT().
+					SelectExistsTranslates(gomock.Any(), selectExistsTranslatesParams).
+					Return(true, nil)
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)
 				body := readBody(t, res)
-				require.Contains(t, body, "invalid language id")
+				require.Contains(t, body, "title already exists in that language")
 			},
-			permissions: []string{db.WriteTitlesCode},
+			permissions: []string{"titles:w"},
+		},
+		{
+			name: "title not found",
+			user: user,
+			body: map[string]any{
+				"newLanguageId": lang.ID,
+				"titleId":       title.ID,
+			},
+			buildStubs: func(stubs MockStubs) {
+				stubs.MockQuerier.EXPECT().
+					SelectExistsTranslates(gomock.Any(), selectExistsTranslatesParams).
+					Return(false, nil)
+				stubs.MockQuerier.EXPECT().
+					SelectTitleById(gomock.Any(), title.ID).
+					Return(db.Title{}, sql.ErrNoRows)
+			},
+			checkResponse: func(res *http.Response) {
+				require.Equal(t, http.StatusBadRequest, res.StatusCode)
+				body := readBody(t, res)
+				require.Contains(t, body, "invalid title id")
+			},
+			permissions: []string{"titles:w"},
+		},
+		{
+			name: "wrong permission",
+			user: user,
+			body: map[string]any{
+				"newLanguageId": lang.ID,
+				"titleId":       title.ID,
+			},
+			buildStubs: func(stubs MockStubs) {
+			},
+			checkResponse: func(res *http.Response) {
+				require.Equal(t, http.StatusForbidden, res.StatusCode)
+				body := readBody(t, res)
+				require.Contains(t, body, "security requirements failed: token claims don't match: provided claims do not match expected scopes")
+			},
+			permissions: []string{"titles:r"},
+		},
+		{
+			name: "bad request body",
+			user: user,
+			body: map[string]any{
+				"newLanguage": lang.ID,
+				"titleId":     title.ID,
+			},
+			buildStubs: func(stubs MockStubs) {
+			},
+			checkResponse: func(res *http.Response) {
+				require.Equal(t, http.StatusBadRequest, res.StatusCode)
+				body := readBody(t, res)
+				require.Contains(t, body, "request body has an error: doesn't match schema #/components/schemas/TitlesTranslateRequest: Error at \\\"/newLanguageId\\\"")
+			},
+			permissions: []string{"titles:w"},
 		},
 	}
 
@@ -681,13 +680,15 @@ func TestTranslateTitle(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
+			urlPath := titlesBasePath + "/translate"
+			ts, jwsToken := setupServerTest(t, ctrl, tc)
+			// Marshal body data to JSON
 			data, err := json.Marshal(tc.body)
 			require.NoError(t, err)
-
-			ts, jwsToken := setupServerTest(t, ctrl, tc)
-			req := jsonRequest(t, data, ts, titlesBasePath+"/translate", http.MethodPost, jwsToken)
+			req := jsonRequest(t, data, ts, urlPath, http.MethodPost, jwsToken)
 			res, err := ts.Client().Do(req)
 			require.NoError(t, err)
+
 			tc.checkResponse(res)
 		})
 	}

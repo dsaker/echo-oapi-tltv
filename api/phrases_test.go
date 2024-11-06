@@ -7,19 +7,20 @@ import (
 	"github.com/stretchr/testify/require"
 	"net/http"
 	"strconv"
-	mockdb "talkliketv.click/tltv/db/mock"
 	db "talkliketv.click/tltv/db/sqlc"
-	mock "talkliketv.click/tltv/internal/mock"
+	"talkliketv.click/tltv/internal/oapi"
+	"talkliketv.click/tltv/internal/test"
+	"talkliketv.click/tltv/internal/util"
 	"testing"
 )
 
 func TestGetPhrases(t *testing.T) {
 	user, _ := randomUser(t)
-	phrase := randomPhrase()
+	phrase := util.RandomPhrase()
 	ogTranslate := randomTranslate(phrase, user.OgLanguageID)
 	newTranslate := randomTranslate(phrase, user.NewLanguageID)
 
-	selectPhrasesFromTranslatesParams := db.SelectPhrasesFromTranslatesWithCorrectParams{
+	selectPhrasesFromTranslatesParams := db.SelectTranslatesWithCorrectParams{
 		LanguageID:   user.OgLanguageID,
 		LanguageID_2: user.OgLanguageID,
 		UserID:       user.ID,
@@ -27,7 +28,7 @@ func TestGetPhrases(t *testing.T) {
 		Limit:        10,
 	}
 
-	selectPhrasesFromTranslatesRow := db.SelectPhrasesFromTranslatesWithCorrectRow{
+	selectPhrasesFromTranslatesRow := db.SelectTranslatesWithCorrectRow{
 		PhraseID:     phrase.Id,
 		Phrase:       ogTranslate.Phrase,
 		PhraseHint:   ogTranslate.PhraseHint,
@@ -35,26 +36,26 @@ func TestGetPhrases(t *testing.T) {
 		PhraseHint_2: newTranslate.PhraseHint,
 	}
 
-	selectPhrasesFromTranslatesRowList := []db.SelectPhrasesFromTranslatesWithCorrectRow{selectPhrasesFromTranslatesRow}
+	selectTranslatesWithCorrectRowList := []db.SelectTranslatesWithCorrectRow{selectPhrasesFromTranslatesRow}
 
 	testCases := []testCase{
 		{
 			name:   "OK",
 			user:   user,
 			values: map[string]any{"limit": true},
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
-				store.EXPECT().
-					SelectPhrasesFromTranslatesWithCorrect(gomock.Any(), selectPhrasesFromTranslatesParams).
+			buildStubs: func(stubs MockStubs) {
+				stubs.MockQuerier.EXPECT().
+					SelectTranslatesWithCorrect(gomock.Any(), selectPhrasesFromTranslatesParams).
 					Times(1).
-					Return(selectPhrasesFromTranslatesRowList, nil)
+					Return(selectTranslatesWithCorrectRowList, nil)
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusOK, res.StatusCode)
 				body := readBody(t, res)
-				var got []db.SelectPhrasesFromTranslatesRow
+				var got []db.SelectTranslatesWithCorrectRow
 				err := json.Unmarshal([]byte(body), &got)
 				require.NoError(t, err)
-				requireMatchAnyExcept(t, selectPhrasesFromTranslatesRowList[0], got[0], nil, "", "")
+				test.RequireMatchAnyExcept(t, selectTranslatesWithCorrectRowList[0], got[0], nil, "", "")
 			},
 			permissions: []string{db.ReadTitlesCode},
 		},
@@ -62,19 +63,19 @@ func TestGetPhrases(t *testing.T) {
 			name:   "No limit set",
 			user:   user,
 			values: map[string]any{"limit": false},
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
-				store.EXPECT().
-					SelectPhrasesFromTranslatesWithCorrect(gomock.Any(), selectPhrasesFromTranslatesParams).
+			buildStubs: func(stubs MockStubs) {
+				stubs.MockQuerier.EXPECT().
+					SelectTranslatesWithCorrect(gomock.Any(), selectPhrasesFromTranslatesParams).
 					Times(1).
-					Return(selectPhrasesFromTranslatesRowList, nil)
+					Return(selectTranslatesWithCorrectRowList, nil)
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusOK, res.StatusCode)
 				body := readBody(t, res)
-				var got []db.SelectPhrasesFromTranslatesWithCorrectRow
+				var got []db.SelectTranslatesWithCorrectRow
 				err := json.Unmarshal([]byte(body), &got)
 				require.NoError(t, err)
-				requireMatchAnyExcept(t, selectPhrasesFromTranslatesRowList[0], got[0], nil, "", "")
+				test.RequireMatchAnyExcept(t, selectTranslatesWithCorrectRowList[0], got[0], nil, "", "")
 			},
 			permissions: []string{db.ReadTitlesCode},
 		},
@@ -107,7 +108,7 @@ func TestGetPhrases(t *testing.T) {
 
 func TestUpdateUsersPhrases(t *testing.T) {
 	user1, _ := randomUser(t)
-	phrase := randomPhrase()
+	phrase := util.RandomPhrase()
 	usersPhrase := randomUsersPhrase(user1, phrase)
 
 	updateUsersPhrasesParams := db.UpdateUsersPhrasesByThreeIdsParams{
@@ -125,8 +126,8 @@ func TestUpdateUsersPhrases(t *testing.T) {
 			values: map[string]any{
 				"phraseId":   strconv.FormatInt(phrase.Id, 10),
 				"languageId": fmt.Sprint(user1.NewLanguageID)},
-			user:   user1,
-			userId: user1.ID,
+			user:     user1,
+			extraInt: user1.ID,
 			body: `[
 			{
 				"op": "replace",
@@ -134,7 +135,7 @@ func TestUpdateUsersPhrases(t *testing.T) {
 				"value": 1
 			}
 		]`,
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
+			buildStubs: func(stubs MockStubs) {
 				args := db.SelectUsersPhrasesByIdsParams{
 					UserID:     user1.ID,
 					LanguageID: user1.NewLanguageID,
@@ -144,11 +145,11 @@ func TestUpdateUsersPhrases(t *testing.T) {
 				paramsCopy := updateUsersPhrasesParams
 				paramsCopy.PhraseCorrect = 1
 				usersPhraseCopy.PhraseCorrect = 1
-				store.EXPECT().
+				stubs.MockQuerier.EXPECT().
 					SelectUsersPhrasesByIds(gomock.Any(), args).
 					Times(1).
 					Return(usersPhrase, nil)
-				store.EXPECT().
+				stubs.MockQuerier.EXPECT().
 					UpdateUsersPhrasesByThreeIds(gomock.Any(), paramsCopy).
 					Times(1).
 					Return(usersPhraseCopy, nil)
@@ -160,7 +161,7 @@ func TestUpdateUsersPhrases(t *testing.T) {
 				err := json.Unmarshal([]byte(body), &got)
 				require.NoError(t, err)
 				var x int64 = 1
-				requireMatchAnyExcept(t, usersPhrase, got, []string{}, "PhraseCorrect", x)
+				test.RequireMatchAnyExcept(t, usersPhrase, got, []string{}, "PhraseCorrect", x)
 			},
 		},
 		{
@@ -169,8 +170,8 @@ func TestUpdateUsersPhrases(t *testing.T) {
 			values: map[string]any{
 				"phraseId":   strconv.FormatInt(phrase.Id, 10),
 				"languageId": fmt.Sprint(user1.NewLanguageID)},
-			user:   user1,
-			userId: user1.ID,
+			user:     user1,
+			extraInt: user1.ID,
 			body: `[
 			{
 				"wrong": "replace",
@@ -178,7 +179,7 @@ func TestUpdateUsersPhrases(t *testing.T) {
 				"value": 1
 			}
 		]`,
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
+			buildStubs: func(stubs MockStubs) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)
@@ -209,7 +210,7 @@ func TestUpdateUsersPhrases(t *testing.T) {
 	}
 }
 
-func randomUsersPhrase(user db.User, phrase Phrase) db.UsersPhrase {
+func randomUsersPhrase(user db.User, phrase oapi.Phrase) db.UsersPhrase {
 	return db.UsersPhrase{
 		PhraseID:      phrase.Id,
 		TitleID:       phrase.TitleId,

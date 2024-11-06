@@ -27,8 +27,6 @@ AwEHoUQDQgAE4pPyvrB9ghqkT1Llk0A42lixkugFd/TBdOp6wf69O9Nndnp4+HcR
 s9SlG/8hjB2Hz42v4p3haKWv3uS1C6ahCQ==
 -----END EC PRIVATE KEY-----`
 
-type contextKey string
-
 const (
 	KeyID            = "fake-key-id"
 	Issuer           = "tltv"

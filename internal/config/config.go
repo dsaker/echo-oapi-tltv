@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"github.com/gomiddleware/realip"
@@ -20,6 +21,7 @@ type Config struct {
 	Env             string
 	CtxTimeout      time.Duration
 	JWTDuration     time.Duration
+	PhrasePause     int
 	TTSBasePath     string
 	FileUploadLimit int64
 	Db              struct {
@@ -35,7 +37,7 @@ type Config struct {
 	}
 }
 
-func SetConfigs() (config Config) {
+func SetConfigs() (config Config, err error) {
 
 	// get port and debug from commandline flags... if not present use defaults
 	flag.StringVar(&config.Port, "port", "8080", "API server port")
@@ -53,12 +55,22 @@ func SetConfigs() (config Config) {
 	flag.Float64Var(&config.Limiter.Rps, "limiter-rps", 2, "Rate limiter maximum requests per second")
 	flag.IntVar(&config.Limiter.Burst, "limiter-burst", 4, "Rate limiter maximum burst")
 
-	flag.StringVar(&config.TTSBasePath, "tts-base-path", "/Users/dustysaker/go/src/github.com/dsaker/echo-oapi-tltv/audio/", "text-to-speech base path for permanent or temporary storage of mp3 audio files")
+	flag.StringVar(&config.TTSBasePath, "tts-base-path", "/tmp/audio/", "text-to-speech base path temporary storage of mp3 audio files")
 
 	flag.DurationVar(&config.JWTDuration, "jwt-duration", 24, "JWT duration in hours")
-	flag.Int64Var(&config.FileUploadLimit, "upload-size-limit", 4, "File upload size limit in KB (default is 4)")
-	return config
+	flag.Int64Var(&config.FileUploadLimit, "upload-size-limit", 8, "File upload size limit in KB (default is 4)")
+	flag.IntVar(&config.PhrasePause, "phrase-pause", 4, "Pause in seconds between phrases (must be between 3 and 10)'")
 
+	if !isValidPause(config.PhrasePause) {
+		return Config{}, errors.New("invalid pause value (must be between 3 and 10)")
+	}
+
+	return config, nil
+
+}
+
+func isValidPause(port int) bool {
+	return port >= 3 && port <= 10
 }
 
 func (cfg *Config) RateLimit(next http.Handler) http.Handler {

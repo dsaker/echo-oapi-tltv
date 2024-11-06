@@ -10,9 +10,8 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"strconv"
-	mockdb "talkliketv.click/tltv/db/mock"
 	db "talkliketv.click/tltv/db/sqlc"
-	mock "talkliketv.click/tltv/internal/mock"
+	"talkliketv.click/tltv/internal/test"
 	"talkliketv.click/tltv/internal/util"
 	"testing"
 )
@@ -51,11 +50,11 @@ func TestGetUser(t *testing.T) {
 
 	testCases := []testCase{
 		{
-			name:   "get user1",
-			user:   user1,
-			userId: user1.ID,
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
-				store.EXPECT().
+			name:     "get user1",
+			user:     user1,
+			extraInt: user1.ID,
+			buildStubs: func(stubs MockStubs) {
+				stubs.MockQuerier.EXPECT().
 					SelectUserById(gomock.Any(), user1.ID).
 					Times(1).
 					Return(user1, nil)
@@ -65,14 +64,14 @@ func TestGetUser(t *testing.T) {
 				var gotUser db.User
 				err := json.Unmarshal([]byte(rec.Body.String()), &gotUser)
 				require.NoError(t, err)
-				requireMatchAnyExcept(t, user1, gotUser, []string{"HashedPassword", "ID"}, "", "")
+				test.RequireMatchAnyExcept(t, user1, gotUser, []string{"HashedPassword", "ID"}, "", "")
 			},
 		},
 		{
-			name:   "Id's don't match",
-			user:   user1,
-			userId: user2.ID,
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
+			name:     "Id's don't match",
+			user:     user1,
+			extraInt: user2.ID,
+			buildStubs: func(stubs MockStubs) {
 			},
 			checkRecorder: func(rec *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusForbidden, rec.Code)
@@ -80,11 +79,11 @@ func TestGetUser(t *testing.T) {
 			},
 		},
 		{
-			name:   "User does not exist",
-			user:   user2,
-			userId: user2.ID,
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
-				store.EXPECT().
+			name:     "User does not exist",
+			user:     user2,
+			extraInt: user2.ID,
+			buildStubs: func(stubs MockStubs) {
+				stubs.MockQuerier.EXPECT().
 					SelectUserById(gomock.Any(), user2.ID).
 					Times(1).
 					Return(db.User{}, sql.ErrNoRows)
@@ -110,7 +109,7 @@ func TestGetUser(t *testing.T) {
 			urlPath := usersBasePath + "/" + strconv.FormatInt(tc.user.ID, 10)
 			srv, c, rec := setupHandlerTest(t, ctrl, tc, urlPath, string(data), http.MethodGet)
 
-			err = srv.FindUserByID(c, tc.userId)
+			err = srv.FindUserByID(c, tc.extraInt)
 			require.NoError(t, err)
 			tc.checkRecorder(rec)
 		})
@@ -123,11 +122,11 @@ func TestDeleteUser(t *testing.T) {
 
 	testCases := []testCase{
 		{
-			name:   "delete user1",
-			user:   user1,
-			userId: user1.ID,
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
-				store.EXPECT().
+			name:     "delete user1",
+			user:     user1,
+			extraInt: user1.ID,
+			buildStubs: func(stubs MockStubs) {
+				stubs.MockQuerier.EXPECT().
 					DeleteUserById(gomock.Any(), user1.ID).
 					Times(1).
 					Return(nil)
@@ -137,10 +136,10 @@ func TestDeleteUser(t *testing.T) {
 			},
 		},
 		{
-			name:   "Id's don't match",
-			user:   user1,
-			userId: user2.ID,
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
+			name:     "Id's don't match",
+			user:     user1,
+			extraInt: user2.ID,
+			buildStubs: func(stubs MockStubs) {
 			},
 			checkRecorder: func(rec *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusForbidden, rec.Code)
@@ -148,11 +147,11 @@ func TestDeleteUser(t *testing.T) {
 			},
 		},
 		{
-			name:   "User does not exist",
-			user:   user2,
-			userId: user2.ID,
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
-				store.EXPECT().
+			name:     "User does not exist",
+			user:     user2,
+			extraInt: user2.ID,
+			buildStubs: func(stubs MockStubs) {
+				stubs.MockQuerier.EXPECT().
 					DeleteUserById(gomock.Any(), user2.ID).
 					Times(1).
 					Return(sql.ErrNoRows)
@@ -177,7 +176,7 @@ func TestDeleteUser(t *testing.T) {
 			urlPath := usersBasePath + "/" + strconv.FormatInt(tc.user.ID, 10)
 			srv, c, rec := setupHandlerTest(t, ctrl, tc, urlPath, string(data), http.MethodDelete)
 
-			err = srv.DeleteUser(c, tc.userId)
+			err = srv.DeleteUser(c, tc.extraInt)
 			require.NoError(t, err)
 			tc.checkRecorder(rec)
 		})
@@ -197,7 +196,7 @@ func TestCreateUser(t *testing.T) {
 				"password":      password,
 				"titleId":       user.TitleID,
 			},
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
+			buildStubs: func(stubs MockStubs) {
 				arg := db.InsertUserParams{
 					Name:           user.Name,
 					Email:          user.Email,
@@ -210,15 +209,15 @@ func TestCreateUser(t *testing.T) {
 					UserID:       user.ID,
 					PermissionID: util.ValidPermissionId,
 				}
-				store.EXPECT().
+				stubs.MockQuerier.EXPECT().
 					InsertUser(gomock.Any(), EqCreateUserParams(arg, password)).
 					Return(user, nil)
-				store.EXPECT().
+				stubs.MockQuerier.EXPECT().
 					SelectPermissionByCode(
 						gomock.Any(),
 						db.ReadTitlesCode).
 					Return(db.Permission{ID: util.ValidPermissionId, Code: ""}, nil)
-				store.EXPECT().
+				stubs.MockQuerier.EXPECT().
 					InsertUserPermission(gomock.Any(), arg2).
 					Times(1).
 					Return(db.UsersPermission{UserID: user.ID, PermissionID: util.ValidPermissionId}, nil)
@@ -229,7 +228,7 @@ func TestCreateUser(t *testing.T) {
 				var gotUser db.User
 				err := json.Unmarshal([]byte(rec.Body.String()), &gotUser)
 				require.NoError(t, err)
-				requireMatchAnyExcept(t, user, gotUser, []string{"HashedPassword", "ID"}, "", "")
+				test.RequireMatchAnyExcept(t, user, gotUser, []string{"HashedPassword", "ID"}, "", "")
 			},
 		},
 		{
@@ -242,8 +241,8 @@ func TestCreateUser(t *testing.T) {
 				"password":      password,
 				"titleId":       user.TitleID,
 			},
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
-				store.EXPECT().
+			buildStubs: func(stubs MockStubs) {
+				stubs.MockQuerier.EXPECT().
 					InsertUser(gomock.Any(), gomock.Any()).
 					Times(1).
 					Return(db.User{}, sql.ErrConnDone)
@@ -263,8 +262,8 @@ func TestCreateUser(t *testing.T) {
 				"password":      password,
 				"titleId":       user.TitleID,
 			},
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
-				store.EXPECT().
+			buildStubs: func(stubs MockStubs) {
+				stubs.MockQuerier.EXPECT().
 					InsertUser(gomock.Any(), gomock.Any()).
 					Times(1).
 					Return(db.User{}, db.ErrUniqueViolation)
@@ -311,9 +310,9 @@ func TestUpdateUser(t *testing.T) {
 
 	testCases := []testCase{
 		{
-			name:   "update user1 email",
-			user:   user1,
-			userId: user1.ID,
+			name:     "update user1 email",
+			user:     user1,
+			extraInt: user1.ID,
 			body: `[
 			{
 				"op": "replace",
@@ -321,16 +320,16 @@ func TestUpdateUser(t *testing.T) {
 				"value": "newemail2@email.com"
 			}
 		]`,
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
+			buildStubs: func(stubs MockStubs) {
 				userCopy := user1
 				paramsCopy := updateUserParams
 				paramsCopy.Email = "newemail2@email.com"
 				userCopy.Email = "newemail2@email.com"
-				store.EXPECT().
+				stubs.MockQuerier.EXPECT().
 					SelectUserById(gomock.Any(), user1.ID).
 					Times(1).
 					Return(user1, nil)
-				store.EXPECT().
+				stubs.MockQuerier.EXPECT().
 					UpdateUserById(gomock.Any(), paramsCopy).
 					Times(1).
 					Return(userCopy, nil)
@@ -340,13 +339,13 @@ func TestUpdateUser(t *testing.T) {
 				var gotUser db.User
 				err := json.Unmarshal([]byte(rec.Body.String()), &gotUser)
 				require.NoError(t, err)
-				requireMatchAnyExcept(t, user1, gotUser, []string{"HashedPassword", "ID"}, "Email", "newemail2@email.com")
+				test.RequireMatchAnyExcept(t, user1, gotUser, []string{"HashedPassword", "ID"}, "Email", "newemail2@email.com")
 			},
 		},
 		{
-			name:   "Id does not match",
-			user:   user1,
-			userId: user2.ID,
+			name:     "Id does not match",
+			user:     user1,
+			extraInt: user2.ID,
 			body: `[
 			{
 				"op": "replace",
@@ -354,7 +353,7 @@ func TestUpdateUser(t *testing.T) {
 				"value": "newemail2@email.com"
 			}
 		]`,
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
+			buildStubs: func(stubs MockStubs) {
 			},
 			checkRecorder: func(rec *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusForbidden, rec.Code)
@@ -362,9 +361,9 @@ func TestUpdateUser(t *testing.T) {
 			},
 		},
 		{
-			name:   "Invalid format for PatchUser",
-			user:   user1,
-			userId: user1.ID,
+			name:     "Invalid format for PatchUser",
+			user:     user1,
+			extraInt: user1.ID,
 			body: `[
 			{
 				"wrong": "replace",
@@ -372,7 +371,7 @@ func TestUpdateUser(t *testing.T) {
 				"value": "newemail2@email.com"
 			}
 		]`,
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
+			buildStubs: func(stubs MockStubs) {
 			},
 			checkRecorder: func(rec *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, rec.Code)
@@ -380,9 +379,9 @@ func TestUpdateUser(t *testing.T) {
 			},
 		},
 		{
-			name:   "User does not exist",
-			user:   user2,
-			userId: user2.ID,
+			name:     "User does not exist",
+			user:     user2,
+			extraInt: user2.ID,
 			body: `[
 			{
 				"op": "replace",
@@ -390,8 +389,8 @@ func TestUpdateUser(t *testing.T) {
 				"value": "newemail2@email.com"
 			}
 		]`,
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
-				store.EXPECT().
+			buildStubs: func(stubs MockStubs) {
+				stubs.MockQuerier.EXPECT().
 					SelectUserById(gomock.Any(), user2.ID).
 					Times(1).
 					Return(db.User{}, sql.ErrNoRows)
@@ -412,7 +411,7 @@ func TestUpdateUser(t *testing.T) {
 
 			urlPath := usersBasePath + "/" + strconv.FormatInt(tc.user.ID, 10)
 			srv, c, rec := setupHandlerTest(t, ctrl, tc, urlPath, tc.body.(string), http.MethodPatch)
-			err := srv.UpdateUser(c, tc.userId)
+			err := srv.UpdateUser(c, tc.extraInt)
 			require.NoError(t, err)
 			tc.checkRecorder(rec)
 		})
@@ -430,12 +429,12 @@ func TestLoginUser(t *testing.T) {
 				"username": user.Name,
 				"password": password,
 			},
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
-				store.EXPECT().
+			buildStubs: func(stubs MockStubs) {
+				stubs.MockQuerier.EXPECT().
 					SelectUserByName(gomock.Any(), gomock.Any()).
 					Times(1).
 					Return(user, nil)
-				store.EXPECT().
+				stubs.MockQuerier.EXPECT().
 					SelectUserPermissions(gomock.Any(), gomock.Eq(user.ID)).
 					Times(1).
 					Return(permissions, nil)
@@ -450,8 +449,8 @@ func TestLoginUser(t *testing.T) {
 				"username": "NotFound",
 				"password": password,
 			},
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
-				store.EXPECT().
+			buildStubs: func(stubs MockStubs) {
+				stubs.MockQuerier.EXPECT().
 					SelectUserByName(gomock.Any(), gomock.Any()).
 					Times(1).
 					Return(db.User{}, sql.ErrNoRows)
@@ -467,8 +466,8 @@ func TestLoginUser(t *testing.T) {
 				"username": user.Name,
 				"password": "incorrect",
 			},
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
-				store.EXPECT().
+			buildStubs: func(stubs MockStubs) {
+				stubs.MockQuerier.EXPECT().
 					SelectUserByName(gomock.Any(), gomock.Eq(user.Name)).
 					Times(1).
 					Return(user, nil)
@@ -484,8 +483,8 @@ func TestLoginUser(t *testing.T) {
 				"username": user.Name,
 				"password": password,
 			},
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
-				store.EXPECT().
+			buildStubs: func(stubs MockStubs) {
+				stubs.MockQuerier.EXPECT().
 					SelectUserByName(gomock.Any(), gomock.Any()).
 					Times(1).
 					Return(db.User{}, sql.ErrConnDone)
@@ -529,7 +528,7 @@ func TestCreateUserMiddleware(t *testing.T) {
 				"titleId":       user.TitleID,
 				"email":         "invalid-email",
 			},
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
+			buildStubs: func(stubs MockStubs) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)
@@ -547,7 +546,7 @@ func TestCreateUserMiddleware(t *testing.T) {
 				"titleId":       user.TitleID,
 				"email":         user.Email,
 			},
-			buildStubs: func(store *mockdb.MockQuerier, text *mock.MockTranslateX) {
+			buildStubs: func(stubs MockStubs) {
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)

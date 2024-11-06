@@ -22,120 +22,25 @@ func (q *Queries) InsertPhrases(ctx context.Context, titleID int64) (Phrase, err
 	return i, err
 }
 
-const insertTranslates = `-- name: InsertTranslates :one
-INSERT INTO translates (phrase_id, language_id, phrase, phrase_hint)
-VALUES ($1, $2, $3, $4)
-RETURNING phrase_id, language_id, phrase, phrase_hint
+const selectPhraseIdsByTitleId = `-- name: SelectPhraseIdsByTitleId :many
+SELECT id FROM phrases
+WHERE title_id = $1
+ORDER BY id
 `
 
-type InsertTranslatesParams struct {
-	PhraseID   int64  `json:"phrase_id"`
-	LanguageID int16  `json:"language_id"`
-	Phrase     string `json:"phrase"`
-	PhraseHint string `json:"phrase_hint"`
-}
-
-func (q *Queries) InsertTranslates(ctx context.Context, arg InsertTranslatesParams) (Translate, error) {
-	row := q.db.QueryRowContext(ctx, insertTranslates,
-		arg.PhraseID,
-		arg.LanguageID,
-		arg.Phrase,
-		arg.PhraseHint,
-	)
-	var i Translate
-	err := row.Scan(
-		&i.PhraseID,
-		&i.LanguageID,
-		&i.Phrase,
-		&i.PhraseHint,
-	)
-	return i, err
-}
-
-const selectExistsTranslates = `-- name: SelectExistsTranslates :one
-SELECT EXISTS(
-    SELECT 1 FROM titles t
-    JOIN phrases p ON t.id = p.title_id
-    JOIN translates tr ON p.id = tr.phrase_id AND tr.language_id = $1
-    WHERE tr.language_id = $1 and t.id = $2 ) AS "exists"
-`
-
-type SelectExistsTranslatesParams struct {
-	LanguageID int16 `json:"language_id"`
-	ID         int64 `json:"id"`
-}
-
-func (q *Queries) SelectExistsTranslates(ctx context.Context, arg SelectExistsTranslatesParams) (bool, error) {
-	row := q.db.QueryRowContext(ctx, selectExistsTranslates, arg.LanguageID, arg.ID)
-	var exists bool
-	err := row.Scan(&exists)
-	return exists, err
-}
-
-const selectPhrasesFromTranslates = `-- name: SelectPhrasesFromTranslates :many
-SELECT og.phrase_id, og.phrase, og.phrase_hint, new.phrase, new.phrase_hint
-FROM
-    (
-        SELECT phrase_id, phrase, phrase_hint
-        FROM translates t
-        where t.language_id = $1
-    ) og
-    JOIN (
-        SELECT phrase, phrase_hint, phrase_id
-        FROM translates t
-        WHERE t.language_id = $2
-    ) new
-ON og.phrase_id = new.phrase_id
-WHERE og.phrase_id
-IN (
-    SELECT phrase_id from users_phrases
-    WHERE user_id = $3 AND title_id = $4 AND language_id = $2
-    ORDER BY  phrase_correct, phrase_id
-    LIMIT $5
-    )
-`
-
-type SelectPhrasesFromTranslatesParams struct {
-	LanguageID   int16 `json:"language_id"`
-	LanguageID_2 int16 `json:"language_id_2"`
-	UserID       int64 `json:"user_id"`
-	TitleID      int64 `json:"title_id"`
-	Limit        int32 `json:"limit"`
-}
-
-type SelectPhrasesFromTranslatesRow struct {
-	PhraseID     int64  `json:"phrase_id"`
-	Phrase       string `json:"phrase"`
-	PhraseHint   string `json:"phrase_hint"`
-	Phrase_2     string `json:"phrase_2"`
-	PhraseHint_2 string `json:"phrase_hint_2"`
-}
-
-func (q *Queries) SelectPhrasesFromTranslates(ctx context.Context, arg SelectPhrasesFromTranslatesParams) ([]SelectPhrasesFromTranslatesRow, error) {
-	rows, err := q.db.QueryContext(ctx, selectPhrasesFromTranslates,
-		arg.LanguageID,
-		arg.LanguageID_2,
-		arg.UserID,
-		arg.TitleID,
-		arg.Limit,
-	)
+func (q *Queries) SelectPhraseIdsByTitleId(ctx context.Context, titleID int64) ([]int64, error) {
+	rows, err := q.db.QueryContext(ctx, selectPhraseIdsByTitleId, titleID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []SelectPhrasesFromTranslatesRow{}
+	items := []int64{}
 	for rows.Next() {
-		var i SelectPhrasesFromTranslatesRow
-		if err := rows.Scan(
-			&i.PhraseID,
-			&i.Phrase,
-			&i.PhraseHint,
-			&i.Phrase_2,
-			&i.PhraseHint_2,
-		); err != nil {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, id)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -146,7 +51,7 @@ func (q *Queries) SelectPhrasesFromTranslates(ctx context.Context, arg SelectPhr
 	return items, nil
 }
 
-const selectPhrasesFromTranslatesWithCorrect = `-- name: SelectPhrasesFromTranslatesWithCorrect :many
+const selectTranslatesWithCorrect = `-- name: SelectTranslatesWithCorrect :many
 SELECT og.phrase_id, og.phrase, og.phrase_hint, new.phrase, new.phrase_hint, up.phrase_correct
 FROM
     (
@@ -176,7 +81,7 @@ IN
     )
 `
 
-type SelectPhrasesFromTranslatesWithCorrectParams struct {
+type SelectTranslatesWithCorrectParams struct {
 	LanguageID   int16 `json:"language_id"`
 	LanguageID_2 int16 `json:"language_id_2"`
 	UserID       int64 `json:"user_id"`
@@ -184,7 +89,7 @@ type SelectPhrasesFromTranslatesWithCorrectParams struct {
 	Limit        int32 `json:"limit"`
 }
 
-type SelectPhrasesFromTranslatesWithCorrectRow struct {
+type SelectTranslatesWithCorrectRow struct {
 	PhraseID      int64  `json:"phrase_id"`
 	Phrase        string `json:"phrase"`
 	PhraseHint    string `json:"phrase_hint"`
@@ -193,8 +98,8 @@ type SelectPhrasesFromTranslatesWithCorrectRow struct {
 	PhraseCorrect int16  `json:"phrase_correct"`
 }
 
-func (q *Queries) SelectPhrasesFromTranslatesWithCorrect(ctx context.Context, arg SelectPhrasesFromTranslatesWithCorrectParams) ([]SelectPhrasesFromTranslatesWithCorrectRow, error) {
-	rows, err := q.db.QueryContext(ctx, selectPhrasesFromTranslatesWithCorrect,
+func (q *Queries) SelectTranslatesWithCorrect(ctx context.Context, arg SelectTranslatesWithCorrectParams) ([]SelectTranslatesWithCorrectRow, error) {
+	rows, err := q.db.QueryContext(ctx, selectTranslatesWithCorrect,
 		arg.LanguageID,
 		arg.LanguageID_2,
 		arg.UserID,
@@ -205,9 +110,9 @@ func (q *Queries) SelectPhrasesFromTranslatesWithCorrect(ctx context.Context, ar
 		return nil, err
 	}
 	defer rows.Close()
-	items := []SelectPhrasesFromTranslatesWithCorrectRow{}
+	items := []SelectTranslatesWithCorrectRow{}
 	for rows.Next() {
-		var i SelectPhrasesFromTranslatesWithCorrectRow
+		var i SelectTranslatesWithCorrectRow
 		if err := rows.Scan(
 			&i.PhraseID,
 			&i.Phrase,
@@ -216,46 +121,6 @@ func (q *Queries) SelectPhrasesFromTranslatesWithCorrect(ctx context.Context, ar
 			&i.PhraseHint_2,
 			&i.PhraseCorrect,
 		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const selectTranslatesByTitleIdLangId = `-- name: SelectTranslatesByTitleIdLangId :many
-SELECT tr.phrase_id, tr.phrase FROM titles t
-JOIN phrases p ON t.id = p.title_id
-JOIN translates tr ON p.id = tr.phrase_id AND tr.language_id = $1
-WHERE tr.language_id = $1 and t.id = $2
-`
-
-type SelectTranslatesByTitleIdLangIdParams struct {
-	LanguageID int16 `json:"language_id"`
-	ID         int64 `json:"id"`
-}
-
-type SelectTranslatesByTitleIdLangIdRow struct {
-	PhraseID int64  `json:"phrase_id"`
-	Phrase   string `json:"phrase"`
-}
-
-func (q *Queries) SelectTranslatesByTitleIdLangId(ctx context.Context, arg SelectTranslatesByTitleIdLangIdParams) ([]SelectTranslatesByTitleIdLangIdRow, error) {
-	rows, err := q.db.QueryContext(ctx, selectTranslatesByTitleIdLangId, arg.LanguageID, arg.ID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []SelectTranslatesByTitleIdLangIdRow{}
-	for rows.Next() {
-		var i SelectTranslatesByTitleIdLangIdRow
-		if err := rows.Scan(&i.PhraseID, &i.Phrase); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
