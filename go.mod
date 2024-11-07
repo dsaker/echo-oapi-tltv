@@ -2,12 +2,6 @@ module talkliketv.click/tltv
 
 go 1.23.0
 
-replace (
-	github.com/dsaker/echo-oapi-tltv/internal/oapi/tltv.yaml => /Users/dustysaker/go/src/github.com/dsaker/echo-oapi-tltv/oapi/tltv.yaml
-	github.com/dsaker/nethttp-middleware => /Users/dustysaker/go/src/github.com/dsaker/nethttp-middleware
-	github.com/oapi-codegen/oapi-codegen/v2 => /Users/dustysaker/go/src/github.com/oapi-codegen
-)
-
 require (
 	cloud.google.com/go/texttospeech v1.8.1
 	cloud.google.com/go/translate v1.12.1
@@ -21,7 +15,7 @@ require (
 	github.com/lestrrat-go/jwx v1.2.30
 	github.com/lib/pq v1.10.9
 	github.com/oapi-codegen/echo-middleware v1.0.2
-	github.com/oapi-codegen/oapi-codegen/v2 v2.3.0
+	github.com/oapi-codegen/oapi-codegen/v2 v2.4.1
 	github.com/oapi-codegen/runtime v1.1.1
 	github.com/sqlc-dev/sqlc v1.27.0
 	github.com/stretchr/testify v1.9.0

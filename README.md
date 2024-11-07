@@ -15,7 +15,7 @@ To overcome these barriers, I’ve created an application that generates a Pimsl
 - Run below commands to sign in and enable necessary Google Cloud API's
 - Install [ffmpeg](https://www.ffmpeg.org/download.html)
 - Install [migrate](https://github.com/golang-migrate/migrate/blob/master/cmd/migrate/README.md)
-
+- Install [psql](https://www.timescale.com/blog/how-to-install-psql-on-mac-ubuntu-debian-windows/)
 ```
 gcloud init
 gcloud services enable texttospeech.googleapis.com
@@ -33,5 +33,15 @@ make db/migrations/up
 make run
 ```
 - open http://localhost:8080/swagger/ in local browser
+- click on POST /users "Try it out" and create a new user
+- add "titles:w" permission to user
+```
+make db/psql
+select * from users;
+insert into users_permissions values (1,2);
+```
+- click POST /users/login 
+- copy response body and decode it at https://www.base64decode.org/
+- click on Authorize and add decoded value
 - click on POST /audio/fromfile and click on "Try it out"
-- 
+- *on Linux you will have to change srt file ending to txt
