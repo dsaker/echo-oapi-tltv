@@ -83,7 +83,7 @@ func TestAudioFromTitle(t *testing.T) {
 					Return(nil)
 				// CreateMp3Zip(echo.Context, db.Title, string) (*os.File, error)
 				stubs.AudioFileX.EXPECT().
-					CreateMp3ZipWithFfmpeg(gomock.Any(), title, gomock.Any()).
+					CreateMp3Zip(gomock.Any(), title, gomock.Any()).
 					Return(file, nil)
 
 			},
@@ -245,7 +245,7 @@ func TestAudioFromFile(t *testing.T) {
 					Return(nil)
 				// CreateMp3Zip(echo.Context, db.Title, string) (*os.File, error)
 				stubs.AudioFileX.EXPECT().
-					CreateMp3ZipWithFfmpeg(gomock.Any(), title, gomock.Any()).
+					CreateMp3Zip(gomock.Any(), title, gomock.Any()).
 					Return(file, nil)
 
 			},

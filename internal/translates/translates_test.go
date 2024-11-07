@@ -14,7 +14,6 @@ import (
 	"os"
 	"strconv"
 	db "talkliketv.click/tltv/db/sqlc"
-	mockc "talkliketv.click/tltv/internal/mock/clients"
 	mockdb "talkliketv.click/tltv/internal/mock/db"
 	mockt "talkliketv.click/tltv/internal/mock/translates"
 	"talkliketv.click/tltv/internal/oapi"
@@ -25,7 +24,7 @@ import (
 
 type translatesTestCase struct {
 	name              string
-	buildStubs        func(*mockdb.MockQuerier, *mockt.MockTranslateX, *mockc.MockTranslateClientX, *mockc.MockTTSClientX)
+	buildStubs        func(*mockdb.MockQuerier, *mockt.MockTranslateX, *mockt.MockTranslateClientX, *mockt.MockTTSClientX)
 	checkTranslate    func([]db.Translate, error)
 	checkTranslateRow func([]util.TranslatesReturn, error)
 }
@@ -60,7 +59,7 @@ func TestInsertNewPhrases(t *testing.T) {
 	testCases := []translatesTestCase{
 		{
 			name: "No error",
-			buildStubs: func(store *mockdb.MockQuerier, text *mockt.MockTranslateX, tc *mockc.MockTranslateClientX, tts *mockc.MockTTSClientX) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mockt.MockTranslateX, tc *mockt.MockTranslateClientX, tts *mockt.MockTTSClientX) {
 				//InsertNewPhrases(e echo.Context, title db.Title, q db.Querier, stringsSlice []string) ([]db.Translate, error)
 				store.EXPECT().InsertPhrases(gomock.Any(), title.ID).
 					Return(dbPhrase1, nil)
@@ -75,7 +74,7 @@ func TestInsertNewPhrases(t *testing.T) {
 		},
 		{
 			name: "DB Connection Error",
-			buildStubs: func(store *mockdb.MockQuerier, text *mockt.MockTranslateX, tc *mockc.MockTranslateClientX, tts *mockc.MockTTSClientX) {
+			buildStubs: func(store *mockdb.MockQuerier, text *mockt.MockTranslateX, tc *mockt.MockTranslateClientX, tts *mockt.MockTTSClientX) {
 				store.EXPECT().
 					InsertPhrases(gomock.Any(), title.ID).
 					Times(1).
@@ -96,8 +95,8 @@ func TestInsertNewPhrases(t *testing.T) {
 
 			text := mockt.NewMockTranslateX(ctrl)
 			store := mockdb.NewMockQuerier(ctrl)
-			tclient := mockc.NewMockTranslateClientX(ctrl)
-			ttsclient := mockc.NewMockTTSClientX(ctrl)
+			tclient := mockt.NewMockTranslateClientX(ctrl)
+			ttsclient := mockt.NewMockTTSClientX(ctrl)
 			tc.buildStubs(store, text, tclient, ttsclient)
 
 			e := echo.New()
@@ -142,7 +141,7 @@ func TestInsertTranslates(t *testing.T) {
 	testCases := []translatesTestCase{
 		{
 			name: "No error",
-			buildStubs: func(s *mockdb.MockQuerier, t *mockt.MockTranslateX, tc *mockc.MockTranslateClientX, tts *mockc.MockTTSClientX) {
+			buildStubs: func(s *mockdb.MockQuerier, t *mockt.MockTranslateX, tc *mockt.MockTranslateClientX, tts *mockt.MockTTSClientX) {
 				s.EXPECT().
 					InsertTranslates(gomock.Any(), insertTranslatesParams).
 					Times(1).
@@ -156,7 +155,7 @@ func TestInsertTranslates(t *testing.T) {
 		},
 		{
 			name: "DB Connection Error",
-			buildStubs: func(s *mockdb.MockQuerier, t *mockt.MockTranslateX, tc *mockc.MockTranslateClientX, tts *mockc.MockTTSClientX) {
+			buildStubs: func(s *mockdb.MockQuerier, t *mockt.MockTranslateX, tc *mockt.MockTranslateClientX, tts *mockt.MockTTSClientX) {
 				s.EXPECT().
 					InsertTranslates(gomock.Any(), insertTranslatesParams).
 					Times(1).
@@ -177,8 +176,8 @@ func TestInsertTranslates(t *testing.T) {
 
 			text := mockt.NewMockTranslateX(ctrl)
 			store := mockdb.NewMockQuerier(ctrl)
-			tclient := mockc.NewMockTranslateClientX(ctrl)
-			ttsclient := mockc.NewMockTTSClientX(ctrl)
+			tclient := mockt.NewMockTranslateClientX(ctrl)
+			ttsclient := mockt.NewMockTTSClientX(ctrl)
 			tc.buildStubs(store, text, tclient, ttsclient)
 
 			e := echo.New()
@@ -216,7 +215,7 @@ func TestTextToSpeech(t *testing.T) {
 	testCases := []translatesTestCase{
 		{
 			name: "No error",
-			buildStubs: func(s *mockdb.MockQuerier, t *mockt.MockTranslateX, tc *mockc.MockTranslateClientX, tts *mockc.MockTTSClientX) {
+			buildStubs: func(s *mockdb.MockQuerier, t *mockt.MockTranslateX, tc *mockt.MockTranslateClientX, tts *mockt.MockTTSClientX) {
 				req := texttospeechpb.SynthesizeSpeechRequest{
 					// Set the text input to be synthesized.
 					Input: &texttospeechpb.SynthesisInput{
@@ -255,8 +254,8 @@ func TestTextToSpeech(t *testing.T) {
 
 			text := mockt.NewMockTranslateX(ctrl)
 			store := mockdb.NewMockQuerier(ctrl)
-			trc := mockc.NewMockTranslateClientX(ctrl)
-			tts := mockc.NewMockTTSClientX(ctrl)
+			trc := mockt.NewMockTranslateClientX(ctrl)
+			tts := mockt.NewMockTTSClientX(ctrl)
 			tc.buildStubs(store, text, trc, tts)
 
 			e := echo.New()
@@ -294,7 +293,7 @@ func TestTranslatePhrases(t *testing.T) {
 	testCases := []translatesTestCase{
 		{
 			name: "No error",
-			buildStubs: func(s *mockdb.MockQuerier, t *mockt.MockTranslateX, tr *mockc.MockTranslateClientX, ts *mockc.MockTTSClientX) {
+			buildStubs: func(s *mockdb.MockQuerier, t *mockt.MockTranslateX, tr *mockt.MockTranslateClientX, ts *mockt.MockTTSClientX) {
 				tr.EXPECT().Translate(gomock.Any(), []string{text1}, language.Spanish, nil).
 					Return([]translate.Translation{translation}, nil)
 			},
@@ -314,8 +313,8 @@ func TestTranslatePhrases(t *testing.T) {
 
 			text := mockt.NewMockTranslateX(ctrl)
 			store := mockdb.NewMockQuerier(ctrl)
-			trc := mockc.NewMockTranslateClientX(ctrl)
-			tts := mockc.NewMockTTSClientX(ctrl)
+			trc := mockt.NewMockTranslateClientX(ctrl)
+			tts := mockt.NewMockTTSClientX(ctrl)
 			tc.buildStubs(store, text, trc, tts)
 
 			e := echo.New()

@@ -2,6 +2,12 @@ module talkliketv.click/tltv
 
 go 1.23.0
 
+replace (
+	github.com/dsaker/echo-oapi-tltv/internal/oapi/tltv.yaml => /Users/dustysaker/go/src/github.com/dsaker/echo-oapi-tltv/oapi/tltv.yaml
+	github.com/dsaker/nethttp-middleware => /Users/dustysaker/go/src/github.com/dsaker/nethttp-middleware
+	github.com/oapi-codegen/oapi-codegen/v2 => /Users/dustysaker/go/src/github.com/oapi-codegen
+)
+
 require (
 	cloud.google.com/go/texttospeech v1.8.1
 	cloud.google.com/go/translate v1.12.1
@@ -38,6 +44,7 @@ require (
 	github.com/cznic/mathutil v0.0.0-20181122101859-297441e03548 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.3.0 // indirect
+	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fatih/structtag v1.2.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
@@ -93,12 +100,14 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/riza-io/grpc-go v0.2.0 // indirect
+	github.com/speakeasy-api/openapi-overlay v0.9.0 // indirect
 	github.com/spf13/cobra v1.8.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stoewer/go-strcase v1.2.0 // indirect
 	github.com/tetratelabs/wazero v1.7.3 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
+	github.com/vmware-labs/yaml-jsonpath v0.3.2 // indirect
 	github.com/wasilibs/go-pgquery v0.0.0-20240606042535-c0843d6592cc // indirect
 	github.com/wasilibs/wazero-helpers v0.0.0-20240604052452-61d7981e9a38 // indirect
 	go.mongodb.org/mongo-driver v1.14.0 // indirect

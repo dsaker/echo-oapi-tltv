@@ -30,6 +30,8 @@ docker pull postgres
 docker run -d -P -p 127.0.0.1:5433:5432 -e POSTGRES_PASSWORD="password" --name talkliketvpg postgres
 echo "export TLTV_DB_DSN=postgresql://postgres:password@localhost:5433/postgres?sslmode=disable" >> .envrc
 make db/migrations/up
-go run .
-
+make run
 ```
+- open http://localhost:8080/swagger/ in local browser
+- click on POST /audio/fromfile and click on "Try it out"
+- 

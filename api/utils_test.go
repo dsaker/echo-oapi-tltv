@@ -17,7 +17,6 @@ import (
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/config"
 	mocka "talkliketv.click/tltv/internal/mock/audiofile"
-	mockc "talkliketv.click/tltv/internal/mock/clients"
 	mockdb "talkliketv.click/tltv/internal/mock/db"
 	mockt "talkliketv.click/tltv/internal/mock/translates"
 	"talkliketv.click/tltv/internal/oapi"
@@ -44,8 +43,8 @@ const (
 type MockStubs struct {
 	MockQuerier      *mockdb.MockQuerier
 	TranslateX       *mockt.MockTranslateX
-	TranslateClientX *mockc.MockTranslateClientX
-	TtsClientX       *mockc.MockTTSClientX
+	TranslateClientX *mockt.MockTranslateClientX
+	TtsClientX       *mockt.MockTTSClientX
 	AudioFileX       *mocka.MockAudioFileX
 }
 
@@ -54,8 +53,8 @@ func NewMockStubs(ctrl *gomock.Controller) MockStubs {
 	return MockStubs{
 		MockQuerier:      mockdb.NewMockQuerier(ctrl),
 		TranslateX:       mockt.NewMockTranslateX(ctrl),
-		TranslateClientX: mockc.NewMockTranslateClientX(ctrl),
-		TtsClientX:       mockc.NewMockTTSClientX(ctrl),
+		TranslateClientX: mockt.NewMockTranslateClientX(ctrl),
+		TtsClientX:       mockt.NewMockTTSClientX(ctrl),
 		AudioFileX:       mocka.NewMockAudioFileX(ctrl),
 	}
 }
@@ -77,7 +76,7 @@ type testCase struct {
 }
 
 func TestMain(m *testing.M) {
-	testCfg, _ = config.SetConfigs()
+	_ = config.SetConfigs(&testCfg)
 	flag.Parse()
 	testCfg.TTSBasePath = test.AudioBasePath
 	os.Exit(m.Run())
