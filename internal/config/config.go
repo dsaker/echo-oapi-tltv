@@ -37,7 +37,7 @@ type Config struct {
 	}
 }
 
-func SetConfigs() (config Config, err error) {
+func SetConfigs(config *Config) error {
 
 	// get port and debug from commandline flags... if not present use defaults
 	flag.StringVar(&config.Port, "port", "8080", "API server port")
@@ -45,7 +45,7 @@ func SetConfigs() (config Config, err error) {
 	flag.StringVar(&config.Env, "env", "development", "Environment (development|staging|cloud)")
 	flag.DurationVar(&config.CtxTimeout, "ctx-timeout", 3*time.Second, "Context timeout for db queries in seconds")
 
-	flag.StringVar(&config.Db.Dsn, "db-dsn", "postgres://tltv:pa55word@localhost/tltv?sslmode=disable", "PostgreSQL DSN")
+	flag.StringVar(&config.Db.Dsn, "db-dsn", "", "PostgreSQL DSN")
 
 	flag.IntVar(&config.Db.MaxOpenConns, "db-max-open-conns", 25, "PostgreSQL max open connections")
 	flag.IntVar(&config.Db.MaxIdleConns, "db-max-idle-conns", 25, "PostgreSQL max idle connections")
@@ -62,10 +62,10 @@ func SetConfigs() (config Config, err error) {
 	flag.IntVar(&config.PhrasePause, "phrase-pause", 4, "Pause in seconds between phrases (must be between 3 and 10)'")
 
 	if !isValidPause(config.PhrasePause) {
-		return Config{}, errors.New("invalid pause value (must be between 3 and 10)")
+		return errors.New("invalid pause value (must be between 3 and 10)")
 	}
 
-	return config, nil
+	return nil
 
 }
 

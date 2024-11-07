@@ -23,7 +23,8 @@ import (
 func main() {
 
 	e := echo.New()
-	cfg, err := config.SetConfigs()
+	var cfg config.Config
+	err := config.SetConfigs(&cfg)
 	if err != nil {
 		e.Logger.Fatal(err)
 	}
