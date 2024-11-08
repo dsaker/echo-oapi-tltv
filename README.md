@@ -12,16 +12,16 @@ To overcome these barriers, I’ve created an application that generates a Pimsl
 - Install the [gcloud CLI](https://cloud.google.com/sdk/docs/install)
 - Setup [GCP ADC](https://cloud.google.com/docs/authentication/external/set-up-adc )
 - Create a [Google Cloud Project](https://developers.google.com/workspace/guides/create-project)
-- Run below commands to sign in and enable necessary Google Cloud API's
 - Install [ffmpeg](https://www.ffmpeg.org/download.html)
 - Install [migrate](https://github.com/golang-migrate/migrate/blob/master/cmd/migrate/README.md)
 - Install [psql](https://www.timescale.com/blog/how-to-install-psql-on-mac-ubuntu-debian-windows/)
+- Run below commands to sign in and enable necessary Google Cloud API's
 ```
 gcloud init
 gcloud services enable texttospeech.googleapis.com
 gcloud services enable translate.googleapis.com
 ```
-- Run below commands to start the application
+- Set up the database
 ```
 git clone https://github.com/dsaker/echo-oapi-tltv.git 
 cd echo-oapi-tltv
@@ -30,6 +30,22 @@ docker pull postgres
 docker run -d -P -p 127.0.0.1:5433:5432 -e POSTGRES_PASSWORD="password" --name talkliketvpg postgres
 echo "export TLTV_DB_DSN=postgresql://postgres:password@localhost:5433/postgres?sslmode=disable" >> .envrc
 make db/migrations/up
+```
+- [Create an api key](https://cloud.google.com/docs/authentication/api-keys) to load the voices in the database
+```
+cd scripts/python
+pip install virtualenv
+python3 -m venv <myenvname>
+source env/bin/activate
+pip install -r requirements.txt
+export API_KEY=<your api key>
+export TLTV_DB_DSN=postgresql://postgres:password@localhost:5433/postgres?sslmode=disable
+python supported_languages.py
+python voices_api.py
+```
+- start the application
+```
+cd ../..
 make run
 ```
 - open http://localhost:8080/swagger/ in local browser
