@@ -52,9 +52,9 @@ make run
 - click on POST /users "Try it out" and create a new user
 - add "titles:w" permission to user
 ```
-make db/psql
-select * from users;
-insert into users_permissions values (1,2);
+make db/psql # creates a connection to the local database
+select * from users; # get id for you user
+insert into users_permissions values (<id from above>,2); # this adds titles:w permission need to create audio files
 ```
 - click POST /users/login 
 - copy response body and decode it at https://www.base64decode.org/

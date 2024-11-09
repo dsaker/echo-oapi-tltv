@@ -265,7 +265,7 @@ func TestTextToSpeech(t *testing.T) {
 
 			translates := New(trc, tts)
 
-			err = translates.TextToSpeech(newE, []db.Translate{translate1}, basepath, newLanguage.String())
+			err = translates.TextToSpeech(newE, []db.Translate{translate1}, basepath, newLanguage.String(), "")
 			tc.checkTranslate(nil, err)
 		})
 	}

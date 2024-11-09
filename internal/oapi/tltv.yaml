@@ -18,6 +18,34 @@ info:
     name: Apache 2.0
     url: https://www.apache.org/licenses/LICENSE-2.0.html
 paths:
+  /voices:
+    get:
+      summary: Returns list of all available voices
+      description: Returns list of voices. Leave query blank for all available voices or filter by language id.
+      operationId: getVoices
+      parameters:
+        - name: language_id
+          in: query
+          description: filter by language_id
+          required: false
+          schema:
+            type: integer
+            format: int16
+      responses:
+        '200':
+          description: voice array response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Voice'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /languages:
     get:
       summary: Returns list of all available languages
@@ -270,9 +298,6 @@ paths:
       summary: Returns all titles
       description: Returns all titles from the system that the user has access to
       operationId: findTitles
-      security:
-        - BearerAuth:
-            - "titles:r"
       parameters:
         - name: similarity
           in: query
@@ -441,6 +466,8 @@ paths:
                 - fileLanguageId
                 - fromLanguageId
                 - toLanguageId
+                - fromVoiceId
+                - toVoiceId
                 - filePath
               properties:
                 titleName:
@@ -450,6 +477,10 @@ paths:
                 fromLanguageId:
                   type: string
                 toLanguageId:
+                  type: string
+                fromVoiceId:
+                  type: string
+                toVoiceId:
                   type: string
                 filePath:
                   type: string
@@ -477,26 +508,32 @@ paths:
         - BearerAuth:
             - "titles:w"
       requestBody:
-        description: fromLanguageId is your native tongue. toLanguageId is the language you want to learn.
+        description: |
+          fromLanguageId is your native tongue. toLanguageId is the language you want to learn.
+          toVoiceId nad fromLanguageId are not required and will use standard neutral if not provided.
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - titleId
-                - fromLanguageId
-                - toLanguageId
-              properties:
-                titleId:
-                  type: integer
-                  format: int64
-                fromLanguageId:
-                  type: integer
-                  format: int16
-                toLanguageId:
-                  type: integer
-                  format: int16
+              $ref: '#/components/schemas/AudioFromTitle'
+#            schema:
+#              type: object
+#              required:
+#                - titleId
+#                - fromLanguageId
+#                - toLanguageId
+#                - fromVoiceId
+#                -
+#              properties:
+#                titleId:
+#                  type: integer
+#                  format: int64
+#                fromLanguageId:
+#                  type: integer
+#                  format: int16
+#                toLanguageId:
+#                  type: integer
+#                  format: int16
       responses:
         '200':
           description: audio from file response
@@ -508,6 +545,28 @@ paths:
                   $ref: '#/components/schemas/Translates'
 components:
   schemas:
+    AudioFromTitle:
+      type: object
+      required:
+        - titleId
+        - fromLanguageId
+        - toLanguageId
+      properties:
+        titleId:
+          type: integer
+          format: int64
+        fromLanguageId:
+          type: integer
+          format: int16
+        toLanguageId:
+          type: integer
+          format: int16
+        fromVoiceId:
+          type: integer
+          format: int16
+        toVoiceId:
+          type: integer
+          format: int16
     PatchRequest:
       type: array
       items:
@@ -747,6 +806,33 @@ components:
         tag:
           type: string
           description: language tag used for google language methods
+    Voice:
+      required:
+        - id
+        - languageId
+        - languageCodes
+        - ssmlGender
+        - name
+        - naturalSampleRateHertz
+      properties:
+        id:
+          type: integer
+          format: int16
+          description: id of voice
+        languageId:
+          type: integer
+          format: int16
+          description: id of language
+        ssmlGender:
+          type: string
+          description: gender of voice MALE|FEMALE
+        name:
+          type: string
+          description: the name of the voice
+        naturalSampleRateHertz:
+          type: integer
+          format: int16
+          description: the natural sample rate of the voice in hertz
     Error:
       required:
         - code

@@ -72,20 +72,6 @@ func TestFindTitles(t *testing.T) {
 			permissions: []string{db.ReadTitlesCode},
 		},
 		{
-			name:   "Missing permission",
-			user:   user,
-			values: map[string]any{"similarity": false, "limit": true},
-			buildStubs: func(stubs MockStubs) {
-			},
-			checkResponse: func(res *http.Response) {
-				require.Equal(t, http.StatusForbidden, res.StatusCode)
-				body := readBody(t, res)
-				require.Contains(t, body, "\"message\":\"security requirements failed: token claims don't match: provided claims do not match expected scopes\"")
-
-			},
-			permissions: []string{},
-		},
-		{
 			name:   "Missing limit value",
 			user:   user,
 			values: map[string]any{"similarity": true, "limit": false},

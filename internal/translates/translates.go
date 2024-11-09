@@ -36,7 +36,7 @@ type TTSClientX interface {
 type TranslateX interface {
 	InsertNewPhrases(echo.Context, db.Title, db.Querier, []string) ([]db.Translate, error)
 	InsertTranslates(echo.Context, db.Querier, int16, []util.TranslatesReturn) ([]db.Translate, error)
-	CreateTTS(echo.Context, db.Querier, db.Language, db.Title, string) error
+	CreateTTS(echo.Context, db.Querier, db.Language, db.Title, string, string) error
 	TranslatePhrases(echo.Context, []db.Translate, db.Language) ([]util.TranslatesReturn, error)
 }
 
@@ -54,7 +54,7 @@ func New(trc TranslateClientX, ttsc TTSClientX) *Translate {
 
 // TextToSpeech takes a slice of db.Translate and get the speech mp3's adding them
 // to the machines local file system
-func (t *Translate) TextToSpeech(e echo.Context, ts []db.Translate, bp, tag string) error {
+func (t *Translate) TextToSpeech(e echo.Context, ts []db.Translate, bp, tag, voiceName string) error {
 
 	// concurrently get all the audio content from Google text-to-speech
 	var wg sync.WaitGroup
@@ -69,7 +69,7 @@ func (t *Translate) TextToSpeech(e echo.Context, ts []db.Translate, bp, tag stri
 		}
 		wg.Add(1)
 		//get responses concurrently with go routines
-		go t.GetSpeech(e, newCtx, cancel, nextText, &wg, bp, tag)
+		go t.GetSpeech(e, newCtx, cancel, nextText, &wg, bp, tag, voiceName)
 	}
 	wg.Wait()
 
@@ -91,7 +91,8 @@ func (t *Translate) GetSpeech(
 	translate db.Translate,
 	wg *sync.WaitGroup,
 	basepath,
-	tag string) {
+	tag,
+	voiceName string) {
 	defer wg.Done()
 	select {
 	case <-ctx.Done():
@@ -109,7 +110,7 @@ func (t *Translate) GetSpeech(
 			Voice: &texttospeechpb.VoiceSelectionParams{
 				LanguageCode: tag,
 				SsmlGender:   texttospeechpb.SsmlVoiceGender_NEUTRAL,
-				//Name: "af-ZA-Standard-A",
+				Name:         voiceName,
 			},
 			// Select the type of audio file you want returned.
 			AudioConfig: &texttospeechpb.AudioConfig{
@@ -219,9 +220,9 @@ func (t *Translate) GetTranslate(e echo.Context,
 
 // CreateTTS is called from api.createAudioFromTitle.
 // It checks if the mp3 audio files exist and if not it creates them.
-func (t *Translate) CreateTTS(e echo.Context, q db.Querier, lang db.Language, title db.Title, basepath string) error {
+func (t *Translate) CreateTTS(e echo.Context, q db.Querier, lang db.Language, title db.Title, basePath, voiceId string) error {
 	// if the audio files already exist no need to request them again
-	skip, err := util.PathExists(basepath)
+	skip, err := util.PathExists(basePath)
 	if err != nil {
 		e.Logger().Error(err)
 		return err
@@ -229,18 +230,18 @@ func (t *Translate) CreateTTS(e echo.Context, q db.Querier, lang db.Language, ti
 
 	// if they do not exist, then request them
 	if !skip {
-		fromTranslates, err := t.GetOrCreateTranslates(e, q, title.ID, lang, title.OgLanguageID)
+		fromTranslates, err := t.GetOrCreateTranslates(e, q, title, lang)
 		if err != nil {
 			return err
 		}
 
-		err = os.MkdirAll(basepath, 0777)
+		err = os.MkdirAll(basePath, 0777)
 		if err != nil {
 			e.Logger().Error(err)
 			return err
 		}
 
-		if err = t.TextToSpeech(e, fromTranslates, basepath, lang.Tag); err != nil {
+		if err = t.TextToSpeech(e, fromTranslates, basePath, lang.Tag, voiceId); err != nil {
 			e.Logger().Error(err)
 			return err
 		}
@@ -251,20 +252,20 @@ func (t *Translate) CreateTTS(e echo.Context, q db.Querier, lang db.Language, ti
 
 // GetOrCreateTranslates checks if the translates for the title already exists in the db.
 // If they do not exist, then it creates and returns them.
-func (t *Translate) GetOrCreateTranslates(e echo.Context, q db.Querier, titleId int64, toLang db.Language, fromLangId int16) ([]db.Translate, error) {
+func (t *Translate) GetOrCreateTranslates(e echo.Context, q db.Querier, title db.Title, toLang db.Language) ([]db.Translate, error) {
 	// see if translates exist for title for language
 	exists, err := q.SelectExistsTranslates(
 		e.Request().Context(),
 		db.SelectExistsTranslatesParams{
 			LanguageID: toLang.ID,
-			ID:         titleId,
+			ID:         title.ID,
 		})
 
 	// if exists get translates for language
 	if exists {
 		params := db.SelectTranslatesByTitleIdLangIdParams{
 			LanguageID: toLang.ID,
-			ID:         titleId,
+			ID:         title.ID,
 		}
 		translates, err := q.SelectTranslatesByTitleIdLangId(e.Request().Context(), params)
 		if err != nil {
@@ -274,12 +275,12 @@ func (t *Translate) GetOrCreateTranslates(e echo.Context, q db.Querier, titleId 
 		return translates, nil
 	}
 
-	// if not exists get translates for fromLangId
+	// if not exists get translates for title original language
 	fromTranslates, err := q.SelectTranslatesByTitleIdLangId(
 		e.Request().Context(),
 		db.SelectTranslatesByTitleIdLangIdParams{
-			LanguageID: fromLangId,
-			ID:         titleId,
+			LanguageID: title.OgLanguageID,
+			ID:         title.ID,
 		})
 	if err != nil {
 		e.Logger().Error(err)

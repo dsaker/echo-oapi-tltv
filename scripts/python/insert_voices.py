@@ -35,11 +35,12 @@ def insert_voices(data):
                     cursor.execute(lang_id_query, (lang_tag[0],))
                     lang_id = cursor.fetchone()
 
-                    # Insert each record from JSON data
-                    cursor.execute(insert_query, (lang_id, voice['languageCodes'], voice['ssmlGender'], voice['name'], voice['naturalSampleRateHertz']))
+                    if lang_id:
+                        # Insert each record from JSON data
+                        cursor.execute(insert_query, (lang_id, voice['languageCodes'], voice['ssmlGender'], voice['name'], voice['naturalSampleRateHertz']))
 
-                    # Commit the transaction
-                    connection.commit()
+                        # Commit the transaction
+                        connection.commit()
 
     except Exception as e:
         print("Error inserting data:", e)

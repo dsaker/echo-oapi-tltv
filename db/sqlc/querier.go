@@ -21,6 +21,7 @@ type Querier interface {
 	ListLanguages(ctx context.Context) ([]Language, error)
 	ListTitles(ctx context.Context, arg ListTitlesParams) ([]ListTitlesRow, error)
 	ListTitlesByOgLanguage(ctx context.Context, arg ListTitlesByOgLanguageParams) ([]ListTitlesByOgLanguageRow, error)
+	ListVoices(ctx context.Context) ([]Voice, error)
 	SelectExistsTranslates(ctx context.Context, arg SelectExistsTranslatesParams) (bool, error)
 	SelectLanguagesById(ctx context.Context, id int16) (Language, error)
 	SelectPermissionByCode(ctx context.Context, code string) (Permission, error)
@@ -33,6 +34,8 @@ type Querier interface {
 	SelectUserPermissions(ctx context.Context, userID int64) ([]string, error)
 	SelectUsersPhrasesByCorrect(ctx context.Context, arg SelectUsersPhrasesByCorrectParams) ([]int64, error)
 	SelectUsersPhrasesByIds(ctx context.Context, arg SelectUsersPhrasesByIdsParams) (UsersPhrase, error)
+	SelectVoiceById(ctx context.Context, id int16) (Voice, error)
+	SelectVoicesByLanguageId(ctx context.Context, languageID int16) ([]Voice, error)
 	UpdateUserById(ctx context.Context, arg UpdateUserByIdParams) (User, error)
 	UpdateUsersPhrasesByThreeIds(ctx context.Context, arg UpdateUsersPhrasesByThreeIdsParams) (UsersPhrase, error)
 }

@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS voices (
     id smallserial primary key not null ,
-    language_id smallint references languages on delete cascade,
+    language_id smallint not null references languages on delete cascade,
     language_codes text[] not null,
     ssml_gender text not null ,
     name text not null unique,

@@ -38,6 +38,7 @@ const (
 	phrasesBasePath         = "/v1/phrases"
 	usersPhrasesBasePath    = "/v1/usersphrases"
 	languagesBasePath       = "/v1/languages"
+	voicesBasePath          = "/v1/voices"
 )
 
 type MockStubs struct {
@@ -136,6 +137,18 @@ func randomLanguage() (language db.Language) {
 		ID:       util.RandomInt16(),
 		Language: util.RandomString(6),
 		Tag:      "en",
+	}
+}
+
+// randomVoice creates a random db Voice for testing
+func randomVoice() (voice db.Voice) {
+	return db.Voice{
+		ID:                     util.RandomInt16(),
+		LanguageID:             util.RandomInt16(),
+		LanguageCodes:          []string{util.RandomString(8), util.RandomString(8)},
+		SsmlGender:             "FEMALE",
+		Name:                   util.RandomString(8),
+		NaturalSampleRateHertz: 24000,
 	}
 }
 

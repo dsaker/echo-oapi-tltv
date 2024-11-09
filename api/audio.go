@@ -138,10 +138,6 @@ func (s *Server) createAudioFromTitle(e echo.Context, title db.Title, r oapi.Aud
 	// get MockQuerier.Language for from language from id
 	fromLang, err := s.queries.SelectLanguagesById(e.Request().Context(), r.FromLanguageId)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			e.Logger().Error(err)
-			return nil, err
-		}
 		e.Logger().Error(err)
 		return nil, err
 	}
@@ -149,25 +145,43 @@ func (s *Server) createAudioFromTitle(e echo.Context, title db.Title, r oapi.Aud
 	// get MockQuerier.Language for to language from id
 	toLang, err := s.queries.SelectLanguagesById(e.Request().Context(), r.ToLanguageId)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			e.Logger().Error(err)
-			return nil, err
-		}
 		e.Logger().Error(err)
 		return nil, err
 	}
 
+	// TODO add comments
+	toVoiceName := ""
+	if r.ToVoiceId != nil {
+		voice, err := s.queries.SelectVoiceById(e.Request().Context(), *r.ToVoiceId)
+		if err != nil {
+			e.Logger().Error(err)
+			return nil, err
+		}
+		toVoiceName = voice.Name
+	}
+
+	fromVoiceName := ""
+	if r.ToVoiceId != nil {
+		voice, err := s.queries.SelectVoiceById(e.Request().Context(), *r.FromVoiceId)
+		if err != nil {
+			e.Logger().Error(err)
+			return nil, err
+		}
+		fromVoiceName = voice.Name
+	}
+
+	// TODO add comments
 	audioBasePath := fmt.Sprintf("%s%d/", s.config.TTSBasePath, title.ID)
 
 	fromAudioBasePath := fmt.Sprintf("%s%d/", audioBasePath, r.FromLanguageId)
 	toAudioBasePath := fmt.Sprintf("%s%d/", audioBasePath, r.ToLanguageId)
 
-	if err = s.translates.CreateTTS(e, s.queries, fromLang, title, fromAudioBasePath); err != nil {
+	if err = s.translates.CreateTTS(e, s.queries, fromLang, title, fromAudioBasePath, fromVoiceName); err != nil {
 		e.Logger().Error(err)
 		return nil, err
 	}
 
-	if err = s.translates.CreateTTS(e, s.queries, toLang, title, toAudioBasePath); err != nil {
+	if err = s.translates.CreateTTS(e, s.queries, toLang, title, toAudioBasePath, toVoiceName); err != nil {
 		e.Logger().Error(err)
 		return nil, err
 	}
@@ -178,6 +192,7 @@ func (s *Server) createAudioFromTitle(e echo.Context, title db.Title, r oapi.Aud
 		return nil, err
 	}
 
+	// TODO allow request to change Pause
 	pausePath, ok := audiofile.AudioPauseFilePath[s.config.PhrasePause]
 	if !ok {
 		e.Logger().Error(err)

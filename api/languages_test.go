@@ -46,7 +46,6 @@ func TestListLanguages(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			//req, ts := setupServerTest(t, ctrl, tc, []byte(""), titlesBasePath, http.MethodGet)
 			ts, jwsToken := setupServerTest(t, ctrl, tc)
 			req := jsonRequest(t, []byte(""), ts, languagesBasePath, http.MethodGet, jwsToken)
 			q := req.URL.Query()
