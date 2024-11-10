@@ -72,18 +72,12 @@ func TestAudioFromTitle(t *testing.T) {
 				stubs.MockQuerier.EXPECT().
 					SelectLanguagesById(gomock.Any(), toLang.ID).
 					Return(toLang, nil)
-				stubs.MockQuerier.EXPECT().
-					SelectVoiceById(gomock.Any(), toVoice.ID).
-					Return(toVoice, nil)
-				stubs.MockQuerier.EXPECT().
-					SelectVoiceById(gomock.Any(), fromVoice.ID).
-					Return(fromVoice, nil)
 				// CreateTTSForLang(echo.Context, db.Querier, db.Language, db.Title, string) error
 				stubs.TranslateX.EXPECT().
-					CreateTTS(gomock.Any(), stubs.MockQuerier, fromLang, title, fromAudioBasePath, fromVoice.Name).
+					CreateTTS(gomock.Any(), stubs.MockQuerier, fromLang, title, &fromVoice.ID, fromAudioBasePath).
 					Return(nil)
 				stubs.TranslateX.EXPECT().
-					CreateTTS(gomock.Any(), stubs.MockQuerier, toLang, title, toAudioBasePath, toVoice.Name).
+					CreateTTS(gomock.Any(), stubs.MockQuerier, toLang, title, &toVoice.ID, toAudioBasePath).
 					Return(nil)
 				// SelectPhraseIdsByTitleId(ctx context.Context, titleID int64) ([]int64, error)
 				stubs.MockQuerier.EXPECT().
@@ -128,10 +122,10 @@ func TestAudioFromTitle(t *testing.T) {
 					Return(toLang, nil)
 				// CreateTTSForLang(echo.Context, db.Querier, db.Language, db.Title, string) error
 				stubs.TranslateX.EXPECT().
-					CreateTTS(gomock.Any(), stubs.MockQuerier, fromLang, title, fromAudioBasePath, "").
+					CreateTTS(gomock.Any(), stubs.MockQuerier, fromLang, title, nil, fromAudioBasePath).
 					Return(nil)
 				stubs.TranslateX.EXPECT().
-					CreateTTS(gomock.Any(), stubs.MockQuerier, toLang, title, toAudioBasePath, "").
+					CreateTTS(gomock.Any(), stubs.MockQuerier, toLang, title, nil, toAudioBasePath).
 					Return(nil)
 				// SelectPhraseIdsByTitleId(ctx context.Context, titleID int64) ([]int64, error)
 				stubs.MockQuerier.EXPECT().
@@ -293,12 +287,11 @@ func TestAudioFromFile(t *testing.T) {
 				stubs.MockQuerier.EXPECT().
 					SelectLanguagesById(gomock.Any(), toLang.ID).
 					Return(toLang, nil)
-				// CreateTTSForLang(echo.Context, db.Querier, db.Language, db.Title, string) error
 				stubs.TranslateX.EXPECT().
-					CreateTTS(gomock.Any(), stubs.MockQuerier, fromLang, title, fromAudioBasePath, "").
+					CreateTTS(gomock.Any(), stubs.MockQuerier, fromLang, title, &fromVoice.ID, fromAudioBasePath).
 					Return(nil)
 				stubs.TranslateX.EXPECT().
-					CreateTTS(gomock.Any(), stubs.MockQuerier, toLang, title, toAudioBasePath, "").
+					CreateTTS(gomock.Any(), stubs.MockQuerier, toLang, title, &toVoice.ID, toAudioBasePath).
 					Return(nil)
 				// SelectPhraseIdsByTitleId(ctx context.Context, titleID int64) ([]int64, error)
 				stubs.MockQuerier.EXPECT().
@@ -321,6 +314,69 @@ func TestAudioFromFile(t *testing.T) {
 				data := []byte("This is the first sentence.\nThis is the second sentence.\n")
 
 				formMap := okFormMap
+				return createMultiPartBody(t, data, filename, formMap)
+			},
+			permissions: []string{db.WriteTitlesCode},
+		},
+		{
+			name: "Voice Language Id does not match chosen Language Id",
+			user: user,
+			buildStubs: func(stubs MockStubs) {
+				file, err := os.Create(filename)
+				require.NoError(t, err)
+				defer file.Close()
+				// GetLines(echo.Context, multipart.File) ([]string, error)
+				stubs.AudioFileX.EXPECT().
+					GetLines(gomock.Any(), gomock.Any()).
+					Return(stringsSlice, nil)
+				stubs.MockQuerier.EXPECT().
+					InsertTitle(gomock.Any(), insertTitle).
+					Times(1).Return(title, nil)
+				stubs.TranslateX.EXPECT().
+					InsertNewPhrases(gomock.Any(), title, stubs.MockQuerier, stringsSlice).
+					Times(1).Return(dbTranslates, nil)
+				// SelectLanguagesById(ctx context.Context, id int16) (Language, error)
+				stubs.MockQuerier.EXPECT().
+					SelectLanguagesById(gomock.Any(), fromLang.ID).
+					Return(fromLang, nil)
+				stubs.MockQuerier.EXPECT().
+					SelectLanguagesById(gomock.Any(), toLang.ID).
+					Return(toLang, nil)
+				// CreateTTSForLang(echo.Context, db.Querier, db.Language, db.Title, string) error
+				stubs.TranslateX.EXPECT().
+					CreateTTS(gomock.Any(), stubs.MockQuerier, fromLang, title, &toVoice.ID, fromAudioBasePath).
+					Return(nil)
+				stubs.TranslateX.EXPECT().
+					CreateTTS(gomock.Any(), stubs.MockQuerier, toLang, title, &toVoice.ID, toAudioBasePath).
+					Return(nil)
+				// SelectPhraseIdsByTitleId(ctx context.Context, titleID int64) ([]int64, error)
+				stubs.MockQuerier.EXPECT().
+					SelectPhraseIdsByTitleId(gomock.Any(), title.ID).
+					Return(phraseIDs, nil)
+				// BuildAudioInputFiles(echo.Context, []int64, db.Title, string, string, string, string) error
+				stubs.AudioFileX.EXPECT().
+					BuildAudioInputFiles(gomock.Any(), phraseIDs, title, silenceBasePath, fromAudioBasePath, toAudioBasePath, gomock.Any()).
+					Return(nil)
+				// CreateMp3Zip(echo.Context, db.Title, string) (*os.File, error)
+				stubs.AudioFileX.EXPECT().
+					CreateMp3Zip(gomock.Any(), title, gomock.Any()).
+					Return(file, nil)
+
+			},
+			checkResponse: func(res *http.Response) {
+				require.Equal(t, http.StatusOK, res.StatusCode)
+			},
+			multipartBody: func(t *testing.T) (*bytes.Buffer, *multipart.Writer) {
+				data := []byte("This is the first sentence.\nThis is the second sentence.\n")
+
+				formMap := map[string]string{
+					"fileLanguageId": strconv.Itoa(int(title.OgLanguageID)),
+					"fromLanguageId": strconv.Itoa(int(fromLang.ID)),
+					"toLanguageId":   strconv.Itoa(int(toLang.ID)),
+					"titleName":      title.Title,
+					"fromVoiceId":    strconv.Itoa(int(toVoice.ID)),
+					"toVoiceId":      strconv.Itoa(int(toVoice.ID)),
+				}
 				return createMultiPartBody(t, data, filename, formMap)
 			},
 			permissions: []string{db.WriteTitlesCode},
@@ -419,11 +475,7 @@ func TestAudioFromFile(t *testing.T) {
 			multipartBody: func(t *testing.T) (*bytes.Buffer, *multipart.Writer) {
 				data := []byte("This is the first sentence.\nThis is the second sentence.\n")
 
-				formMap := map[string]string{
-					"fileLanguageId": strconv.Itoa(int(title.OgLanguageID)),
-					"fromLanguageId": strconv.Itoa(int(fromLang.ID)),
-					"toLanguageId":   strconv.Itoa(int(toLang.ID)),
-					"titleName":      title.Title}
+				formMap := okFormMap
 				return createMultiPartBody(t, data, filename, formMap)
 			},
 			buildStubs: func(stubs MockStubs) {

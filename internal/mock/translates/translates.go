@@ -123,7 +123,7 @@ func (m *MockTranslateX) EXPECT() *MockTranslateXMockRecorder {
 }
 
 // CreateTTS mocks base method.
-func (m *MockTranslateX) CreateTTS(arg0 echo.Context, arg1 db.Querier, arg2 db.Language, arg3 db.Title, arg4, arg5 string) error {
+func (m *MockTranslateX) CreateTTS(arg0 echo.Context, arg1 db.Querier, arg2 db.Language, arg3 db.Title, arg4 *int16, arg5 string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateTTS", arg0, arg1, arg2, arg3, arg4, arg5)
 	ret0, _ := ret[0].(error)

@@ -36,7 +36,7 @@ type TTSClientX interface {
 type TranslateX interface {
 	InsertNewPhrases(echo.Context, db.Title, db.Querier, []string) ([]db.Translate, error)
 	InsertTranslates(echo.Context, db.Querier, int16, []util.TranslatesReturn) ([]db.Translate, error)
-	CreateTTS(echo.Context, db.Querier, db.Language, db.Title, string, string) error
+	CreateTTS(echo.Context, db.Querier, db.Language, db.Title, *int16, string) error
 	TranslatePhrases(echo.Context, []db.Translate, db.Language) ([]util.TranslatesReturn, error)
 }
 
@@ -220,7 +220,13 @@ func (t *Translate) GetTranslate(e echo.Context,
 
 // CreateTTS is called from api.createAudioFromTitle.
 // It checks if the mp3 audio files exist and if not it creates them.
-func (t *Translate) CreateTTS(e echo.Context, q db.Querier, lang db.Language, title db.Title, basePath, voiceId string) error {
+func (t *Translate) CreateTTS(e echo.Context, q db.Querier, lang db.Language, title db.Title, voiceId *int16, basePath string) error {
+
+	voiceName, err := getVoiceName(e, voiceId, lang.ID, q)
+	if err != nil {
+		return err
+	}
+
 	// if the audio files already exist no need to request them again
 	skip, err := util.PathExists(basePath)
 	if err != nil {
@@ -241,13 +247,31 @@ func (t *Translate) CreateTTS(e echo.Context, q db.Querier, lang db.Language, ti
 			return err
 		}
 
-		if err = t.TextToSpeech(e, fromTranslates, basePath, lang.Tag, voiceId); err != nil {
+		if err = t.TextToSpeech(e, fromTranslates, basePath, lang.Tag, voiceName); err != nil {
 			e.Logger().Error(err)
 			return err
 		}
 	}
 
 	return nil
+}
+
+// getVoiceName returns empty string if voiceId is nil, otherwise it gets the voice
+// name from the database and returns it
+func getVoiceName(e echo.Context, voiceId *int16, langId int16, q db.Querier) (string, error) {
+	if voiceId == nil {
+		return "", nil
+	}
+	voice, err := q.SelectVoiceById(e.Request().Context(), *voiceId)
+	if err != nil {
+		e.Logger().Error(err)
+		return "", err
+	}
+	// check if langauge id of voice matches chosen language id
+	if voice.LanguageID != langId {
+		return "", util.ErrVoiceLangIdNoMatch
+	}
+	return voice.Name, nil
 }
 
 // GetOrCreateTranslates checks if the translates for the title already exists in the db.

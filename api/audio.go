@@ -31,6 +31,14 @@ func (s *Server) AudioFromFile(e echo.Context) error {
 	if err != nil {
 		return e.String(http.StatusBadRequest, fmt.Sprintf("error converting toLanguageId to int16: %s", err.Error()))
 	}
+	toVoiceId, err := util.ConvertStringInt16(e.FormValue("toVoiceId"))
+	if err != nil {
+		return e.String(http.StatusBadRequest, fmt.Sprintf("error converting toVoiceId to int16: %s", err.Error()))
+	}
+	fromVoiceId, err := util.ConvertStringInt16(e.FormValue("fromVoiceId"))
+	if err != nil {
+		return e.String(http.StatusBadRequest, fmt.Sprintf("error converting fromVoiceId to int16: %s", err.Error()))
+	}
 
 	// Get file handler for filename, size and headers
 	fh, err := e.FormFile("filePath")
@@ -95,6 +103,8 @@ func (s *Server) AudioFromFile(e echo.Context) error {
 		FromLanguageId: fromLangId,
 		TitleId:        title.ID,
 		ToLanguageId:   toLangId,
+		ToVoiceId:      &toVoiceId,
+		FromVoiceId:    &fromVoiceId,
 	}
 	zipFile, err := s.createAudioFromTitle(e, title, audioFromTitleRequest)
 	if err != nil {
@@ -126,6 +136,9 @@ func (s *Server) AudioFromTitle(e echo.Context) error {
 
 	zipFile, err := s.createAudioFromTitle(e, title, audioFromTitleRequest)
 	if err != nil {
+		if errors.Is(err, util.ErrVoiceLangIdNoMatch) {
+			return e.String(http.StatusBadRequest, err.Error())
+		}
 		return e.String(http.StatusInternalServerError, err.Error())
 	}
 	return e.Attachment(zipFile.Name(), title.Title+".zip")
@@ -150,38 +163,17 @@ func (s *Server) createAudioFromTitle(e echo.Context, title db.Title, r oapi.Aud
 	}
 
 	// TODO add comments
-	toVoiceName := ""
-	if r.ToVoiceId != nil {
-		voice, err := s.queries.SelectVoiceById(e.Request().Context(), *r.ToVoiceId)
-		if err != nil {
-			e.Logger().Error(err)
-			return nil, err
-		}
-		toVoiceName = voice.Name
-	}
-
-	fromVoiceName := ""
-	if r.ToVoiceId != nil {
-		voice, err := s.queries.SelectVoiceById(e.Request().Context(), *r.FromVoiceId)
-		if err != nil {
-			e.Logger().Error(err)
-			return nil, err
-		}
-		fromVoiceName = voice.Name
-	}
-
-	// TODO add comments
 	audioBasePath := fmt.Sprintf("%s%d/", s.config.TTSBasePath, title.ID)
 
 	fromAudioBasePath := fmt.Sprintf("%s%d/", audioBasePath, r.FromLanguageId)
 	toAudioBasePath := fmt.Sprintf("%s%d/", audioBasePath, r.ToLanguageId)
 
-	if err = s.translates.CreateTTS(e, s.queries, fromLang, title, fromAudioBasePath, fromVoiceName); err != nil {
+	if err = s.translates.CreateTTS(e, s.queries, fromLang, title, r.FromVoiceId, fromAudioBasePath); err != nil {
 		e.Logger().Error(err)
 		return nil, err
 	}
 
-	if err = s.translates.CreateTTS(e, s.queries, toLang, title, toAudioBasePath, toVoiceName); err != nil {
+	if err = s.translates.CreateTTS(e, s.queries, toLang, title, r.ToVoiceId, toAudioBasePath); err != nil {
 		e.Logger().Error(err)
 		return nil, err
 	}
