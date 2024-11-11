@@ -340,7 +340,8 @@ func addFileToZip(e echo.Context, zipWriter *zip.Writer, filename string) error 
 	return err
 }
 
-// BuildAudioInputFiles
+// BuildAudioInputFiles creates a file with the filepaths of the mp3's used to construct
+// the output files with ffmpeg in CreateMp3Zip
 func (a *AudioFile) BuildAudioInputFiles(e echo.Context, ids []int64, t db.Title, pause, from, to, tmpDir string) error {
 
 	// map phrase ids to zero through len(phrase ids) to map correctly to pattern.Pattern
@@ -350,9 +351,9 @@ func (a *AudioFile) BuildAudioInputFiles(e echo.Context, ids []int64, t db.Title
 	}
 
 	maxP := slices.Max(ids)
-	// create chunks of []Audio pattern to split up audio files into ~20 minute lengths
+	// create chunks of []Audio pattern to split up audio files into ~15 minute lengths
 	// TODO look at slices.Chunk to see how it accepts any type of slice
-	chunkedSlice := slices.Chunk(audio.Pattern, 250)
+	chunkedSlice := slices.Chunk(audio.Pattern, 125)
 	count := 1
 	last := false
 	for chunk := range chunkedSlice {

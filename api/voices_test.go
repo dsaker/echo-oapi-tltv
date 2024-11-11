@@ -8,21 +8,21 @@ import (
 	"net/http"
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/test"
+	"talkliketv.click/tltv/internal/util"
 	"testing"
 )
 
 func TestListVoices(t *testing.T) {
 	user, _ := randomUser(t)
 
-	voice1 := randomVoice()
-	voice2 := randomVoice()
+	voice1 := util.RandomVoice()
+	voice2 := util.RandomVoice()
 	voices := []db.Voice{voice1, voice2}
 
 	testCases := []testCase{
 		{
-			name:   "OK",
-			user:   user,
-			values: map[string]any{"language_id": false},
+			name: "OK",
+			user: user,
 			buildStubs: func(stubs MockStubs) {
 				stubs.MockQuerier.EXPECT().
 					ListVoices(gomock.Any()).
@@ -42,7 +42,7 @@ func TestListVoices(t *testing.T) {
 		{
 			name:   "With language id",
 			user:   user,
-			values: map[string]any{"language_id": true},
+			values: map[string]any{"languageId": true},
 			buildStubs: func(stubs MockStubs) {
 				stubs.MockQuerier.EXPECT().
 					SelectVoicesByLanguageId(gomock.Any(), int16(1)).
@@ -60,9 +60,8 @@ func TestListVoices(t *testing.T) {
 			permissions: []string{},
 		},
 		{
-			name:   "conn already closed",
-			user:   user,
-			values: map[string]any{"language_id": false},
+			name: "conn already closed",
+			user: user,
 			buildStubs: func(stubs MockStubs) {
 				stubs.MockQuerier.EXPECT().
 					ListVoices(gomock.Any()).
@@ -87,11 +86,9 @@ func TestListVoices(t *testing.T) {
 
 			ts, jwsToken := setupServerTest(t, ctrl, tc)
 			req := jsonRequest(t, []byte(""), ts, voicesBasePath, http.MethodGet, jwsToken)
-
-			// add parameters to the url query path
 			q := req.URL.Query()
-			if tc.values["language_id"] == true {
-				q.Add("language_id", "1")
+			if tc.values["languageId"] == true {
+				q.Add("languageId", "1")
 			}
 			req.URL.RawQuery = q.Encode()
 

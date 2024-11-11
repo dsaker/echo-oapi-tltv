@@ -19,6 +19,7 @@ type Querier interface {
 	InsertUser(ctx context.Context, arg InsertUserParams) (User, error)
 	InsertUserPermission(ctx context.Context, arg InsertUserPermissionParams) (UsersPermission, error)
 	ListLanguages(ctx context.Context) ([]Language, error)
+	ListLanguagesSimilar(ctx context.Context, similarity string) ([]ListLanguagesSimilarRow, error)
 	ListTitles(ctx context.Context, arg ListTitlesParams) ([]ListTitlesRow, error)
 	ListTitlesByOgLanguage(ctx context.Context, arg ListTitlesByOgLanguageParams) ([]ListTitlesByOgLanguageRow, error)
 	ListVoices(ctx context.Context) ([]Voice, error)

@@ -140,18 +140,6 @@ func randomLanguage() (language db.Language) {
 	}
 }
 
-// randomVoice creates a random db Voice for testing
-func randomVoice() (voice db.Voice) {
-	return db.Voice{
-		ID:                     util.RandomInt16(),
-		LanguageID:             util.RandomInt16(),
-		LanguageCodes:          []string{util.RandomString(8), util.RandomString(8)},
-		SsmlGender:             "FEMALE",
-		Name:                   util.RandomString(8),
-		NaturalSampleRateHertz: 24000,
-	}
-}
-
 // setupHandlerTest sets up a testCase that will be run through the handler
 // these tests will not include the middleware JWT verification or the automated validation
 // through openapi

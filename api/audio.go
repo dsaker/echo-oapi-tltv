@@ -23,14 +23,6 @@ func (s *Server) AudioFromFile(e echo.Context) error {
 	if err != nil {
 		return e.String(http.StatusBadRequest, fmt.Sprintf("error converting fileLanguageId to int16: %s", err.Error()))
 	}
-	fromLangId, err := util.ConvertStringInt16(e.FormValue("fromLanguageId"))
-	if err != nil {
-		return e.String(http.StatusBadRequest, fmt.Sprintf("error converting fromLanguageId to int16: %s", err.Error()))
-	}
-	toLangId, err := util.ConvertStringInt16(e.FormValue("toLanguageId"))
-	if err != nil {
-		return e.String(http.StatusBadRequest, fmt.Sprintf("error converting toLanguageId to int16: %s", err.Error()))
-	}
 	toVoiceId, err := util.ConvertStringInt16(e.FormValue("toVoiceId"))
 	if err != nil {
 		return e.String(http.StatusBadRequest, fmt.Sprintf("error converting toVoiceId to int16: %s", err.Error()))
@@ -47,7 +39,7 @@ func (s *Server) AudioFromFile(e echo.Context) error {
 	}
 
 	// Check if file size is too large 64000 == 8KB ~ approximately 4 pages of text
-	if fh.Size > s.config.FileUploadLimit*8000 {
+	if fh.Size > s.config.FileUploadLimit {
 		rString := fmt.Sprintf("file too large (%d > %d)", fh.Size, s.config.FileUploadLimit*8000)
 		return e.String(http.StatusBadRequest, rString)
 	}
@@ -63,7 +55,7 @@ func (s *Server) AudioFromFile(e echo.Context) error {
 	if err != nil {
 		return e.String(http.StatusBadRequest, fmt.Sprintf("unable to parse file: %s", err.Error()))
 	}
-	// TODO add max number of phrases to configs
+	// TODO add max number of phrases to configs; send back zip of split files if too big
 	if len(stringsSlice) > 100 {
 		responseString := fmt.Sprintf("file too large, limit is %d, your file has %d lines", 100, len(stringsSlice))
 		return e.String(http.StatusBadRequest, responseString)
@@ -100,11 +92,9 @@ func (s *Server) AudioFromFile(e echo.Context) error {
 	}
 
 	audioFromTitleRequest := oapi.AudioFromTitleJSONRequestBody{
-		FromLanguageId: fromLangId,
-		TitleId:        title.ID,
-		ToLanguageId:   toLangId,
-		ToVoiceId:      &toVoiceId,
-		FromVoiceId:    &fromVoiceId,
+		TitleId:     title.ID,
+		ToVoiceId:   toVoiceId,
+		FromVoiceId: fromVoiceId,
 	}
 	zipFile, err := s.createAudioFromTitle(e, title, audioFromTitleRequest)
 	if err != nil {
@@ -148,15 +138,13 @@ func (s *Server) AudioFromTitle(e echo.Context) error {
 // AudioFromFile and AudioFromTitle
 func (s *Server) createAudioFromTitle(e echo.Context, title db.Title, r oapi.AudioFromTitleJSONRequestBody) (*os.File, error) {
 
-	// get MockQuerier.Language for from language from id
-	fromLang, err := s.queries.SelectLanguagesById(e.Request().Context(), r.FromLanguageId)
+	fromVoice, err := s.queries.SelectVoiceById(e.Request().Context(), r.FromVoiceId)
 	if err != nil {
 		e.Logger().Error(err)
 		return nil, err
 	}
 
-	// get MockQuerier.Language for to language from id
-	toLang, err := s.queries.SelectLanguagesById(e.Request().Context(), r.ToLanguageId)
+	toVoice, err := s.queries.SelectVoiceById(e.Request().Context(), r.ToVoiceId)
 	if err != nil {
 		e.Logger().Error(err)
 		return nil, err
@@ -165,15 +153,15 @@ func (s *Server) createAudioFromTitle(e echo.Context, title db.Title, r oapi.Aud
 	// TODO add comments
 	audioBasePath := fmt.Sprintf("%s%d/", s.config.TTSBasePath, title.ID)
 
-	fromAudioBasePath := fmt.Sprintf("%s%d/", audioBasePath, r.FromLanguageId)
-	toAudioBasePath := fmt.Sprintf("%s%d/", audioBasePath, r.ToLanguageId)
+	fromAudioBasePath := fmt.Sprintf("%s%d/", audioBasePath, fromVoice.LanguageID)
+	toAudioBasePath := fmt.Sprintf("%s%d/", audioBasePath, toVoice.LanguageID)
 
-	if err = s.translates.CreateTTS(e, s.queries, fromLang, title, r.FromVoiceId, fromAudioBasePath); err != nil {
+	if err = s.translates.CreateTTS(e, s.queries, title, r.FromVoiceId, fromAudioBasePath); err != nil {
 		e.Logger().Error(err)
 		return nil, err
 	}
 
-	if err = s.translates.CreateTTS(e, s.queries, toLang, title, r.ToVoiceId, toAudioBasePath); err != nil {
+	if err = s.translates.CreateTTS(e, s.queries, title, r.ToVoiceId, toAudioBasePath); err != nil {
 		e.Logger().Error(err)
 		return nil, err
 	}

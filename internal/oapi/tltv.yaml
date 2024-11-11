@@ -24,9 +24,9 @@ paths:
       description: Returns list of voices. Leave query blank for all available voices or filter by language id.
       operationId: getVoices
       parameters:
-        - name: language_id
+        - name: languageId
           in: query
-          description: filter by language_id
+          description: filter by languageId
           required: false
           schema:
             type: integer
@@ -51,6 +51,14 @@ paths:
       summary: Returns list of all available languages
       description: Returns list of all available languages
       operationId: getLanguages
+      parameters:
+      - name: similarity
+        in: query
+        description: find titles similar to
+        required: false
+        example: similar
+        schema:
+          type: string
       responses:
         '200':
           description: language array response
@@ -464,8 +472,6 @@ paths:
               required:
                 - titleName
                 - fileLanguageId
-                - fromLanguageId
-                - toLanguageId
                 - fromVoiceId
                 - toVoiceId
                 - filePath
@@ -473,10 +479,6 @@ paths:
                 titleName:
                   type: string
                 fileLanguageId:
-                  type: string
-                fromLanguageId:
-                  type: string
-                toLanguageId:
                   type: string
                 fromVoiceId:
                   type: string
@@ -509,31 +511,12 @@ paths:
             - "titles:w"
       requestBody:
         description: |
-          fromLanguageId is your native tongue. toLanguageId is the language you want to learn.
-          toVoiceId nad fromLanguageId are not required and will use standard neutral if not provided.
+          fromVoiceId is your native tongue. toVoiceId is the language you want to learn.
         required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/AudioFromTitle'
-#            schema:
-#              type: object
-#              required:
-#                - titleId
-#                - fromLanguageId
-#                - toLanguageId
-#                - fromVoiceId
-#                -
-#              properties:
-#                titleId:
-#                  type: integer
-#                  format: int64
-#                fromLanguageId:
-#                  type: integer
-#                  format: int16
-#                toLanguageId:
-#                  type: integer
-#                  format: int16
       responses:
         '200':
           description: audio from file response
@@ -549,18 +532,12 @@ components:
       type: object
       required:
         - titleId
-        - fromLanguageId
-        - toLanguageId
+        - fromVoiceId
+        - toVoiceId
       properties:
         titleId:
           type: integer
           format: int64
-        fromLanguageId:
-          type: integer
-          format: int16
-        toLanguageId:
-          type: integer
-          format: int16
         fromVoiceId:
           type: integer
           format: int16

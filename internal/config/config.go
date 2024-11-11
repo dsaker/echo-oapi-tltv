@@ -58,7 +58,7 @@ func SetConfigs(config *Config) error {
 	flag.StringVar(&config.TTSBasePath, "tts-base-path", "/tmp/audio/", "text-to-speech base path temporary storage of mp3 audio files")
 
 	flag.DurationVar(&config.JWTDuration, "jwt-duration", 24, "JWT duration in hours")
-	flag.Int64Var(&config.FileUploadLimit, "upload-size-limit", 8, "File upload size limit in KB (default is 4)")
+	flag.Int64Var(&config.FileUploadLimit, "upload-size-limit", 8*8000, "File upload size limit in KB (default is 8)")
 	flag.IntVar(&config.PhrasePause, "phrase-pause", 4, "Pause in seconds between phrases (must be between 3 and 10)'")
 
 	if !isValidPause(config.PhrasePause) {

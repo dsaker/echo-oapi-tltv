@@ -181,6 +181,21 @@ func (mr *MockQuerierMockRecorder) ListLanguages(arg0 interface{}) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListLanguages", reflect.TypeOf((*MockQuerier)(nil).ListLanguages), arg0)
 }
 
+// ListLanguagesSimilar mocks base method.
+func (m *MockQuerier) ListLanguagesSimilar(arg0 context.Context, arg1 string) ([]db.ListLanguagesSimilarRow, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListLanguagesSimilar", arg0, arg1)
+	ret0, _ := ret[0].([]db.ListLanguagesSimilarRow)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListLanguagesSimilar indicates an expected call of ListLanguagesSimilar.
+func (mr *MockQuerierMockRecorder) ListLanguagesSimilar(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListLanguagesSimilar", reflect.TypeOf((*MockQuerier)(nil).ListLanguagesSimilar), arg0, arg1)
+}
+
 // ListTitles mocks base method.
 func (m *MockQuerier) ListTitles(arg0 context.Context, arg1 db.ListTitlesParams) ([]db.ListTitlesRow, error) {
 	m.ctrl.T.Helper()
