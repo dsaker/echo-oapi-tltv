@@ -47,8 +47,9 @@ func (s *Server) AddTitle(e echo.Context) error {
 		return e.String(http.StatusBadRequest, err.Error())
 	}
 
+	// TODO create function for repeated code with audioFromFile
 	// Check if file size is too large 32000 == 4KB ~ approximately 2 pages of text
-	if file.Size > s.config.FileUploadLimit*8000 {
+	if file.Size > s.config.FileUploadLimit {
 		return e.String(http.StatusBadRequest, "file too large")
 	}
 	src, err := file.Open()

@@ -15,7 +15,19 @@ func TestListLanguages(t *testing.T) {
 
 	language1 := randomLanguage()
 	language2 := randomLanguage()
-	languages := []db.Language{language1, language2}
+	languageRow1 := db.ListLanguagesSimilarRow{
+		ID:         language1.ID,
+		Language:   language1.Language,
+		Tag:        language1.Tag,
+		Similarity: 0,
+	}
+	languageRow2 := db.ListLanguagesSimilarRow{
+		ID:         language2.ID,
+		Language:   language2.Language,
+		Tag:        language2.Tag,
+		Similarity: 0,
+	}
+	languages := []db.ListLanguagesSimilarRow{languageRow1, languageRow2}
 
 	testCases := []testCase{
 		{
@@ -23,14 +35,15 @@ func TestListLanguages(t *testing.T) {
 			user: user,
 			buildStubs: func(stubs MockStubs) {
 				stubs.MockQuerier.EXPECT().
-					ListLanguages(gomock.Any()).
+					// ListLanguagesSimilar(ctx context.Context, similarity string) ([]ListLanguagesSimilarRow, error)
+					ListLanguagesSimilar(gomock.Any(), "").
 					Times(1).
 					Return(languages, nil)
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusOK, res.StatusCode)
 				body := readBody(t, res)
-				var gotLanguages []db.Language
+				var gotLanguages []db.ListLanguagesSimilarRow
 				err := json.Unmarshal([]byte(body), &gotLanguages)
 				require.NoError(t, err)
 				test.RequireMatchAnyExcept(t, gotLanguages[0], languages[0], nil, "", "")
@@ -46,7 +59,6 @@ func TestListLanguages(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			//req, ts := setupServerTest(t, ctrl, tc, []byte(""), titlesBasePath, http.MethodGet)
 			ts, jwsToken := setupServerTest(t, ctrl, tc)
 			req := jsonRequest(t, []byte(""), ts, languagesBasePath, http.MethodGet, jwsToken)
 			q := req.URL.Query()

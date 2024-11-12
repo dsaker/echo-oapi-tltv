@@ -45,7 +45,7 @@ func (q *Queries) InsertTitle(ctx context.Context, arg InsertTitleParams) (Title
 const listTitles = `-- name: ListTitles :many
 SELECT id, title, similarity(title, $1) AS similarity, num_subs, og_language_id
 FROM titles
-ORDER BY similarity
+ORDER BY similarity desc
 LIMIT $2
 `
 

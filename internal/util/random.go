@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"strconv"
 	"strings"
+	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/oapi"
 )
 
@@ -64,5 +65,27 @@ func RandomPhrase() oapi.Phrase {
 	return oapi.Phrase{
 		Id:      RandomInt64(),
 		TitleId: RandomInt64(),
+	}
+}
+
+// RandomVoice creates a random db Voice for testing
+func RandomVoice() (voice db.Voice) {
+	return db.Voice{
+		ID:                     RandomInt16(),
+		LanguageID:             RandomInt16(),
+		LanguageCodes:          []string{RandomString(8), RandomString(8)},
+		SsmlGender:             "FEMALE",
+		Name:                   RandomString(8),
+		NaturalSampleRateHertz: 24000,
+	}
+}
+
+func RandomTitle() (title db.Title) {
+
+	return db.Title{
+		ID:           RandomInt64(),
+		Title:        RandomString(8),
+		NumSubs:      RandomInt16(),
+		OgLanguageID: ValidOgLanguageId,
 	}
 }

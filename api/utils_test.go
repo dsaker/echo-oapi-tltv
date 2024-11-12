@@ -38,6 +38,7 @@ const (
 	phrasesBasePath         = "/v1/phrases"
 	usersPhrasesBasePath    = "/v1/usersphrases"
 	languagesBasePath       = "/v1/languages"
+	voicesBasePath          = "/v1/voices"
 )
 
 type MockStubs struct {

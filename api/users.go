@@ -81,22 +81,6 @@ func (s *Server) CreateUser(e echo.Context) error {
 		return e.String(http.StatusInternalServerError, err.Error())
 	}
 
-	permission, err := s.queries.SelectPermissionByCode(e.Request().Context(), db.ReadTitlesCode)
-	if err != nil {
-		e.Logger().Error(err)
-		return e.String(http.StatusInternalServerError, err.Error())
-	}
-	_, err = s.queries.InsertUserPermission(
-		e.Request().Context(), db.InsertUserPermissionParams{
-			UserID:       user.ID,
-			PermissionID: permission.ID,
-		})
-
-	if err != nil {
-		e.Logger().Error(err)
-		return e.String(http.StatusInternalServerError, err.Error())
-	}
-
 	rsp := newUserResponse(user)
 	return e.JSON(http.StatusOK, rsp)
 }

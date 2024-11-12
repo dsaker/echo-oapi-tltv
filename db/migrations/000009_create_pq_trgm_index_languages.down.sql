@@ -1,0 +1,1 @@
+DROP INDEX if exists languages_language_trgm_idx;

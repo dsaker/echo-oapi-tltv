@@ -16,7 +16,6 @@ import (
 	db "talkliketv.click/tltv/db/sqlc"
 	mockdb "talkliketv.click/tltv/internal/mock/db"
 	mockt "talkliketv.click/tltv/internal/mock/translates"
-	"talkliketv.click/tltv/internal/oapi"
 	"talkliketv.click/tltv/internal/test"
 	"talkliketv.click/tltv/internal/util"
 	"testing"
@@ -30,7 +29,7 @@ type translatesTestCase struct {
 }
 
 func TestInsertNewPhrases(t *testing.T) {
-	title := RandomTitle()
+	title := util.RandomTitle()
 	title.OgLanguageID = 27
 	randomPhrase1 := util.RandomPhrase()
 	text1 := "This is sentence one."
@@ -113,10 +112,10 @@ func TestInsertNewPhrases(t *testing.T) {
 }
 
 func TestInsertTranslates(t *testing.T) {
-	title := RandomTitle()
+	title := util.RandomTitle()
 	title.OgLanguageID = 27
 	newLanguageId := 109
-	randomPhrase1 := RandomPhrase()
+	randomPhrase1 := util.RandomPhrase()
 	text1 := "This is sentence one."
 	hintString1 := makeHintString(text1)
 	translate1 := db.Translate{
@@ -193,7 +192,7 @@ func TestInsertTranslates(t *testing.T) {
 }
 
 func TestTextToSpeech(t *testing.T) {
-	title := RandomTitle()
+	title := util.RandomTitle()
 	title.OgLanguageID = 27
 
 	basepath := test.AudioBasePath + strconv.FormatInt(title.ID, 10) + "/"
@@ -201,8 +200,9 @@ func TestTextToSpeech(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(basepath)
 
-	newLanguage := language.English
-	randomPhrase1 := RandomPhrase()
+	voice := util.RandomVoice()
+	voice.SsmlGender = "MALE"
+	randomPhrase1 := util.RandomPhrase()
 	text1 := "This is sentence one."
 	hintString1 := makeHintString(text1)
 	translate1 := db.Translate{
@@ -224,9 +224,9 @@ func TestTextToSpeech(t *testing.T) {
 					// Build the voice request, select the language code ("en-US") and the SSML
 					// voice gender ("neutral").
 					Voice: &texttospeechpb.VoiceSelectionParams{
-						LanguageCode: language.English.String(),
-						SsmlGender:   texttospeechpb.SsmlVoiceGender_NEUTRAL,
-						//Name: "af-ZA-Standard-A",
+						LanguageCode: voice.LanguageCodes[0],
+						SsmlGender:   texttospeechpb.SsmlVoiceGender_MALE,
+						Name:         voice.Name,
 					},
 					// Select the type of audio file you want returned.
 					AudioConfig: &texttospeechpb.AudioConfig{
@@ -265,14 +265,14 @@ func TestTextToSpeech(t *testing.T) {
 
 			translates := New(trc, tts)
 
-			err = translates.TextToSpeech(newE, []db.Translate{translate1}, basepath, newLanguage.String())
+			err = translates.TextToSpeech(newE, []db.Translate{translate1}, voice, basepath)
 			tc.checkTranslate(nil, err)
 		})
 	}
 }
 
 func TestTranslatePhrases(t *testing.T) {
-	title := RandomTitle()
+	title := util.RandomTitle()
 	title.OgLanguageID = 27
 
 	newLanguage := db.Language{
@@ -280,7 +280,7 @@ func TestTranslatePhrases(t *testing.T) {
 		Language: "Spanish",
 		Tag:      "es",
 	}
-	randomPhrase1 := RandomPhrase()
+	randomPhrase1 := util.RandomPhrase()
 	text1 := "This is sentence one."
 	translate1 := db.Translate{
 		PhraseID: randomPhrase1.Id,
@@ -342,21 +342,4 @@ func IsDirectoryEmpty(dirPath string) (bool, error) {
 		return true, nil // Directory is empty
 	}
 	return false, nil // Directory is not empty
-}
-
-func RandomPhrase() oapi.Phrase {
-	return oapi.Phrase{
-		Id:      util.RandomInt64(),
-		TitleId: util.RandomInt64(),
-	}
-}
-
-func RandomTitle() (title db.Title) {
-
-	return db.Title{
-		ID:           util.RandomInt64(),
-		Title:        util.RandomString(8),
-		NumSubs:      util.RandomInt16(),
-		OgLanguageID: util.ValidOgLanguageId,
-	}
 }

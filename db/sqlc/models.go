@@ -61,3 +61,12 @@ type UsersPhrase struct {
 	LanguageID    int16 `json:"language_id"`
 	PhraseCorrect int16 `json:"phrase_correct"`
 }
+
+type Voice struct {
+	ID                     int16    `json:"id"`
+	LanguageID             int16    `json:"language_id"`
+	LanguageCodes          []string `json:"language_codes"`
+	SsmlGender             string   `json:"ssml_gender"`
+	Name                   string   `json:"name"`
+	NaturalSampleRateHertz int16    `json:"natural_sample_rate_hertz"`
+}
