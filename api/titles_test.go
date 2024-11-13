@@ -86,8 +86,7 @@ func TestFindTitles(t *testing.T) {
 		},
 	}
 
-	for i := range testCases {
-		tc := testCases[i]
+	for _, tc := range testCases {
 
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
@@ -271,8 +270,7 @@ func TestAddTitle(t *testing.T) {
 		},
 	}
 
-	for i := range testCases {
-		tc := testCases[i]
+	for _, tc := range testCases {
 
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
@@ -336,8 +334,7 @@ func TestFindTitleById(t *testing.T) {
 		},
 	}
 
-	for i := range testCases {
-		tc := testCases[i]
+	for _, tc := range testCases {
 
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
@@ -391,8 +388,7 @@ func TestDeleteTitleById(t *testing.T) {
 		},
 	}
 
-	for i := range testCases {
-		tc := testCases[i]
+	for _, tc := range testCases {
 
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
@@ -659,8 +655,7 @@ func TestTitlesTranslate(t *testing.T) {
 		},
 	}
 
-	for i := range testCases {
-		tc := testCases[i]
+	for _, tc := range testCases {
 
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)

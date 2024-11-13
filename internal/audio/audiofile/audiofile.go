@@ -16,6 +16,7 @@ import (
 	"strings"
 	db "talkliketv.click/tltv/db/sqlc"
 	audio "talkliketv.click/tltv/internal/audio/pattern"
+	"unicode"
 )
 
 // AudioPauseFilePath is a map to the silence mp3's of the embedded FS in
@@ -33,11 +34,20 @@ var AudioPauseFilePath = map[int]string{
 }
 
 // endSentenceMap is a map to find the ending punctuation of a sentence
-var endSentenceMap = map[rune]bool{
-	'!': true,
-	'.': true,
-	'?': true,
-}
+var (
+	endSentenceMap = map[rune]bool{
+		'!': true,
+		'.': true,
+		'?': true,
+	}
+	// Use a regular expression to match punctuation characters
+	punctuationRe = regexp.MustCompile(`[.,!?;:'"]`)
+)
+
+const (
+	minimumPhraseLength = 4
+	maximumPhraseLength = 11
+)
 
 type AudioFileX interface {
 	GetLines(echo.Context, multipart.File) ([]string, error)
@@ -175,14 +185,79 @@ func parseSrt(f multipart.File) []string {
 			}
 		}
 
-		// if sentence is too short don't keep it
-		words := strings.Fields(line)
-		if len(words) > 3 {
-			stringsSlice = append(stringsSlice, line)
+		phrases := splitBigPhrases(line)
+		for _, phrase := range phrases {
+			stringsSlice = append(stringsSlice, phrase)
 		}
 	}
 
 	return stringsSlice
+}
+
+func splitBigPhrases(line string) []string {
+
+	var splitString []string
+
+	words := strings.Fields(line)
+	// if phrase is too short don't keep it
+	if len(words) <= minimumPhraseLength {
+		return []string{}
+	} else if len(words) < maximumPhraseLength {
+		// if phrase isn't too long don't split it
+		return []string{line}
+	} else {
+		// split into an array of strings along punctuation
+		last := 0
+		for i, word := range words {
+			if unicode.IsPunct(rune(word[len(word)-1])) {
+				nextString := ""
+				for j := last; j <= i; j++ {
+					nextString = nextString + words[j] + " "
+				}
+				splitString = append(splitString, nextString)
+				last = i + 1
+			}
+		}
+		// if long phrase has punctuation split on punctuation
+		if len(splitString) > 1 {
+			// combine any strings that are less than the minimumPhraseLength with the string after it
+			i := 0
+			for i < len(splitString)-1 {
+				// if phrase is small combine it with the next one
+				wordsInString := strings.Fields(splitString[i])
+				if len(wordsInString) < minimumPhraseLength {
+					splitString[i] = splitString[i] + " " + splitString[i+1]
+					// remove the next index of split string
+					splitString = append(splitString[:i+1], splitString[i+2:]...)
+				} else {
+					// if both combined are less than maximum than concat
+					next := splitString[i] + " " + splitString[i+1]
+					nextWordCount := strings.Fields(next)
+					if len(nextWordCount) <= maximumPhraseLength {
+						splitString[i] = next
+						splitString = append(splitString[:i+1], splitString[i+2:]...)
+					}
+				}
+				// else continue
+				i++
+			}
+			// now check the last index of the split string and concat if shorter than minimum
+			lengthString := len(splitString)
+			stringWords := strings.Fields(splitString[lengthString-1])
+			if len(stringWords) < minimumPhraseLength {
+				splitString[lengthString-2] = splitString[lengthString-2] + splitString[lengthString-1]
+				splitString = splitString[:lengthString-1]
+			}
+		} else {
+			return []string{line}
+		}
+	}
+
+	for i := range splitString {
+		splitString[i] = strings.ReplaceAll(splitString[i], "  ", " ")
+		splitString[i] = strings.TrimSpace(splitString[i])
+	}
+	return splitString
 }
 
 // parseParagraph takes a txt multipart file in paragraph form and returns a slice of strings
@@ -222,9 +297,9 @@ func parseSingle(f multipart.File) []string {
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line := scanner.Text()
-		words := strings.Fields(line)
-		if len(words) > 2 {
-			stringsSlice = append(stringsSlice, line)
+		phrases := splitBigPhrases(line)
+		for _, phrase := range phrases {
+			stringsSlice = append(stringsSlice, phrase)
 		}
 	}
 

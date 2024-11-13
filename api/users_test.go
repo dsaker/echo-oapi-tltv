@@ -95,8 +95,7 @@ func TestGetUser(t *testing.T) {
 		},
 	}
 
-	for i := range testCases {
-		tc := testCases[i]
+	for _, tc := range testCases {
 
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
@@ -162,8 +161,7 @@ func TestDeleteUser(t *testing.T) {
 			},
 		},
 	}
-	for i := range testCases {
-		tc := testCases[i]
+	for _, tc := range testCases {
 
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
@@ -262,8 +260,7 @@ func TestCreateUser(t *testing.T) {
 		},
 	}
 
-	for i := range testCases {
-		tc := testCases[i]
+	for _, tc := range testCases {
 
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
@@ -389,8 +386,7 @@ func TestUpdateUser(t *testing.T) {
 		},
 	}
 
-	for i := range testCases {
-		tc := testCases[i]
+	for _, tc := range testCases {
 
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
@@ -482,8 +478,7 @@ func TestLoginUser(t *testing.T) {
 			},
 		},
 	}
-	for i := range testCases {
-		tc := testCases[i]
+	for _, tc := range testCases {
 
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
@@ -543,8 +538,7 @@ func TestCreateUserMiddleware(t *testing.T) {
 		},
 	}
 
-	for i := range testCases {
-		tc := testCases[i]
+	for _, tc := range testCases {
 
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)

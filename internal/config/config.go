@@ -17,14 +17,15 @@ import (
 
 // Config Update the config struct to hold the SMTP server settings.
 type Config struct {
-	Port            string
-	Env             string
-	CtxTimeout      time.Duration
-	JWTDuration     time.Duration
-	PhrasePause     int
-	TTSBasePath     string
-	FileUploadLimit int64
-	Db              struct {
+	Port             string
+	Env              string
+	CtxTimeout       time.Duration
+	JWTDuration      time.Duration
+	PhrasePause      int
+	MinimumPhaseSize int
+	TTSBasePath      string
+	FileUploadLimit  int64
+	Db               struct {
 		Dsn          string
 		MaxOpenConns int
 		MaxIdleConns int

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/golang/mock/gomock"
 	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"net/http"
 	"net/http/httptest"
@@ -64,7 +65,7 @@ func TestGetLines(t *testing.T) {
 			},
 			checkLines: func(lines []string, err error) {
 				require.NoError(t, err)
-				require.Equal(t, len(lines), 3)
+				require.Equal(t, len(lines), 4)
 			},
 		},
 		{
@@ -119,8 +120,7 @@ func TestGetLines(t *testing.T) {
 		},
 	}
 
-	for i := range testCases {
-		tc := testCases[i]
+	for _, tc := range testCases {
 
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
@@ -161,8 +161,7 @@ func TestBuildAudioInputFiles(t *testing.T) {
 		},
 	}
 
-	for i := range testCases {
-		tc := testCases[i]
+	for _, tc := range testCases {
 
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
@@ -235,8 +234,7 @@ func TestCreateMp3ZipWithFfmpeg(t *testing.T) {
 		},
 	}
 
-	for i := range testCases {
-		tc := testCases[i]
+	for _, tc := range testCases {
 
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
@@ -253,6 +251,69 @@ func TestCreateMp3ZipWithFfmpeg(t *testing.T) {
 			title, tmpDir := tc.createTitle(t)
 			osFile, err := audioFile.CreateMp3Zip(c, title, tmpDir)
 			tc.checkReturn(t, osFile, err)
+		})
+	}
+}
+
+func TestSplitBigPhrases(t *testing.T) {
+
+	type testCase struct {
+		line string
+		want []string
+	}
+
+	tests := map[string]testCase{
+		"combine all into one": {
+			line: "This is a, sentence that I, want to all, be combined into, two big sentences.",
+			want: []string{"This is a, sentence that I,", "want to all, be combined into, two big sentences."},
+		},
+		"too short": {
+			line: "This is a",
+			want: []string{},
+		},
+		"not too long": {
+			line: "This is a, sentence that is, not too long",
+			want: []string{"This is a, sentence that is, not too long"},
+		},
+		"too long no punctuation": {
+			line: "This is a sentence that is too long but has no punctuation",
+			want: []string{"This is a sentence that is too long but has no punctuation"},
+		},
+		"beginning short": {
+			line: "This is a, sentence that I want to all be combined into one big sentences",
+			want: []string{"This is a, sentence that I want to all be combined into one big sentences"},
+		},
+		"beginning short period": {
+			line: "This is a, sentence that I want to all be combined into one big sentences.",
+			want: []string{"This is a, sentence that I want to all be combined into one big sentences."},
+		},
+		"end short": {
+			line: "This is a sentence that I want to all be combined into, one big sentence.",
+			want: []string{"This is a sentence that I want to all be combined into, one big sentence."},
+		},
+		"middle short": {
+			line: "This is a sentence that; I want to all. be combined into two big sentences.",
+			want: []string{"This is a sentence that; I want to all.", "be combined into two big sentences."},
+		},
+		"two long": {
+			line: "This is a sentence that I want to all. be combined into two big sentences.",
+			want: []string{"This is a sentence that I want to all.", "be combined into two big sentences."},
+		},
+		"really long": {
+			line: "Wow! Did you see that?! A purple penguin - yes, a purple penguin! - just roller-skated past my window... (in broad daylight!) while juggling pineapples, watermelons, and, believe it or not, rubber chickens?!? Not only that, but it was whistling a tune (sounded suspiciously like Beethoven's Fifth) and waving a little flag that said, 'Viva Las Veggies!' 🍍🍉🥒. Now, I've seen some strange things in my life, but this takes the (gluten-free) cake. I mean... really?!?",
+			want: []string{"Wow! Did you see that?!", "A purple penguin - yes,", "a purple penguin! -", "just roller-skated past my window... (in broad daylight!)", "while juggling pineapples, watermelons,", "and, believe it or not,", "rubber chickens?!? Not only that,", "but it was whistling a tune (sounded suspiciously like Beethoven's Fifth)", "and waving a little flag that said, 'Viva Las Veggies!'", "🍍🍉🥒. Now,", "I've seen some strange things in my life,", "but this takes the (gluten-free) cake. I mean... really?!?"},
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			got := splitBigPhrases(tc.line)
+			assert.NotNil(t, got)
+			for i := range got {
+				if got[i] != tc.want[i] {
+					t.Fatalf("different result: got %v, expected %v", got, tc.want)
+				}
+			}
 		})
 	}
 }
