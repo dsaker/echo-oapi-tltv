@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/labstack/echo/v4"
 	"io"
+	"iter"
 	"mime/multipart"
 	"os"
 	"os/exec"
@@ -46,13 +47,14 @@ var (
 
 const (
 	minimumPhraseLength = 4
-	maximumPhraseLength = 11
+	maximumPhraseLength = 10
 )
 
 type AudioFileX interface {
 	GetLines(echo.Context, multipart.File) ([]string, error)
 	CreateMp3Zip(echo.Context, db.Title, string) (*os.File, error)
 	BuildAudioInputFiles(echo.Context, []int64, db.Title, string, string, string, string) error
+	CreatePhrasesZip(echo.Context, iter.Seq[[]string], string, string) (*os.File, error)
 }
 
 type AudioFile struct {
@@ -279,9 +281,9 @@ func parseParagraph(f multipart.File) []string {
 			} else if endSentenceMap[c] {
 				sentence := strings.TrimSpace(line[last : i+1])
 				last = i + 1
-				words := strings.Fields(sentence)
-				if len(words) > 3 {
-					stringsSlice = append(stringsSlice, line)
+				phrases := splitBigPhrases(sentence)
+				for _, phrase := range phrases {
+					stringsSlice = append(stringsSlice, phrase)
 				}
 			}
 		}
@@ -357,26 +359,27 @@ func (a *AudioFile) CreateMp3Zip(e echo.Context, t db.Title, tmpDir string) (*os
 		}
 	}
 
-	zipFile, err := os.Create(tmpDir + "/" + t.Title + ".zip")
-	if err != nil {
-		e.Logger().Error(err)
-		return nil, err
-	}
-	defer zipFile.Close()
-
-	zipWriter := zip.NewWriter(zipFile)
-	defer zipWriter.Close()
-
-	// get a list of files from the output directory
-	files, err = os.ReadDir(outDirPath)
-	for _, file := range files {
-		err = addFileToZip(e, zipWriter, outDirPath+"/"+file.Name())
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return zipFile, err
+	//zipFile, err := os.Create(tmpDir + "/" + t.Title + ".zip")
+	//if err != nil {
+	//	e.Logger().Error(err)
+	//	return nil, err
+	//}
+	//defer zipFile.Close()
+	//
+	//zipWriter := zip.NewWriter(zipFile)
+	//defer zipWriter.Close()
+	//
+	//// get a list of files from the output directory
+	//files, err = os.ReadDir(outDirPath)
+	//for _, file := range files {
+	//	err = addFileToZip(e, zipWriter, outDirPath+"/"+file.Name())
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//}
+	//
+	//return zipFile, err
+	return createZipFile(e, tmpDir, t.Title, outDirPath)
 }
 
 // addFileToZip is a helper function for CreateMp3Zip that adds each file to
@@ -473,4 +476,77 @@ func (a *AudioFile) BuildAudioInputFiles(e echo.Context, ids []int64, t db.Title
 	}
 
 	return nil
+}
+
+func (a *AudioFile) CreatePhrasesZip(e echo.Context, chunkedPhrases iter.Seq[[]string], tmpPath, filename string) (*os.File, error) {
+
+	// create outputs folder to hold all the txt files to zip
+	err := os.MkdirAll(tmpPath, 0777)
+	if err != nil {
+		e.Logger().Error(err)
+		return nil, err
+	}
+	count := 0
+	for chunk := range chunkedPhrases {
+		file := fmt.Sprintf("%s-phrases-%d", filename, count)
+		count++
+		f, err := os.Create(tmpPath + file)
+		if err != nil {
+			e.Logger().Error(err)
+			return nil, err
+		}
+		defer f.Close()
+
+		for _, phrase := range chunk {
+			_, err = f.WriteString(phrase + "\n")
+			if err != nil {
+				return nil, err
+			}
+		}
+
+	}
+
+	//zipFile, err := os.Create(tmpPath + "/" + filename + ".zip")
+	//if err != nil {
+	//	e.Logger().Error(err)
+	//	return nil, err
+	//}
+	//defer zipFile.Close()
+	//
+	//zipWriter := zip.NewWriter(zipFile)
+	//defer zipWriter.Close()
+	//
+	//// get a list of files from the tmpPath directory
+	//files, err := os.ReadDir(tmpPath)
+	//for _, file := range files {
+	//	err = addFileToZip(e, zipWriter, tmpPath+"/"+file.Name())
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//}
+
+	return createZipFile(e, tmpPath, filename, tmpPath)
+}
+
+func createZipFile(e echo.Context, tmpDir, filename, outDirPath string) (*os.File, error) {
+	zipFile, err := os.Create(tmpDir + "/" + filename + ".zip")
+	if err != nil {
+		e.Logger().Error(err)
+		return nil, err
+	}
+	defer zipFile.Close()
+
+	zipWriter := zip.NewWriter(zipFile)
+	defer zipWriter.Close()
+
+	// get a list of files from the output directory
+	files, err := os.ReadDir(outDirPath)
+	for _, file := range files {
+		err = addFileToZip(e, zipWriter, outDirPath+"/"+file.Name())
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return zipFile, err
 }

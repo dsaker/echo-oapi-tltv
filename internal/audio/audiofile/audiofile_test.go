@@ -87,7 +87,7 @@ func TestGetLines(t *testing.T) {
 				return createTmpFile(
 					t,
 					"noerror",
-					"This is the first. This is the second. This is the third. this is the fourth\nThis is the fifth")
+					"This is the first one. This is the second one. This is the third one. this is the fourth one\nThis is the fifth")
 			},
 			checkLines: func(lines []string, err error) {
 				require.NoError(t, err)
