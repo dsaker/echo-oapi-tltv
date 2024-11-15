@@ -274,7 +274,7 @@ func TestCreatePhrasesZip(t *testing.T) {
 
 	testCases := []audioFileTestCase{
 		{
-			name: "4 files",
+			name: "3 files",
 			createTitle: func(t *testing.T) (db.Title, string) {
 				title := test.RandomTitle()
 				tmpDir := test.AudioBasePath + "TestCreatePhrasesZip/" + title.Title + "/"
@@ -295,13 +295,13 @@ func TestCreatePhrasesZip(t *testing.T) {
 				for _, _ = range reader.File {
 					count++
 				}
-				require.Equal(t, 4, count)
+				require.Equal(t, 3, count)
 			},
 			values:       map[string]any{"size": 3},
 			stringsSlice: stringsSlice,
 		},
 		{
-			name: "6 files",
+			name: "5 files",
 			createTitle: func(t *testing.T) (db.Title, string) {
 				title := test.RandomTitle()
 				tmpDir := test.AudioBasePath + "TestCreatePhrasesZip/" + title.Title + "/"
@@ -322,7 +322,7 @@ func TestCreatePhrasesZip(t *testing.T) {
 				for _, _ = range reader.File {
 					count++
 				}
-				require.Equal(t, 6, count)
+				require.Equal(t, 5, count)
 			},
 			values:       map[string]any{"size": 2},
 			stringsSlice: stringsSlice,
@@ -430,6 +430,14 @@ func TestSplitBigPhrases(t *testing.T) {
 		"really long": {
 			line: "Wow! Did you see that?! A purple penguin - yes, a purple penguin! - just roller-skated past my window... (in broad daylight!) while juggling pineapples, watermelons, and, believe it or not, rubber chickens?!? Not only that, but it was whistling a tune (sounded suspiciously like Beethoven's Fifth) and waving a little flag that said, 'Viva Las Veggies!' 🍍🍉🥒. Now, I've seen some strange things in my life, but this takes the (gluten-free) cake. I mean... really?!?",
 			want: []string{"Wow! Did you see that?!", "A purple penguin - yes,", "a purple penguin! -", "just roller-skated past my window... (in broad daylight!)", "while juggling pineapples, watermelons,", "and, believe it or not,", "rubber chickens?!? Not only that,", "but it was whistling a tune (sounded suspiciously like Beethoven's Fifth)", "and waving a little flag that said, 'Viva Las Veggies!'", "🍍🍉🥒. Now,", "I've seen some strange things in my life,", "but this takes the (gluten-free) cake. I mean... really?!?"},
+		},
+		"no punctuation at end": {
+			line: "Oh, this big, beautiful head is full of great ideas",
+			want: []string{"Oh, this big, beautiful head is full of great ideas"},
+		},
+		"no punctuation short end": {
+			line: "Oh, this big, beautiful head is full of great, ideas",
+			want: []string{"Oh, this big, beautiful head is full of great, ideas"},
 		},
 	}
 

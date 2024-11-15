@@ -99,19 +99,23 @@ func (a *AudioFile) GetLines(e echo.Context, f multipart.File) ([]string, error)
 
 	// verify if file is srt
 	for scanner.Scan() {
-		if fileType != "" || count > 4 {
+		if fileType != "" || count > 5 {
 			break
 		}
 		line = scanner.Text()
 		// if line contains ">" and doesn't contain any letters it is srt file
 		if strings.Contains(line, ">") {
-			containsAlpha, err := regexp.MatchString("[a-zA-Z]", line)
-			if err != nil {
-				e.Logger().Error(err)
-				return nil, err
-			}
-			if !containsAlpha {
+			if strings.Contains(line, "<font") {
 				fileType = "srt"
+			} else {
+				containsAlpha, err := regexp.MatchString("[a-zA-Z]", line)
+				if err != nil {
+					e.Logger().Error(err)
+					return nil, err
+				}
+				if !containsAlpha {
+					fileType = "srt"
+				}
 			}
 		}
 		count++
@@ -175,6 +179,8 @@ func parseSrt(f multipart.File) []string {
 			continue
 		} else if line[0] == '[' && line[len(line)-1] == ']' {
 			continue
+		} else if strings.Contains(line, "<font") || strings.Contains(line, "font>") {
+			continue
 		} else {
 			// if the next line following subtitle is not new line it is more dialogue so combine it
 			scanner.Scan()
@@ -221,6 +227,10 @@ func splitBigPhrases(line string) []string {
 				last = i + 1
 			}
 		}
+		// if last word does not end in punctuation add that string
+		if last < len(words) {
+			splitString = append(splitString, strings.Join(words[last:len(words)], " "))
+		}
 		// if long phrase has punctuation split on punctuation
 		if len(splitString) > 1 {
 			// combine any strings that are less than the minimumPhraseLength with the string after it
@@ -244,12 +254,17 @@ func splitBigPhrases(line string) []string {
 				// else continue
 				i++
 			}
-			// now check the last index of the split string and concat if shorter than minimum
-			lengthString := len(splitString)
-			stringWords := strings.Fields(splitString[lengthString-1])
-			if len(stringWords) < minimumPhraseLength {
-				splitString[lengthString-2] = splitString[lengthString-2] + splitString[lengthString-1]
-				splitString = splitString[:lengthString-1]
+
+			// now check the last index and pen ultimate of the split string and combine if shorter than minimumPhraseLength
+			if len(splitString) > 1 {
+				lastElem := len(splitString) - 1
+				lastElemCount := len(strings.Fields(splitString[lastElem]))
+				penUltimateElemCount := len(strings.Fields(splitString[lastElem-1]))
+				if lastElemCount < minimumPhraseLength || penUltimateElemCount < minimumPhraseLength {
+					lastString := splitString[lastElem-1] + " " + splitString[lastElem]
+					splitString[lastElem] = lastString
+					splitString = splitString[:lastElem-1]
+				}
 			}
 		} else {
 			return []string{line}
@@ -318,9 +333,12 @@ func replaceFmt(line string) string {
 	re = regexp.MustCompile("\\{.*?}")
 	line = re.ReplaceAllString(line, "")
 	re = regexp.MustCompile("<.*?>")
+	line = re.ReplaceAllString(line, "")
 	line = strings.ReplaceAll(line, "-", "")
 	line = strings.ReplaceAll(line, "\"", "")
 	line = strings.ReplaceAll(line, "'", "")
+	line = strings.ReplaceAll(line, "", "")
+	line = strings.TrimSpace(line)
 
 	return line
 }
@@ -493,7 +511,7 @@ func (a *AudioFile) CreatePhrasesZip(e echo.Context, chunkedPhrases iter.Seq[[]s
 	}
 	count := 0
 	for chunk := range chunkedPhrases {
-		file := fmt.Sprintf("%s-phrases-%d", filename, count)
+		file := fmt.Sprintf("%s-phrases-%d.txt", filename, count)
 		count++
 		f, err := os.Create(tmpPath + file)
 		if err != nil {
@@ -534,9 +552,11 @@ func createZipFile(e echo.Context, tmpDir, filename, outDirPath string) (*os.Fil
 		return nil, util.ErrOneFile
 	}
 	for _, file := range files {
-		err = addFileToZip(e, zipWriter, outDirPath+"/"+file.Name())
-		if err != nil {
-			return nil, err
+		if !strings.HasSuffix(file.Name(), ".zip") {
+			err = addFileToZip(e, zipWriter, outDirPath+"/"+file.Name())
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 

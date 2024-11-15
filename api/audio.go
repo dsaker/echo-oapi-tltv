@@ -59,15 +59,15 @@ func (s *Server) AudioFromFile(e echo.Context) error {
 	// send back zip of split files of phrase that requester can use if too big
 	if len(stringsSlice) > s.config.MaxNumPhrases {
 		chunkedPhrases := slices.Chunk(stringsSlice, s.config.MaxNumPhrases)
-		phrasesBasePath := s.config.TTSBasePath + fh.Filename + "/"
+		phrasesBasePath := s.config.TTSBasePath + titleName + "/"
 		// create zip of phrases files of maxNumPhrases for user to use instead of uploaded file
-		zipFile, err := s.af.CreatePhrasesZip(e, chunkedPhrases, phrasesBasePath, fh.Filename)
+		zipFile, err := s.af.CreatePhrasesZip(e, chunkedPhrases, phrasesBasePath, titleName)
 		if err != nil {
 			e.Logger().Error(err)
 			return e.String(http.StatusInternalServerError, err.Error())
 		}
 		// TODO delete tmp folder
-		return e.Attachment(zipFile.Name(), fh.Filename+".zip")
+		return e.Attachment(zipFile.Name(), titleName+".zip")
 	}
 
 	// We're always asynchronous, so lock unsafe operations below
