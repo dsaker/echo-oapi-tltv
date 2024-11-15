@@ -4,6 +4,19 @@ from google.cloud import translate_v2 as translate
 
 conn_string = os.environ['TLTV_DB_DSN']
 
+"""supported_languages.py
+
+supported_languages.py makes a request to google translate and downloads all of the 
+supported languages in the cloud translation api and uploads them to the database
+designated by the environment variable 'TLTV_DB_DSN'. 
+
+for more info -> https://cloud.google.com/translate/docs/languages
+
+must export postgres connection string 
+export TLTV_DB_DSN=<postgres connection string>
+
+db schema is at db/migrations/languages
+"""
 
 def insert_languages(lang_list):
     # Connect to PostgreSQL database

@@ -1,6 +1,11 @@
 import json
 import insert_voices
 
+"""voices_file.py
+
+This script loads a file from local and calls insert_voices to insert them into
+the database,
+"""
 
 def main():
     # Load JSON data

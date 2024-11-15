@@ -17,6 +17,7 @@ import (
 	"strings"
 	db "talkliketv.click/tltv/db/sqlc"
 	audio "talkliketv.click/tltv/internal/audio/pattern"
+	"talkliketv.click/tltv/internal/util"
 	"unicode"
 )
 
@@ -478,6 +479,10 @@ func (a *AudioFile) BuildAudioInputFiles(e echo.Context, ids []int64, t db.Title
 	return nil
 }
 
+// CreatePhrasesZip creates a zipped file of txt files from the file the user uploaded if it contains
+// more phrases than the limit of config.MaxNumPhrases. It takes a iter.Seq of strings and outputs them
+// to files, each chunk containing config.MaxNumPhrases and than zips them up. Sending them back to the
+// user
 func (a *AudioFile) CreatePhrasesZip(e echo.Context, chunkedPhrases iter.Seq[[]string], tmpPath, filename string) (*os.File, error) {
 
 	// create outputs folder to hold all the txt files to zip
@@ -506,28 +511,12 @@ func (a *AudioFile) CreatePhrasesZip(e echo.Context, chunkedPhrases iter.Seq[[]s
 
 	}
 
-	//zipFile, err := os.Create(tmpPath + "/" + filename + ".zip")
-	//if err != nil {
-	//	e.Logger().Error(err)
-	//	return nil, err
-	//}
-	//defer zipFile.Close()
-	//
-	//zipWriter := zip.NewWriter(zipFile)
-	//defer zipWriter.Close()
-	//
-	//// get a list of files from the tmpPath directory
-	//files, err := os.ReadDir(tmpPath)
-	//for _, file := range files {
-	//	err = addFileToZip(e, zipWriter, tmpPath+"/"+file.Name())
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//}
-
 	return createZipFile(e, tmpPath, filename, tmpPath)
 }
 
+// createZipFile takes a tmpDir which is the directory containing the files you want to zip.
+// filename which is the name that you want the zipped files to have as their base name
+// and outDirPath which is where the zip file will be stored and zips up the files
 func createZipFile(e echo.Context, tmpDir, filename, outDirPath string) (*os.File, error) {
 	zipFile, err := os.Create(tmpDir + "/" + filename + ".zip")
 	if err != nil {
@@ -541,6 +530,9 @@ func createZipFile(e echo.Context, tmpDir, filename, outDirPath string) (*os.Fil
 
 	// get a list of files from the output directory
 	files, err := os.ReadDir(outDirPath)
+	if len(files) == 1 {
+		return nil, util.ErrOneFile
+	}
 	for _, file := range files {
 		err = addFileToZip(e, zipWriter, outDirPath+"/"+file.Name())
 		if err != nil {

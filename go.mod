@@ -8,7 +8,6 @@ require (
 	github.com/evanphx/json-patch/v5 v5.9.0
 	github.com/getkin/kin-openapi v0.127.0
 	github.com/go-openapi/runtime v0.28.0
-	github.com/golang/mock v1.6.0
 	github.com/gomiddleware/realip v0.0.0-20170621024415-b44d216910fd
 	github.com/googleapis/gax-go/v2 v2.13.0
 	github.com/labstack/echo/v4 v4.12.0
@@ -19,6 +18,7 @@ require (
 	github.com/oapi-codegen/runtime v1.1.1
 	github.com/sqlc-dev/sqlc v1.27.0
 	github.com/stretchr/testify v1.9.0
+	go.uber.org/mock v0.5.0
 	golang.org/x/crypto v0.26.0
 	golang.org/x/text v0.18.0
 	golang.org/x/time v0.6.0
@@ -115,12 +115,12 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
 	golang.org/x/exp v0.0.0-20240506185415-9bf2ced13842 // indirect
-	golang.org/x/mod v0.17.0 // indirect
+	golang.org/x/mod v0.18.0 // indirect
 	golang.org/x/net v0.28.0 // indirect
 	golang.org/x/oauth2 v0.22.0 // indirect
 	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/sys v0.24.0 // indirect
-	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
+	golang.org/x/tools v0.22.0 // indirect
 	google.golang.org/api v0.196.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240903143218-8af14fe29dc1 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240903143218-8af14fe29dc1 // indirect
