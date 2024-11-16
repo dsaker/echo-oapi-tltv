@@ -7,9 +7,11 @@ import (
 	"github.com/labstack/echo/v4"
 	"net/http"
 	"os"
+	"slices"
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/audio/audiofile"
 	"talkliketv.click/tltv/internal/oapi"
+	"talkliketv.click/tltv/internal/test"
 	"talkliketv.click/tltv/internal/util"
 )
 
@@ -55,10 +57,18 @@ func (s *Server) AudioFromFile(e echo.Context) error {
 	if err != nil {
 		return e.String(http.StatusBadRequest, fmt.Sprintf("unable to parse file: %s", err.Error()))
 	}
-	// TODO add max number of phrases to configs; send back zip of split files if too big
-	if len(stringsSlice) > 100 {
-		responseString := fmt.Sprintf("file too large, limit is %d, your file has %d lines", 100, len(stringsSlice))
-		return e.String(http.StatusBadRequest, responseString)
+	// send back zip of split files of phrase that requester can use if too big
+	if len(stringsSlice) > s.config.MaxNumPhrases {
+		chunkedPhrases := slices.Chunk(stringsSlice, s.config.MaxNumPhrases)
+		phrasesBasePath := s.config.TTSBasePath + titleName + "/"
+		// create zip of phrases files of maxNumPhrases for user to use instead of uploaded file
+		zipFile, err := s.af.CreatePhrasesZip(e, chunkedPhrases, phrasesBasePath, titleName)
+		if err != nil {
+			e.Logger().Error(err)
+			return e.String(http.StatusInternalServerError, err.Error())
+		}
+		// TODO delete tmp folder
+		return e.Attachment(zipFile.Name(), "TooManyPhrasesUseTheseFiles.zip")
 	}
 
 	// We're always asynchronous, so lock unsafe operations below
@@ -180,7 +190,7 @@ func (s *Server) createAudioFromTitle(e echo.Context, title db.Title, r oapi.Aud
 	}
 	fullPausePath := s.config.TTSBasePath + pausePath
 
-	tmpDirPath := fmt.Sprintf("%s/%s-%s/", s.config.TTSBasePath, title.Title, util.RandomString(4))
+	tmpDirPath := fmt.Sprintf("%s/%s-%s/", s.config.TTSBasePath, title.Title, test.RandomString(4))
 	err = os.MkdirAll(tmpDirPath, 0777)
 	if err != nil {
 		e.Logger().Error(err)

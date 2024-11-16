@@ -3,6 +3,20 @@ import requests
 from google.oauth2 import service_account
 from google.auth.transport.requests import Request
 
+"""voices_sa.py
+
+voices_sa.py makes a request to google text-to-speech and downloads all of the 
+supported voices in the cloud text-to-speech api. 
+
+for more info -> https://cloud.google.com/text-to-speech/docs/voices
+and https://cloud.google.com/text-to-speech/docs/reference/rest/v1/voices/list
+
+you must create a service account to perform this request ->
+https://cloud.google.com/iam/docs/service-accounts-create
+
+db schema is at db/migrations/voices
+"""
+
 # Path to your service account key file
 SERVICE_ACCOUNT_FILE = '/Users/dustysaker/Downloads/cloud-translate-439716-f4f5b53be140.json'
 

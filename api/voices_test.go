@@ -3,20 +3,19 @@ package api
 import (
 	"database/sql"
 	"encoding/json"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 	"net/http"
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/test"
-	"talkliketv.click/tltv/internal/util"
 	"testing"
 )
 
 func TestListVoices(t *testing.T) {
 	user, _ := randomUser(t)
 
-	voice1 := util.RandomVoice()
-	voice2 := util.RandomVoice()
+	voice1 := test.RandomVoice()
+	voice2 := test.RandomVoice()
 	voices := []db.Voice{voice1, voice2}
 
 	testCases := []testCase{
@@ -77,8 +76,7 @@ func TestListVoices(t *testing.T) {
 		},
 	}
 
-	for i := range testCases {
-		tc := testCases[i]
+	for _, tc := range testCases {
 
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)

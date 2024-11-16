@@ -1,6 +1,19 @@
 import os
 import psycopg2
 
+"""insert_voices.py
+
+insert_voices.py uploads all of the voices into a postgres database
+designated by the environment variable 'TLTV_DB_DSN'. 
+
+for more info -> https://cloud.google.com/translate/docs/languages
+
+must export postgres connection string 
+export TLTV_DB_DSN=<postgres connection string>
+
+db schema is at db/migrations/languages
+"""
+
 conn_string = os.environ['TLTV_DB_DSN']
 
 

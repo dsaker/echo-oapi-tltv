@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/labstack/echo/v4"
 	"io"
+	"iter"
 	"mime/multipart"
 	"os"
 	"os/exec"
@@ -16,6 +17,8 @@ import (
 	"strings"
 	db "talkliketv.click/tltv/db/sqlc"
 	audio "talkliketv.click/tltv/internal/audio/pattern"
+	"talkliketv.click/tltv/internal/util"
+	"unicode"
 )
 
 // AudioPauseFilePath is a map to the silence mp3's of the embedded FS in
@@ -33,16 +36,26 @@ var AudioPauseFilePath = map[int]string{
 }
 
 // endSentenceMap is a map to find the ending punctuation of a sentence
-var endSentenceMap = map[rune]bool{
-	'!': true,
-	'.': true,
-	'?': true,
-}
+var (
+	endSentenceMap = map[rune]bool{
+		'!': true,
+		'.': true,
+		'?': true,
+	}
+	// Use a regular expression to match punctuation characters
+	punctuationRe = regexp.MustCompile(`[.,!?;:'"]`)
+)
+
+const (
+	minimumPhraseLength = 4
+	maximumPhraseLength = 10
+)
 
 type AudioFileX interface {
 	GetLines(echo.Context, multipart.File) ([]string, error)
 	CreateMp3Zip(echo.Context, db.Title, string) (*os.File, error)
 	BuildAudioInputFiles(echo.Context, []int64, db.Title, string, string, string, string) error
+	CreatePhrasesZip(echo.Context, iter.Seq[[]string], string, string) (*os.File, error)
 }
 
 type AudioFile struct {
@@ -86,19 +99,23 @@ func (a *AudioFile) GetLines(e echo.Context, f multipart.File) ([]string, error)
 
 	// verify if file is srt
 	for scanner.Scan() {
-		if fileType != "" || count > 4 {
+		if fileType != "" || count > 5 {
 			break
 		}
 		line = scanner.Text()
 		// if line contains ">" and doesn't contain any letters it is srt file
 		if strings.Contains(line, ">") {
-			containsAlpha, err := regexp.MatchString("[a-zA-Z]", line)
-			if err != nil {
-				e.Logger().Error(err)
-				return nil, err
-			}
-			if !containsAlpha {
+			if strings.Contains(line, "<font") {
 				fileType = "srt"
+			} else {
+				containsAlpha, err := regexp.MatchString("[a-zA-Z]", line)
+				if err != nil {
+					e.Logger().Error(err)
+					return nil, err
+				}
+				if !containsAlpha {
+					fileType = "srt"
+				}
 			}
 		}
 		count++
@@ -162,6 +179,8 @@ func parseSrt(f multipart.File) []string {
 			continue
 		} else if line[0] == '[' && line[len(line)-1] == ']' {
 			continue
+		} else if strings.Contains(line, "<font") || strings.Contains(line, "font>") {
+			continue
 		} else {
 			// if the next line following subtitle is not new line it is more dialogue so combine it
 			scanner.Scan()
@@ -175,14 +194,88 @@ func parseSrt(f multipart.File) []string {
 			}
 		}
 
-		// if sentence is too short don't keep it
-		words := strings.Fields(line)
-		if len(words) > 3 {
-			stringsSlice = append(stringsSlice, line)
+		phrases := splitBigPhrases(line)
+		for _, phrase := range phrases {
+			stringsSlice = append(stringsSlice, phrase)
 		}
 	}
 
 	return stringsSlice
+}
+
+func splitBigPhrases(line string) []string {
+
+	var splitString []string
+
+	words := strings.Fields(line)
+	// if phrase is too short don't keep it
+	if len(words) <= minimumPhraseLength {
+		return []string{}
+	} else if len(words) < maximumPhraseLength {
+		// if phrase isn't too long don't split it
+		return []string{line}
+	} else {
+		// split into an array of strings along punctuation
+		last := 0
+		for i, word := range words {
+			if unicode.IsPunct(rune(word[len(word)-1])) {
+				nextString := ""
+				for j := last; j <= i; j++ {
+					nextString = nextString + words[j] + " "
+				}
+				splitString = append(splitString, nextString)
+				last = i + 1
+			}
+		}
+		// if last word does not end in punctuation add that string
+		if last < len(words) {
+			splitString = append(splitString, strings.Join(words[last:len(words)], " "))
+		}
+		// if long phrase has punctuation split on punctuation
+		if len(splitString) > 1 {
+			// combine any strings that are less than the minimumPhraseLength with the string after it
+			i := 0
+			for i < len(splitString)-1 {
+				// if phrase is small combine it with the next one
+				wordsInString := strings.Fields(splitString[i])
+				if len(wordsInString) < minimumPhraseLength {
+					splitString[i] = splitString[i] + " " + splitString[i+1]
+					// remove the next index of split string
+					splitString = append(splitString[:i+1], splitString[i+2:]...)
+				} else {
+					// if both combined are less than maximum than concat
+					next := splitString[i] + " " + splitString[i+1]
+					nextWordCount := strings.Fields(next)
+					if len(nextWordCount) <= maximumPhraseLength {
+						splitString[i] = next
+						splitString = append(splitString[:i+1], splitString[i+2:]...)
+					}
+				}
+				// else continue
+				i++
+			}
+
+			// now check the last index and pen ultimate of the split string and combine if shorter than minimumPhraseLength
+			if len(splitString) > 1 {
+				lastElem := len(splitString) - 1
+				lastElemCount := len(strings.Fields(splitString[lastElem]))
+				penUltimateElemCount := len(strings.Fields(splitString[lastElem-1]))
+				if lastElemCount < minimumPhraseLength || penUltimateElemCount < minimumPhraseLength {
+					lastString := splitString[lastElem-1] + " " + splitString[lastElem]
+					splitString[lastElem] = lastString
+					splitString = splitString[:lastElem-1]
+				}
+			}
+		} else {
+			return []string{line}
+		}
+	}
+
+	for i := range splitString {
+		splitString[i] = strings.ReplaceAll(splitString[i], "  ", " ")
+		splitString[i] = strings.TrimSpace(splitString[i])
+	}
+	return splitString
 }
 
 // parseParagraph takes a txt multipart file in paragraph form and returns a slice of strings
@@ -204,9 +297,9 @@ func parseParagraph(f multipart.File) []string {
 			} else if endSentenceMap[c] {
 				sentence := strings.TrimSpace(line[last : i+1])
 				last = i + 1
-				words := strings.Fields(sentence)
-				if len(words) > 3 {
-					stringsSlice = append(stringsSlice, line)
+				phrases := splitBigPhrases(sentence)
+				for _, phrase := range phrases {
+					stringsSlice = append(stringsSlice, phrase)
 				}
 			}
 		}
@@ -222,9 +315,9 @@ func parseSingle(f multipart.File) []string {
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line := scanner.Text()
-		words := strings.Fields(line)
-		if len(words) > 2 {
-			stringsSlice = append(stringsSlice, line)
+		phrases := splitBigPhrases(line)
+		for _, phrase := range phrases {
+			stringsSlice = append(stringsSlice, phrase)
 		}
 	}
 
@@ -240,9 +333,12 @@ func replaceFmt(line string) string {
 	re = regexp.MustCompile("\\{.*?}")
 	line = re.ReplaceAllString(line, "")
 	re = regexp.MustCompile("<.*?>")
+	line = re.ReplaceAllString(line, "")
 	line = strings.ReplaceAll(line, "-", "")
 	line = strings.ReplaceAll(line, "\"", "")
 	line = strings.ReplaceAll(line, "'", "")
+	line = strings.ReplaceAll(line, "", "")
+	line = strings.TrimSpace(line)
 
 	return line
 }
@@ -282,26 +378,27 @@ func (a *AudioFile) CreateMp3Zip(e echo.Context, t db.Title, tmpDir string) (*os
 		}
 	}
 
-	zipFile, err := os.Create(tmpDir + "/" + t.Title + ".zip")
-	if err != nil {
-		e.Logger().Error(err)
-		return nil, err
-	}
-	defer zipFile.Close()
-
-	zipWriter := zip.NewWriter(zipFile)
-	defer zipWriter.Close()
-
-	// get a list of files from the output directory
-	files, err = os.ReadDir(outDirPath)
-	for _, file := range files {
-		err = addFileToZip(e, zipWriter, outDirPath+"/"+file.Name())
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return zipFile, err
+	//zipFile, err := os.Create(tmpDir + "/" + t.Title + ".zip")
+	//if err != nil {
+	//	e.Logger().Error(err)
+	//	return nil, err
+	//}
+	//defer zipFile.Close()
+	//
+	//zipWriter := zip.NewWriter(zipFile)
+	//defer zipWriter.Close()
+	//
+	//// get a list of files from the output directory
+	//files, err = os.ReadDir(outDirPath)
+	//for _, file := range files {
+	//	err = addFileToZip(e, zipWriter, outDirPath+"/"+file.Name())
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//}
+	//
+	//return zipFile, err
+	return createZipFile(e, tmpDir, t.Title, outDirPath)
 }
 
 // addFileToZip is a helper function for CreateMp3Zip that adds each file to
@@ -398,4 +495,70 @@ func (a *AudioFile) BuildAudioInputFiles(e echo.Context, ids []int64, t db.Title
 	}
 
 	return nil
+}
+
+// CreatePhrasesZip creates a zipped file of txt files from the file the user uploaded if it contains
+// more phrases than the limit of config.MaxNumPhrases. It takes a iter.Seq of strings and outputs them
+// to files, each chunk containing config.MaxNumPhrases and than zips them up. Sending them back to the
+// user
+func (a *AudioFile) CreatePhrasesZip(e echo.Context, chunkedPhrases iter.Seq[[]string], tmpPath, filename string) (*os.File, error) {
+
+	// create outputs folder to hold all the txt files to zip
+	err := os.MkdirAll(tmpPath, 0777)
+	if err != nil {
+		e.Logger().Error(err)
+		return nil, err
+	}
+	count := 0
+	for chunk := range chunkedPhrases {
+		file := fmt.Sprintf("%s-phrases-%d.txt", filename, count)
+		count++
+		f, err := os.Create(tmpPath + file)
+		if err != nil {
+			e.Logger().Error(err)
+			return nil, err
+		}
+		defer f.Close()
+
+		for _, phrase := range chunk {
+			_, err = f.WriteString(phrase + "\n")
+			if err != nil {
+				return nil, err
+			}
+		}
+
+	}
+
+	return createZipFile(e, tmpPath, filename, tmpPath)
+}
+
+// createZipFile takes a tmpDir which is the directory containing the files you want to zip.
+// filename which is the name that you want the zipped files to have as their base name
+// and outDirPath which is where the zip file will be stored and zips up the files
+func createZipFile(e echo.Context, tmpDir, filename, outDirPath string) (*os.File, error) {
+	zipFile, err := os.Create(tmpDir + "/" + filename + ".zip")
+	if err != nil {
+		e.Logger().Error(err)
+		return nil, err
+	}
+	defer zipFile.Close()
+
+	zipWriter := zip.NewWriter(zipFile)
+	defer zipWriter.Close()
+
+	// get a list of files from the output directory
+	files, err := os.ReadDir(outDirPath)
+	if len(files) == 1 {
+		return nil, util.ErrOneFile
+	}
+	for _, file := range files {
+		if !strings.HasSuffix(file.Name(), ".zip") {
+			err = addFileToZip(e, zipWriter, outDirPath+"/"+file.Name())
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return zipFile, err
 }

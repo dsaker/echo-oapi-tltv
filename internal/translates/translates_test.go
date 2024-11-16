@@ -4,9 +4,9 @@ import (
 	"cloud.google.com/go/texttospeech/apiv1/texttospeechpb"
 	"cloud.google.com/go/translate"
 	"database/sql"
-	"github.com/golang/mock/gomock"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 	"golang.org/x/text/language"
 	"io"
 	"net/http"
@@ -29,9 +29,9 @@ type translatesTestCase struct {
 }
 
 func TestInsertNewPhrases(t *testing.T) {
-	title := util.RandomTitle()
+	title := test.RandomTitle()
 	title.OgLanguageID = 27
-	randomPhrase1 := util.RandomPhrase()
+	randomPhrase1 := test.RandomPhrase()
 	text1 := "This is sentence one."
 	hintString1 := makeHintString(text1)
 	translate1 := db.Translate{
@@ -85,8 +85,7 @@ func TestInsertNewPhrases(t *testing.T) {
 		},
 	}
 
-	for i := range testCases {
-		tc := testCases[i]
+	for _, tc := range testCases {
 
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
@@ -112,10 +111,10 @@ func TestInsertNewPhrases(t *testing.T) {
 }
 
 func TestInsertTranslates(t *testing.T) {
-	title := util.RandomTitle()
+	title := test.RandomTitle()
 	title.OgLanguageID = 27
 	newLanguageId := 109
-	randomPhrase1 := util.RandomPhrase()
+	randomPhrase1 := test.RandomPhrase()
 	text1 := "This is sentence one."
 	hintString1 := makeHintString(text1)
 	translate1 := db.Translate{
@@ -166,8 +165,7 @@ func TestInsertTranslates(t *testing.T) {
 		},
 	}
 
-	for i := range testCases {
-		tc := testCases[i]
+	for _, tc := range testCases {
 
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
@@ -192,7 +190,7 @@ func TestInsertTranslates(t *testing.T) {
 }
 
 func TestTextToSpeech(t *testing.T) {
-	title := util.RandomTitle()
+	title := test.RandomTitle()
 	title.OgLanguageID = 27
 
 	basepath := test.AudioBasePath + strconv.FormatInt(title.ID, 10) + "/"
@@ -200,9 +198,9 @@ func TestTextToSpeech(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(basepath)
 
-	voice := util.RandomVoice()
+	voice := test.RandomVoice()
 	voice.SsmlGender = "MALE"
-	randomPhrase1 := util.RandomPhrase()
+	randomPhrase1 := test.RandomPhrase()
 	text1 := "This is sentence one."
 	hintString1 := makeHintString(text1)
 	translate1 := db.Translate{
@@ -245,8 +243,7 @@ func TestTextToSpeech(t *testing.T) {
 		},
 	}
 
-	for i := range testCases {
-		tc := testCases[i]
+	for _, tc := range testCases {
 
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
@@ -272,7 +269,7 @@ func TestTextToSpeech(t *testing.T) {
 }
 
 func TestTranslatePhrases(t *testing.T) {
-	title := util.RandomTitle()
+	title := test.RandomTitle()
 	title.OgLanguageID = 27
 
 	newLanguage := db.Language{
@@ -280,7 +277,7 @@ func TestTranslatePhrases(t *testing.T) {
 		Language: "Spanish",
 		Tag:      "es",
 	}
-	randomPhrase1 := util.RandomPhrase()
+	randomPhrase1 := test.RandomPhrase()
 	text1 := "This is sentence one."
 	translate1 := db.Translate{
 		PhraseID: randomPhrase1.Id,
@@ -304,8 +301,7 @@ func TestTranslatePhrases(t *testing.T) {
 		},
 	}
 
-	for i := range testCases {
-		tc := testCases[i]
+	for _, tc := range testCases {
 
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)

@@ -1,13 +1,16 @@
 package audiofile
 
 import (
+	"archive/zip"
 	"fmt"
-	"github.com/golang/mock/gomock"
 	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"slices"
 	db "talkliketv.click/tltv/db/sqlc"
 	mocka "talkliketv.click/tltv/internal/mock/audiofile"
 	"talkliketv.click/tltv/internal/test"
@@ -16,12 +19,14 @@ import (
 )
 
 type audioFileTestCase struct {
-	name        string
-	buildFile   func(*testing.T) *os.File
-	checkLines  func([]string, error)
-	buildStubs  func(*mocka.MockcmdRunnerX)
-	createTitle func(*testing.T) (db.Title, string)
-	checkReturn func(*testing.T, *os.File, error)
+	name         string
+	values       map[string]any
+	stringsSlice []string
+	buildFile    func(*testing.T) *os.File
+	checkLines   func([]string, error)
+	buildStubs   func(*mocka.MockcmdRunnerX)
+	createTitle  func(*testing.T) (db.Title, string)
+	checkReturn  func(*testing.T, *os.File, error)
 }
 
 func TestGetLines(t *testing.T) {
@@ -64,7 +69,7 @@ func TestGetLines(t *testing.T) {
 			},
 			checkLines: func(lines []string, err error) {
 				require.NoError(t, err)
-				require.Equal(t, len(lines), 3)
+				require.Equal(t, len(lines), 4)
 			},
 		},
 		{
@@ -86,7 +91,7 @@ func TestGetLines(t *testing.T) {
 				return createTmpFile(
 					t,
 					"noerror",
-					"This is the first. This is the second. This is the third. this is the fourth\nThis is the fifth")
+					"This is the first one. This is the second one. This is the third one. this is the fourth one\nThis is the fifth")
 			},
 			checkLines: func(lines []string, err error) {
 				require.NoError(t, err)
@@ -119,8 +124,7 @@ func TestGetLines(t *testing.T) {
 		},
 	}
 
-	for i := range testCases {
-		tc := testCases[i]
+	for _, tc := range testCases {
 
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
@@ -143,9 +147,9 @@ func TestBuildAudioInputFiles(t *testing.T) {
 	// BuildAudioInputFiles(e echo.Context, ids []int64, t db.Title, pause, from, to, tmpDir string)
 
 	title := test.RandomTitle()
-	pause := util.RandomString(4)
-	from := util.RandomString(4)
-	to := util.RandomString(4)
+	pause := test.RandomString(4)
+	from := test.RandomString(4)
+	to := test.RandomString(4)
 	tmpDir := test.AudioBasePath + "TestBuildAudioInputFiles/" + title.Title + "/"
 	fromPath := fmt.Sprintf("%s%s/", tmpDir, from)
 	toPath := fmt.Sprintf("%s%s/", tmpDir, to)
@@ -161,8 +165,7 @@ func TestBuildAudioInputFiles(t *testing.T) {
 		},
 	}
 
-	for i := range testCases {
-		tc := testCases[i]
+	for _, tc := range testCases {
 
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
@@ -176,8 +179,8 @@ func TestBuildAudioInputFiles(t *testing.T) {
 			audioFile := AudioFile{}
 			err := audioFile.BuildAudioInputFiles(
 				c,
-				[]int64{util.RandomInt64(),
-					util.RandomInt64()},
+				[]int64{test.RandomInt64(),
+					test.RandomInt64()},
 				title,
 				pause,
 				fromPath,
@@ -191,7 +194,7 @@ func TestBuildAudioInputFiles(t *testing.T) {
 	}
 }
 
-func TestCreateMp3ZipWithFfmpeg(t *testing.T) {
+func TestCreateMp3Zip(t *testing.T) {
 
 	testCases := []audioFileTestCase{
 		{
@@ -235,8 +238,7 @@ func TestCreateMp3ZipWithFfmpeg(t *testing.T) {
 		},
 	}
 
-	for i := range testCases {
-		tc := testCases[i]
+	for _, tc := range testCases {
 
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
@@ -253,6 +255,201 @@ func TestCreateMp3ZipWithFfmpeg(t *testing.T) {
 			title, tmpDir := tc.createTitle(t)
 			osFile, err := audioFile.CreateMp3Zip(c, title, tmpDir)
 			tc.checkReturn(t, osFile, err)
+		})
+	}
+}
+
+func TestCreatePhrasesZip(t *testing.T) {
+
+	stringsSlice := []string{
+		"Absolutely! Here's a zany paragraph packed with punctuation:",
+		"Wow! Did you see that?! A purple penguin — yes, a purple penguin! —",
+		"just roller-skated past my window... (in broad daylight!)",
+		"while juggling pineapples, watermelons, and, believe it or not,",
+		"rubber chickens?!? Not only that, but it was whistling a tune",
+		"(sounded suspiciously like Beethoven's Fifth) and waving a little flag that said,",
+		"'Viva Las Veggies!' 🍍🍉🥒.",
+		"Now, I've seen some strange things in my life,",
+		"but this takes the (gluten-free) cake. I mean... really?!?"}
+
+	testCases := []audioFileTestCase{
+		{
+			name: "3 files",
+			createTitle: func(t *testing.T) (db.Title, string) {
+				title := test.RandomTitle()
+				tmpDir := test.AudioBasePath + "TestCreatePhrasesZip/" + title.Title + "/"
+				err := os.MkdirAll(tmpDir, 0777)
+				require.NoError(t, err)
+				return title, tmpDir
+			},
+			buildStubs: func(ma *mocka.MockcmdRunnerX) {
+			},
+			checkReturn: func(t *testing.T, file *os.File, err error) {
+				require.NoError(t, err)
+				require.FileExists(t, file.Name())
+				zipFilePath := file.Name()
+
+				reader, err := zip.OpenReader(zipFilePath)
+				require.NoError(t, err)
+				count := 0
+				for _, _ = range reader.File {
+					count++
+				}
+				require.Equal(t, 3, count)
+			},
+			values:       map[string]any{"size": 3},
+			stringsSlice: stringsSlice,
+		},
+		{
+			name: "5 files",
+			createTitle: func(t *testing.T) (db.Title, string) {
+				title := test.RandomTitle()
+				tmpDir := test.AudioBasePath + "TestCreatePhrasesZip/" + title.Title + "/"
+				err := os.MkdirAll(tmpDir, 0777)
+				require.NoError(t, err)
+				return title, tmpDir
+			},
+			buildStubs: func(ma *mocka.MockcmdRunnerX) {
+			},
+			checkReturn: func(t *testing.T, file *os.File, err error) {
+				require.NoError(t, err)
+				require.FileExists(t, file.Name())
+				zipFilePath := file.Name()
+
+				reader, err := zip.OpenReader(zipFilePath)
+				require.NoError(t, err)
+				count := 0
+				for _, _ = range reader.File {
+					count++
+				}
+				require.Equal(t, 5, count)
+			},
+			values:       map[string]any{"size": 2},
+			stringsSlice: stringsSlice,
+		},
+		{
+			name: "No files",
+			createTitle: func(t *testing.T) (db.Title, string) {
+				title := test.RandomTitle()
+				tmpDir := test.AudioBasePath + "TestCreatePhrasesZip/" + title.Title + "/"
+				err := os.MkdirAll(tmpDir, 0777)
+				require.NoError(t, err)
+				return title, tmpDir
+			},
+			buildStubs: func(ma *mocka.MockcmdRunnerX) {
+			},
+			checkReturn: func(t *testing.T, file *os.File, err error) {
+				require.Error(t, util.ErrOneFile)
+			},
+			values:       map[string]any{"size": 3},
+			stringsSlice: []string{},
+		},
+		//{
+		//	name: "No files",
+		//	createTitle: func(t *testing.T) (db.Title, string) {
+		//		title := test.RandomTitle()
+		//		tmpDir := test.AudioBasePath + "TestCreateMp3ZipWithFfmpeg/" + title.Title + "/"
+		//		err := os.MkdirAll(tmpDir, 0777)
+		//		require.NoError(t, err)
+		//		return title, tmpDir
+		//	},
+		//	buildStubs: func(ma *mocka.MockcmdRunnerX) {
+		//	},
+		//	checkReturn: func(t *testing.T, file *os.File, err error) {
+		//		require.Contains(t, err.Error(), "no files found in CreateMp3Zip")
+		//	},
+		//},
+	}
+
+	for _, tc := range testCases {
+
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			cmdX := mocka.NewMockcmdRunnerX(ctrl)
+			tc.buildStubs(cmdX)
+			defer ctrl.Finish()
+
+			e := echo.New()
+			req := httptest.NewRequest(http.MethodGet, "/fakeurl", nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+
+			audioFile := New(cmdX)
+			title, tmpDir := tc.createTitle(t)
+			chunkedPhrases := slices.Chunk(tc.stringsSlice, tc.values["size"].(int))
+			osFile, err := audioFile.CreatePhrasesZip(c, chunkedPhrases, tmpDir, title.Title)
+			tc.checkReturn(t, osFile, err)
+		})
+	}
+}
+
+func TestSplitBigPhrases(t *testing.T) {
+
+	type testCase struct {
+		line string
+		want []string
+	}
+
+	tests := map[string]testCase{
+		"combine all into one": {
+			line: "This is a, sentence that I, want to all, be combined into, two big sentences.",
+			want: []string{"This is a, sentence that I,", "want to all, be combined into, two big sentences."},
+		},
+		"too short": {
+			line: "This is a",
+			want: []string{},
+		},
+		"not too long": {
+			line: "This is a, sentence that is, not too long",
+			want: []string{"This is a, sentence that is, not too long"},
+		},
+		"too long no punctuation": {
+			line: "This is a sentence that is too long but has no punctuation",
+			want: []string{"This is a sentence that is too long but has no punctuation"},
+		},
+		"beginning short": {
+			line: "This is a, sentence that I want to all be combined into one big sentences",
+			want: []string{"This is a, sentence that I want to all be combined into one big sentences"},
+		},
+		"beginning short period": {
+			line: "This is a, sentence that I want to all be combined into one big sentences.",
+			want: []string{"This is a, sentence that I want to all be combined into one big sentences."},
+		},
+		"end short": {
+			line: "This is a sentence that I want to all be combined into, one big sentence.",
+			want: []string{"This is a sentence that I want to all be combined into, one big sentence."},
+		},
+		"middle short": {
+			line: "This is a sentence that; I want to all. be combined into two big sentences.",
+			want: []string{"This is a sentence that; I want to all.", "be combined into two big sentences."},
+		},
+		"two long": {
+			line: "This is a sentence that I want to all. be combined into two big sentences.",
+			want: []string{"This is a sentence that I want to all.", "be combined into two big sentences."},
+		},
+		"really long": {
+			line: "Wow! Did you see that?! A purple penguin - yes, a purple penguin! - just roller-skated past my window... (in broad daylight!) while juggling pineapples, watermelons, and, believe it or not, rubber chickens?!? Not only that, but it was whistling a tune (sounded suspiciously like Beethoven's Fifth) and waving a little flag that said, 'Viva Las Veggies!' 🍍🍉🥒. Now, I've seen some strange things in my life, but this takes the (gluten-free) cake. I mean... really?!?",
+			want: []string{"Wow! Did you see that?!", "A purple penguin - yes,", "a purple penguin! -", "just roller-skated past my window... (in broad daylight!)", "while juggling pineapples, watermelons,", "and, believe it or not,", "rubber chickens?!? Not only that,", "but it was whistling a tune (sounded suspiciously like Beethoven's Fifth)", "and waving a little flag that said, 'Viva Las Veggies!'", "🍍🍉🥒. Now,", "I've seen some strange things in my life,", "but this takes the (gluten-free) cake. I mean... really?!?"},
+		},
+		"no punctuation at end": {
+			line: "Oh, this big, beautiful head is full of great ideas",
+			want: []string{"Oh, this big, beautiful head is full of great ideas"},
+		},
+		"no punctuation short end": {
+			line: "Oh, this big, beautiful head is full of great, ideas",
+			want: []string{"Oh, this big, beautiful head is full of great, ideas"},
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			got := splitBigPhrases(tc.line)
+			assert.NotNil(t, got)
+			for i := range got {
+				if got[i] != tc.want[i] {
+					t.Fatalf("different result: got %v, expected %v", got, tc.want)
+				}
+			}
 		})
 	}
 }
