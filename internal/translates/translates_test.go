@@ -29,9 +29,9 @@ type translatesTestCase struct {
 }
 
 func TestInsertNewPhrases(t *testing.T) {
-	title := util.RandomTitle()
+	title := test.RandomTitle()
 	title.OgLanguageID = 27
-	randomPhrase1 := util.RandomPhrase()
+	randomPhrase1 := test.RandomPhrase()
 	text1 := "This is sentence one."
 	hintString1 := makeHintString(text1)
 	translate1 := db.Translate{
@@ -111,10 +111,10 @@ func TestInsertNewPhrases(t *testing.T) {
 }
 
 func TestInsertTranslates(t *testing.T) {
-	title := util.RandomTitle()
+	title := test.RandomTitle()
 	title.OgLanguageID = 27
 	newLanguageId := 109
-	randomPhrase1 := util.RandomPhrase()
+	randomPhrase1 := test.RandomPhrase()
 	text1 := "This is sentence one."
 	hintString1 := makeHintString(text1)
 	translate1 := db.Translate{
@@ -190,7 +190,7 @@ func TestInsertTranslates(t *testing.T) {
 }
 
 func TestTextToSpeech(t *testing.T) {
-	title := util.RandomTitle()
+	title := test.RandomTitle()
 	title.OgLanguageID = 27
 
 	basepath := test.AudioBasePath + strconv.FormatInt(title.ID, 10) + "/"
@@ -198,9 +198,9 @@ func TestTextToSpeech(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(basepath)
 
-	voice := util.RandomVoice()
+	voice := test.RandomVoice()
 	voice.SsmlGender = "MALE"
-	randomPhrase1 := util.RandomPhrase()
+	randomPhrase1 := test.RandomPhrase()
 	text1 := "This is sentence one."
 	hintString1 := makeHintString(text1)
 	translate1 := db.Translate{
@@ -269,7 +269,7 @@ func TestTextToSpeech(t *testing.T) {
 }
 
 func TestTranslatePhrases(t *testing.T) {
-	title := util.RandomTitle()
+	title := test.RandomTitle()
 	title.OgLanguageID = 27
 
 	newLanguage := db.Language{
@@ -277,7 +277,7 @@ func TestTranslatePhrases(t *testing.T) {
 		Language: "Spanish",
 		Tag:      "es",
 	}
-	randomPhrase1 := util.RandomPhrase()
+	randomPhrase1 := test.RandomPhrase()
 	text1 := "This is sentence one."
 	translate1 := db.Translate{
 		PhraseID: randomPhrase1.Id,

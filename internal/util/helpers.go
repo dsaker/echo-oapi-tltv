@@ -4,7 +4,14 @@ import (
 	"fmt"
 	"golang.org/x/crypto/bcrypt"
 	"os"
+	"strconv"
 )
+
+// TranslatesReturn avoiding cycle between mock/translates and translates/translates
+type TranslatesReturn struct {
+	PhraseId int64
+	Text     string
+}
 
 // HashPassword returns the bcrypt hash of the password
 func HashPassword(password string) (string, error) {
@@ -30,4 +37,12 @@ func PathExists(path string) (bool, error) {
 		return false, nil
 	}
 	return false, err
+}
+
+func ConvertStringInt16(s string) (int16, error) {
+	i, err := strconv.ParseInt(s, 10, 16)
+	if err != nil {
+		return -1, err
+	}
+	return int16(i), nil
 }

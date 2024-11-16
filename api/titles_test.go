@@ -116,8 +116,8 @@ func TestAddTitle(t *testing.T) {
 
 	user, _ := randomUser(t)
 	title := test.RandomTitle()
-	translate1 := randomTranslate(util.RandomPhrase(), title.OgLanguageID)
-	translate2 := randomTranslate(util.RandomPhrase(), title.OgLanguageID)
+	translate1 := randomTranslate(test.RandomPhrase(), title.OgLanguageID)
+	translate2 := randomTranslate(test.RandomPhrase(), title.OgLanguageID)
 
 	dbTranslates := []db.Translate{translate1, translate2}
 
@@ -410,26 +410,26 @@ func TestTitlesTranslate(t *testing.T) {
 	title := test.RandomTitle()
 	lang := randomLanguage()
 
-	phrase1 := util.RandomPhrase()
-	phrase2 := util.RandomPhrase()
+	phrase1 := test.RandomPhrase()
+	phrase2 := test.RandomPhrase()
 	translate1 := db.Translate{
 		PhraseID:   phrase1.Id,
 		LanguageID: lang.ID,
-		Phrase:     util.RandomString(8),
-		PhraseHint: util.RandomString(8),
+		Phrase:     test.RandomString(8),
+		PhraseHint: test.RandomString(8),
 	}
 	translate2 := db.Translate{
 		PhraseID:   phrase2.Id,
 		LanguageID: lang.ID,
-		Phrase:     util.RandomString(8),
-		PhraseHint: util.RandomString(8),
+		Phrase:     test.RandomString(8),
+		PhraseHint: test.RandomString(8),
 	}
 	translates := []db.Translate{translate1, translate2}
 
 	translatesReturn := []util.TranslatesReturn{
 		{PhraseId: phrase1.Id,
-			Text: util.RandomString(8)},
-		{PhraseId: phrase2.Id, Text: util.RandomString(8)},
+			Text: test.RandomString(8)},
+		{PhraseId: phrase2.Id, Text: test.RandomString(8)},
 	}
 	selectExistsTranslatesParams := db.SelectExistsTranslatesParams{
 		LanguageID: lang.ID,

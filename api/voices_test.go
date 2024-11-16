@@ -8,15 +8,14 @@ import (
 	"net/http"
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/test"
-	"talkliketv.click/tltv/internal/util"
 	"testing"
 )
 
 func TestListVoices(t *testing.T) {
 	user, _ := randomUser(t)
 
-	voice1 := util.RandomVoice()
-	voice2 := util.RandomVoice()
+	voice1 := test.RandomVoice()
+	voice2 := test.RandomVoice()
 	voices := []db.Voice{voice1, voice2}
 
 	testCases := []testCase{

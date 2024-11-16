@@ -1,13 +1,17 @@
 package test
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/require"
+	"math"
+	"math/rand"
 	"path/filepath"
 	"reflect"
 	"runtime"
 	"slices"
+	"strings"
 	db "talkliketv.click/tltv/db/sqlc"
-	"talkliketv.click/tltv/internal/util"
+	"talkliketv.click/tltv/internal/oapi"
 	"testing"
 )
 
@@ -48,12 +52,71 @@ func RequireMatchAnyExcept(t *testing.T, model any, response any, skip []string,
 	}
 }
 
+const (
+	ValidTitleId       = -1
+	ValidOgLanguageId  = -1
+	ValidNewLanguageId = -1
+	alphabet           = "abcdefghijklmnopqrstuvwxyz"
+)
+
+// RandomInt64 generates a random integer between min and max
+func RandomInt64() int64 {
+	return rand.Int63n(math.MaxInt64 - 1)
+}
+
+// RandomInt32 generates a random integer between min and max
+func RandomInt32() int32 {
+	return rand.Int31n(math.MaxInt32 - 1)
+}
+
+// RandomInt16 generates a random integer between min and max
+func RandomInt16() int16 {
+	return int16(rand.Int())
+}
+
+// RandomString generates a random string of length n
+func RandomString(n int) string {
+	var sb strings.Builder
+	k := len(alphabet)
+
+	for i := 0; i < n; i++ {
+		c := alphabet[rand.Intn(k)]
+		sb.WriteByte(c)
+	}
+
+	return sb.String()
+}
+
+// RandomEmail generates a random email
+func RandomEmail() string {
+	return fmt.Sprintf("%s@email.com", RandomString(6))
+}
+
+func RandomPhrase() oapi.Phrase {
+	return oapi.Phrase{
+		Id:      RandomInt64(),
+		TitleId: RandomInt64(),
+	}
+}
+
+// RandomVoice creates a random db Voice for testing
+func RandomVoice() (voice db.Voice) {
+	return db.Voice{
+		ID:                     RandomInt16(),
+		LanguageID:             RandomInt16(),
+		LanguageCodes:          []string{RandomString(8), RandomString(8)},
+		SsmlGender:             "FEMALE",
+		Name:                   RandomString(8),
+		NaturalSampleRateHertz: 24000,
+	}
+}
+
 func RandomTitle() (title db.Title) {
 
 	return db.Title{
-		ID:           util.RandomInt64(),
-		Title:        util.RandomString(8),
-		NumSubs:      util.RandomInt16(),
-		OgLanguageID: util.ValidOgLanguageId,
+		ID:           RandomInt64(),
+		Title:        RandomString(8),
+		NumSubs:      RandomInt16(),
+		OgLanguageID: ValidOgLanguageId,
 	}
 }

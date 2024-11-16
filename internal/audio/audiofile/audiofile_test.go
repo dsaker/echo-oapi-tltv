@@ -147,9 +147,9 @@ func TestBuildAudioInputFiles(t *testing.T) {
 	// BuildAudioInputFiles(e echo.Context, ids []int64, t db.Title, pause, from, to, tmpDir string)
 
 	title := test.RandomTitle()
-	pause := util.RandomString(4)
-	from := util.RandomString(4)
-	to := util.RandomString(4)
+	pause := test.RandomString(4)
+	from := test.RandomString(4)
+	to := test.RandomString(4)
 	tmpDir := test.AudioBasePath + "TestBuildAudioInputFiles/" + title.Title + "/"
 	fromPath := fmt.Sprintf("%s%s/", tmpDir, from)
 	toPath := fmt.Sprintf("%s%s/", tmpDir, to)
@@ -179,8 +179,8 @@ func TestBuildAudioInputFiles(t *testing.T) {
 			audioFile := AudioFile{}
 			err := audioFile.BuildAudioInputFiles(
 				c,
-				[]int64{util.RandomInt64(),
-					util.RandomInt64()},
+				[]int64{test.RandomInt64(),
+					test.RandomInt64()},
 				title,
 				pause,
 				fromPath,

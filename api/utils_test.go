@@ -104,17 +104,17 @@ func readBody(t *testing.T, rs *http.Response) string {
 
 // randomUser creates a random user for testing
 func randomUser(t *testing.T) (user db.User, password string) {
-	password = util.RandomString(8)
+	password = test.RandomString(8)
 	hashedPassword, err := util.HashPassword(password)
 	require.NoError(t, err)
 
 	user = db.User{
-		ID:             util.RandomInt64(),
-		Name:           util.RandomString(8),
-		Email:          util.RandomEmail(),
-		TitleID:        util.ValidTitleId,
-		OgLanguageID:   util.ValidOgLanguageId,
-		NewLanguageID:  util.ValidNewLanguageId,
+		ID:             test.RandomInt64(),
+		Name:           test.RandomString(8),
+		Email:          test.RandomEmail(),
+		TitleID:        test.ValidTitleId,
+		OgLanguageID:   test.ValidOgLanguageId,
+		NewLanguageID:  test.ValidNewLanguageId,
 		HashedPassword: hashedPassword,
 	}
 	return
@@ -126,16 +126,16 @@ func randomTranslate(phrase oapi.Phrase, languageId int16) db.Translate {
 	return db.Translate{
 		PhraseID:   phrase.Id,
 		LanguageID: languageId,
-		Phrase:     util.RandomString(8),
-		PhraseHint: util.RandomString(8),
+		Phrase:     test.RandomString(8),
+		PhraseHint: test.RandomString(8),
 	}
 }
 
 // randomLanguage creates a random db Language for testing
 func randomLanguage() (language db.Language) {
 	return db.Language{
-		ID:       util.RandomInt16(),
-		Language: util.RandomString(6),
+		ID:       test.RandomInt16(),
+		Language: test.RandomString(6),
 		Tag:      "en",
 	}
 }

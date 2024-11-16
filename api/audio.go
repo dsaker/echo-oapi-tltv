@@ -11,6 +11,7 @@ import (
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/audio/audiofile"
 	"talkliketv.click/tltv/internal/oapi"
+	"talkliketv.click/tltv/internal/test"
 	"talkliketv.click/tltv/internal/util"
 )
 
@@ -67,7 +68,7 @@ func (s *Server) AudioFromFile(e echo.Context) error {
 			return e.String(http.StatusInternalServerError, err.Error())
 		}
 		// TODO delete tmp folder
-		return e.Attachment(zipFile.Name(), titleName+".zip")
+		return e.Attachment(zipFile.Name(), "TooManyPhrasesUseTheseFiles.zip")
 	}
 
 	// We're always asynchronous, so lock unsafe operations below
@@ -189,7 +190,7 @@ func (s *Server) createAudioFromTitle(e echo.Context, title db.Title, r oapi.Aud
 	}
 	fullPausePath := s.config.TTSBasePath + pausePath
 
-	tmpDirPath := fmt.Sprintf("%s/%s-%s/", s.config.TTSBasePath, title.Title, util.RandomString(4))
+	tmpDirPath := fmt.Sprintf("%s/%s-%s/", s.config.TTSBasePath, title.Title, test.RandomString(4))
 	err = os.MkdirAll(tmpDirPath, 0777)
 	if err != nil {
 		e.Logger().Error(err)

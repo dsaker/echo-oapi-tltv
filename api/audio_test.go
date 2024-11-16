@@ -15,7 +15,6 @@ import (
 	"strconv"
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/test"
-	"talkliketv.click/tltv/internal/util"
 	"testing"
 )
 
@@ -23,10 +22,10 @@ func TestAudioFromTitle(t *testing.T) {
 
 	user, _ := randomUser(t)
 	title := test.RandomTitle()
-	translate1 := randomTranslate(util.RandomPhrase(), title.OgLanguageID)
-	translate2 := randomTranslate(util.RandomPhrase(), title.OgLanguageID)
-	toVoice := util.RandomVoice()
-	fromVoice := util.RandomVoice()
+	translate1 := randomTranslate(test.RandomPhrase(), title.OgLanguageID)
+	translate2 := randomTranslate(test.RandomPhrase(), title.OgLanguageID)
+	toVoice := test.RandomVoice()
+	fromVoice := test.RandomVoice()
 
 	phraseIDs := []int64{translate1.PhraseID, translate2.PhraseID}
 
@@ -182,10 +181,10 @@ func TestAudioFromFile(t *testing.T) {
 
 	user, _ := randomUser(t)
 	title := test.RandomTitle()
-	translate1 := randomTranslate(util.RandomPhrase(), title.OgLanguageID)
-	translate2 := randomTranslate(util.RandomPhrase(), title.OgLanguageID)
-	toVoice := util.RandomVoice()
-	fromVoice := util.RandomVoice()
+	translate1 := randomTranslate(test.RandomPhrase(), title.OgLanguageID)
+	translate2 := randomTranslate(test.RandomPhrase(), title.OgLanguageID)
+	toVoice := test.RandomVoice()
+	fromVoice := test.RandomVoice()
 
 	phraseIDs := []int64{translate1.PhraseID, translate2.PhraseID}
 	dbTranslates := []db.Translate{translate1, translate2}
