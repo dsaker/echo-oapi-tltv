@@ -377,6 +377,11 @@ func TestCreatePhrasesZip(t *testing.T) {
 			audioFile := New(cmdX)
 			title, tmpDir := tc.createTitle(t)
 			chunkedPhrases := slices.Chunk(tc.stringsSlice, tc.values["size"].(int))
+			// remove phrasesBasePath after you have sent zipfile
+			defer func(path string) {
+				err := os.RemoveAll(path)
+				require.NoError(t, err)
+			}(tmpDir)
 			osFile, err := audioFile.CreatePhrasesZip(c, chunkedPhrases, tmpDir, title.Title)
 			tc.checkReturn(t, osFile, err)
 		})

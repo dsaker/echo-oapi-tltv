@@ -478,12 +478,19 @@ paths:
               properties:
                 titleName:
                   type: string
+                  description: choose a descriptive title that includes to and from languages
                 fileLanguageId:
                   type: string
+                  description: the original language of the file you are uploading
                 fromVoiceId:
                   type: string
+                  description: the language you know
                 toVoiceId:
                   type: string
+                  description: the language you want to learn
+                pause:
+                  type: string
+                  description: the pause in seconds between phrases in the audiofile (default is 4)
                 filePath:
                   type: string
                   format: binary
@@ -535,6 +542,10 @@ components:
         - fromVoiceId
         - toVoiceId
       properties:
+        pause:
+          type: integer
+          format: int16
+          description: the pause in seconds between phrases in the audio file (default is 4)
         titleId:
           type: integer
           format: int64
