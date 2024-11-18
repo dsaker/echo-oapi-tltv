@@ -120,7 +120,13 @@ func TestAddTitle(t *testing.T) {
 	translate2 := randomTranslate(test.RandomPhrase(), title.OgLanguageID)
 
 	dbTranslates := []db.Translate{translate1, translate2}
-
+	// remove directory after tests run
+	defer func(path string) {
+		err := os.RemoveAll(path)
+		if err != nil {
+			require.NoError(t, err)
+		}
+	}(test.AudioBasePath)
 	err := os.MkdirAll(test.AudioBasePath, 0777)
 	require.NoError(t, err)
 	filename := test.AudioBasePath + "testAddTitle.txt"

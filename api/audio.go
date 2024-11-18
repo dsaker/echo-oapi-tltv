@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"os"
 	"slices"
+	"strconv"
+	"strings"
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/audio/audiofile"
 	"talkliketv.click/tltv/internal/oapi"
@@ -33,42 +35,101 @@ func (s *Server) AudioFromFile(e echo.Context) error {
 	if err != nil {
 		return e.String(http.StatusBadRequest, fmt.Sprintf("error converting fromVoiceId to int16: %s", err.Error()))
 	}
+	// check if user sent 'pause' in the request and update config if they did
+	pause := e.FormValue("pause")
+	if pause != "" {
+		pauseInt, err := strconv.Atoi(pause)
+		if err != nil {
+			return e.String(http.StatusBadRequest, fmt.Sprintf("error converting fromVoiceId to int: %s", err.Error()))
+		}
+		if pauseInt > 10 || pauseInt < 3 {
+			return e.String(http.StatusBadRequest, fmt.Sprintf("pause must be between 3 and 10: %d", pauseInt))
+		}
+		s.config.PhrasePause = pauseInt
+	}
 
+	pattern := e.FormValue("pattern")
+	if pattern != "" {
+		patternInt, err := strconv.Atoi(pattern)
+		if err != nil {
+			return e.String(http.StatusBadRequest, fmt.Sprintf("error converting pattern to int: %s", err.Error()))
+		}
+		if patternInt > 3 || patternInt < 1 {
+			return e.String(http.StatusBadRequest, fmt.Sprintf("pattern must be between 1 and 3: %d", patternInt))
+		}
+		s.config.AudioPattern = patternInt
+	}
+	e.Set("pattern", s.config.AudioPattern)
+
+	title, phraseZipFile, err := s.processFile(e, titleName, fileLangId)
+	if err != nil {
+		if errors.Is(err, util.ErrTooManyPhrases) {
+			return e.Attachment(phraseZipFile.Name(), "TooManyPhrasesUseTheseFiles.zip")
+		}
+		if strings.Contains(err.Error(), "unable to parse file") {
+			return e.String(http.StatusBadRequest, err.Error())
+		}
+		return e.String(http.StatusInternalServerError, err.Error())
+	}
+
+	audioFromTitleRequest := oapi.AudioFromTitleJSONRequestBody{
+		TitleId:     title.ID,
+		ToVoiceId:   toVoiceId,
+		FromVoiceId: fromVoiceId,
+	}
+	zipFile, err := s.createAudioFromTitle(e, *title, audioFromTitleRequest)
+	if err != nil {
+		e.Logger().Error(err)
+		_ = s.queries.DeleteTitleById(e.Request().Context(), title.ID)
+		return e.String(http.StatusInternalServerError, err.Error())
+	}
+
+	return e.Attachment(zipFile.Name(), title.Title+".zip")
+}
+
+func (s *Server) processFile(e echo.Context, titleName string, fileLangId int16) (*db.Title, *os.File, error) {
 	// Get file handler for filename, size and headers
 	fh, err := e.FormFile("filePath")
 	if err != nil {
-		return e.String(http.StatusBadRequest, err.Error())
+		e.Logger().Error(err)
+		return nil, nil, util.ErrUnableToParseFile(err)
 	}
 
 	// Check if file size is too large 64000 == 8KB ~ approximately 4 pages of text
 	if fh.Size > s.config.FileUploadLimit {
-		rString := fmt.Sprintf("file too large (%d > %d)", fh.Size, s.config.FileUploadLimit*8000)
-		return e.String(http.StatusBadRequest, rString)
+		rString := fmt.Sprintf("file too large (%d > %d)", fh.Size, s.config.FileUploadLimit)
+		return nil, nil, util.ErrUnableToParseFile(errors.New(rString))
 	}
 	src, err := fh.Open()
 	if err != nil {
 		e.Logger().Error(err)
-		return e.String(http.StatusInternalServerError, err.Error())
+		return nil, nil, err
 	}
 	defer src.Close()
 
 	// get an array of all the phrases from the uploaded file
 	stringsSlice, err := s.af.GetLines(e, src)
 	if err != nil {
-		return e.String(http.StatusBadRequest, fmt.Sprintf("unable to parse file: %s", err.Error()))
+		return nil, nil, util.ErrUnableToParseFile(err)
 	}
 	// send back zip of split files of phrase that requester can use if too big
 	if len(stringsSlice) > s.config.MaxNumPhrases {
 		chunkedPhrases := slices.Chunk(stringsSlice, s.config.MaxNumPhrases)
 		phrasesBasePath := s.config.TTSBasePath + titleName + "/"
+		// remove phrasesBasePath after you have sent zipfile
+		defer func(path string) {
+			err = os.RemoveAll(path)
+			if err != nil {
+				e.Logger().Errorf("error removing path %s: %s", path, err.Error())
+			}
+		}(phrasesBasePath)
 		// create zip of phrases files of maxNumPhrases for user to use instead of uploaded file
 		zipFile, err := s.af.CreatePhrasesZip(e, chunkedPhrases, phrasesBasePath, titleName)
 		if err != nil {
 			e.Logger().Error(err)
-			return e.String(http.StatusInternalServerError, err.Error())
+			return nil, nil, err
 		}
-		// TODO delete tmp folder
-		return e.Attachment(zipFile.Name(), "TooManyPhrasesUseTheseFiles.zip")
+		return nil, zipFile, util.ErrTooManyPhrases
 	}
 
 	// We're always asynchronous, so lock unsafe operations below
@@ -76,7 +137,6 @@ func (s *Server) AudioFromFile(e echo.Context) error {
 	defer s.Unlock()
 
 	// insert title into the database
-	// TODO roll back on any failure downstream
 	title, err := s.queries.InsertTitle(
 		e.Request().Context(),
 		db.InsertTitleParams{
@@ -86,33 +146,17 @@ func (s *Server) AudioFromFile(e echo.Context) error {
 		})
 	if err != nil {
 		e.Logger().Error(err)
-		return e.String(http.StatusInternalServerError, err.Error())
+		return nil, nil, err
 	}
 
 	// insert phrases into MockQuerier as translates object of OgLanguage
 	_, err = s.translates.InsertNewPhrases(e, title, s.queries, stringsSlice)
 	if err != nil {
-		dbErr := s.queries.DeleteTitleById(e.Request().Context(), title.ID)
-		if dbErr != nil {
-			e.Logger().Error(err)
-			return e.String(http.StatusInternalServerError, dbErr.Error())
-		}
 		e.Logger().Error(err)
-		return e.String(http.StatusInternalServerError, err.Error())
+		_ = s.queries.DeleteTitleById(e.Request().Context(), title.ID)
+		return nil, nil, err
 	}
-
-	audioFromTitleRequest := oapi.AudioFromTitleJSONRequestBody{
-		TitleId:     title.ID,
-		ToVoiceId:   toVoiceId,
-		FromVoiceId: fromVoiceId,
-	}
-	zipFile, err := s.createAudioFromTitle(e, title, audioFromTitleRequest)
-	if err != nil {
-		e.Logger().Error(err)
-		return e.String(http.StatusInternalServerError, err.Error())
-	}
-	// TODO delete tmp folder
-	return e.Attachment(zipFile.Name(), title.Title+".zip")
+	return &title, nil, nil
 }
 
 // AudioFromTitle accepts a title id sends a zip file of mp3 audio track for
@@ -123,6 +167,16 @@ func (s *Server) AudioFromTitle(e echo.Context) error {
 	if err != nil {
 		return e.String(http.StatusBadRequest, err.Error())
 	}
+
+	if audioFromTitleRequest.Pattern != nil {
+		s.config.AudioPattern = *audioFromTitleRequest.Pattern
+	}
+	e.Set("pattern", s.config.AudioPattern)
+
+	if audioFromTitleRequest.Pause != nil {
+		s.config.PhrasePause = *audioFromTitleRequest.Pause
+	}
+	e.Set("pause", audioFromTitleRequest.Pause)
 
 	// get title to translate from
 	title, err := s.queries.SelectTitleById(e.Request().Context(), audioFromTitleRequest.TitleId)
@@ -160,7 +214,7 @@ func (s *Server) createAudioFromTitle(e echo.Context, title db.Title, r oapi.Aud
 		return nil, err
 	}
 
-	// TODO add comments
+	// TODO if you don't want these files to persist then you need to defer removing them from calling function
 	audioBasePath := fmt.Sprintf("%s%d/", s.config.TTSBasePath, title.ID)
 
 	fromAudioBasePath := fmt.Sprintf("%s%d/", audioBasePath, fromVoice.LanguageID)
@@ -168,24 +222,35 @@ func (s *Server) createAudioFromTitle(e echo.Context, title db.Title, r oapi.Aud
 
 	if err = s.translates.CreateTTS(e, s.queries, title, r.FromVoiceId, fromAudioBasePath); err != nil {
 		e.Logger().Error(err)
+		osErr := os.RemoveAll(audioBasePath)
+		if osErr != nil {
+			e.Logger().Error(osErr)
+		}
 		return nil, err
 	}
 
 	if err = s.translates.CreateTTS(e, s.queries, title, r.ToVoiceId, toAudioBasePath); err != nil {
 		e.Logger().Error(err)
+		osErr := os.RemoveAll(audioBasePath)
+		if osErr != nil {
+			e.Logger().Error(osErr)
+		}
 		return nil, err
 	}
 
 	phraseIds, err := s.queries.SelectPhraseIdsByTitleId(e.Request().Context(), title.ID)
 	if err != nil {
 		e.Logger().Error(err)
+		osErr := os.RemoveAll(audioBasePath)
+		if osErr != nil {
+			e.Logger().Error(osErr)
+		}
 		return nil, err
 	}
 
-	// TODO allow request to change Pause
 	pausePath, ok := audiofile.AudioPauseFilePath[s.config.PhrasePause]
 	if !ok {
-		e.Logger().Error(err)
+		e.Logger().Error(errors.New("audio pause file not found"))
 		return nil, err
 	}
 	fullPausePath := s.config.TTSBasePath + pausePath
@@ -196,6 +261,14 @@ func (s *Server) createAudioFromTitle(e echo.Context, title db.Title, r oapi.Aud
 		e.Logger().Error(err)
 		return nil, err
 	}
+
+	// remove tmpDirPath when createAudioFromTitle function closes
+	defer func(path string) {
+		err = os.RemoveAll(path)
+		if err != nil {
+			e.Logger().Error(err)
+		}
+	}(tmpDirPath)
 
 	if err = s.af.BuildAudioInputFiles(e, phraseIds, title, fullPausePath, fromAudioBasePath, toAudioBasePath, tmpDirPath); err != nil {
 		e.Logger().Error(err)

@@ -142,7 +142,7 @@ func (a *AudioFile) GetLines(e echo.Context, f multipart.File) ([]string, error)
 		}
 		count++
 	}
-	// TODO somehow verify single phrase per line form (these can be multiple sentences)
+	// TODO somehow verify single phrase per line form (these can be multiple sentences per line)
 	_, err = f.Seek(0, 0)
 	if err != nil {
 		e.Logger().Error(err)
@@ -364,9 +364,8 @@ func (a *AudioFile) CreateMp3Zip(e echo.Context, t db.Title, tmpDir string) (*os
 		return nil, err
 	}
 	for i, f := range files {
-		//ffmpeg -f concat -safe 0 -i ffmpeg_input.txt -c copy output.mp3
+		// ffmpeg -f concat -safe 0 -i ffmpeg_input.txt -c copy output.mp3
 		outputString := fmt.Sprintf("%s/%s-%d.mp3", outDirPath, t.Title, i)
-		// TODO make this concurrent
 		cmd := exec.Command("ffmpeg", "-f", "concat", "-safe", "0", "-i", tmpDir+f.Name(), "-c", "copy", outputString)
 
 		//Execute the command and get the output
@@ -378,26 +377,6 @@ func (a *AudioFile) CreateMp3Zip(e echo.Context, t db.Title, tmpDir string) (*os
 		}
 	}
 
-	//zipFile, err := os.Create(tmpDir + "/" + t.Title + ".zip")
-	//if err != nil {
-	//	e.Logger().Error(err)
-	//	return nil, err
-	//}
-	//defer zipFile.Close()
-	//
-	//zipWriter := zip.NewWriter(zipFile)
-	//defer zipWriter.Close()
-	//
-	//// get a list of files from the output directory
-	//files, err = os.ReadDir(outDirPath)
-	//for _, file := range files {
-	//	err = addFileToZip(e, zipWriter, outDirPath+"/"+file.Name())
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//}
-	//
-	//return zipFile, err
 	return createZipFile(e, tmpDir, t.Title, outDirPath)
 }
 
@@ -446,11 +425,20 @@ func (a *AudioFile) BuildAudioInputFiles(e echo.Context, ids []int64, t db.Title
 	for i, pid := range ids {
 		pMap[i] = pid
 	}
-
+	// maxP is the highest phrase id and determines the last block of mp3's that will be built
 	maxP := slices.Max(ids)
+
+	// get the pattern represented as an int from the context
+	value, ok := e.Get("pattern").(int)
+	if !ok {
+		return util.ErrIntConversion
+	}
+	pattern := audio.GetPattern(value)
+	if pattern == nil {
+		return errors.New("no pattern")
+	}
 	// create chunks of []Audio pattern to split up audio files into ~15 minute lengths
-	// TODO look at slices.Chunk to see how it accepts any type of slice
-	chunkedSlice := slices.Chunk(audio.Pattern, 125)
+	chunkedSlice := slices.Chunk(pattern, 125)
 	count := 1
 	last := false
 	for chunk := range chunkedSlice {
