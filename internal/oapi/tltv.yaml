@@ -491,6 +491,13 @@ paths:
                 pause:
                   type: string
                   description: the pause in seconds between phrases in the audiofile (default is 4)
+                pattern:
+                  type: string
+                  description: |
+                    pattern is the pattern used to construct the audio files. You have 3 choices: 
+                    1 is standard and should be used if you are at a beginner or intermediate level of language learning
+                    2 is advanced and repeats phrases less often and should only be used if you are at an advanced level
+                    3 is review and only repeats each phrase one time and can be used to review already learned phrases
                 filePath:
                   type: string
                   format: binary
@@ -544,7 +551,6 @@ components:
       properties:
         pause:
           type: integer
-          format: int16
           description: the pause in seconds between phrases in the audio file (default is 4)
         titleId:
           type: integer
@@ -555,6 +561,15 @@ components:
         toVoiceId:
           type: integer
           format: int16
+        pattern:
+          type: integer
+          minimum: 1
+          maximum: 3
+          description: |
+            pattern is the pattern used to construct the audio files. You have 3 choices: 
+            1 is standard and should be used if you are at a beginner or intermediate level of language learning
+            2 is advanced and repeats phrases less often and should only be used if you are at an advanced level
+            3 is review and only repeats each phrase one time and can be used to review already learned phrases
     PatchRequest:
       type: array
       items:

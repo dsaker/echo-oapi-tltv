@@ -22,6 +22,7 @@ type Config struct {
 	CtxTimeout      time.Duration
 	JWTDuration     time.Duration
 	PhrasePause     int
+	AudioPattern    int
 	MaxNumPhrases   int
 	TTSBasePath     string
 	FileUploadLimit int64
@@ -62,6 +63,7 @@ func SetConfigs(config *Config) error {
 	flag.Int64Var(&config.FileUploadLimit, "upload-size-limit", 8*8000, "File upload size limit in KB (default is 8)")
 	flag.IntVar(&config.PhrasePause, "phrase-pause", 4, "Pause in seconds between phrases (must be between 3 and 10)'")
 	flag.IntVar(&config.MaxNumPhrases, "maximum-number-phrases", 50, "Maximum number of phrases to be turned into audio files")
+	flag.IntVar(&config.AudioPattern, "audio-pattern", 1, "Audio pattern to be used in constructing mp3's {1: standard, 2: advanced, 3: review}")
 
 	if !isValidPause(config.PhrasePause) {
 		return errors.New("invalid pause value (must be between 3 and 10)")

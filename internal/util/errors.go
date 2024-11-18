@@ -12,4 +12,5 @@ var (
 		return errors.New(fmt.Sprintf("unable to parse file: %s", err))
 	}
 	ErrTooManyPhrases = errors.New("too many phrases")
+	ErrIntConversion  = errors.New("conversion failed: The interface does not hold an int")
 )

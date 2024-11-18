@@ -40,10 +40,26 @@ func (s *Server) AudioFromFile(e echo.Context) error {
 	if pause != "" {
 		pauseInt, err := strconv.Atoi(pause)
 		if err != nil {
-			return e.String(http.StatusBadRequest, fmt.Sprintf("error converting fromVoiceId to int16: %s", err.Error()))
+			return e.String(http.StatusBadRequest, fmt.Sprintf("error converting fromVoiceId to int: %s", err.Error()))
+		}
+		if pauseInt > 10 || pauseInt < 3 {
+			return e.String(http.StatusBadRequest, fmt.Sprintf("pause must be between 3 and 10: %d", pauseInt))
 		}
 		s.config.PhrasePause = pauseInt
 	}
+
+	pattern := e.FormValue("pattern")
+	if pattern != "" {
+		patternInt, err := strconv.Atoi(pattern)
+		if err != nil {
+			return e.String(http.StatusBadRequest, fmt.Sprintf("error converting pattern to int: %s", err.Error()))
+		}
+		if patternInt > 3 || patternInt < 1 {
+			return e.String(http.StatusBadRequest, fmt.Sprintf("pattern must be between 1 and 3: %d", patternInt))
+		}
+		s.config.AudioPattern = patternInt
+	}
+	e.Set("pattern", s.config.AudioPattern)
 
 	title, phraseZipFile, err := s.processFile(e, titleName, fileLangId)
 	if err != nil {
@@ -152,6 +168,16 @@ func (s *Server) AudioFromTitle(e echo.Context) error {
 		return e.String(http.StatusBadRequest, err.Error())
 	}
 
+	if audioFromTitleRequest.Pattern != nil {
+		s.config.AudioPattern = *audioFromTitleRequest.Pattern
+	}
+	e.Set("pattern", s.config.AudioPattern)
+
+	if audioFromTitleRequest.Pause != nil {
+		s.config.PhrasePause = *audioFromTitleRequest.Pause
+	}
+	e.Set("pause", audioFromTitleRequest.Pause)
+
 	// get title to translate from
 	title, err := s.queries.SelectTitleById(e.Request().Context(), audioFromTitleRequest.TitleId)
 	if err != nil {
@@ -196,23 +222,35 @@ func (s *Server) createAudioFromTitle(e echo.Context, title db.Title, r oapi.Aud
 
 	if err = s.translates.CreateTTS(e, s.queries, title, r.FromVoiceId, fromAudioBasePath); err != nil {
 		e.Logger().Error(err)
+		osErr := os.RemoveAll(audioBasePath)
+		if osErr != nil {
+			e.Logger().Error(osErr)
+		}
 		return nil, err
 	}
 
 	if err = s.translates.CreateTTS(e, s.queries, title, r.ToVoiceId, toAudioBasePath); err != nil {
 		e.Logger().Error(err)
+		osErr := os.RemoveAll(audioBasePath)
+		if osErr != nil {
+			e.Logger().Error(osErr)
+		}
 		return nil, err
 	}
 
 	phraseIds, err := s.queries.SelectPhraseIdsByTitleId(e.Request().Context(), title.ID)
 	if err != nil {
 		e.Logger().Error(err)
+		osErr := os.RemoveAll(audioBasePath)
+		if osErr != nil {
+			e.Logger().Error(osErr)
+		}
 		return nil, err
 	}
 
 	pausePath, ok := audiofile.AudioPauseFilePath[s.config.PhrasePause]
 	if !ok {
-		e.Logger().Error(err)
+		e.Logger().Error(errors.New("audio pause file not found"))
 		return nil, err
 	}
 	fullPausePath := s.config.TTSBasePath + pausePath
@@ -223,6 +261,14 @@ func (s *Server) createAudioFromTitle(e echo.Context, title db.Title, r oapi.Aud
 		e.Logger().Error(err)
 		return nil, err
 	}
+
+	// remove tmpDirPath when createAudioFromTitle function closes
+	defer func(path string) {
+		err = os.RemoveAll(path)
+		if err != nil {
+			e.Logger().Error(err)
+		}
+	}(tmpDirPath)
 
 	if err = s.af.BuildAudioInputFiles(e, phraseIds, title, fullPausePath, fromAudioBasePath, toAudioBasePath, tmpDirPath); err != nil {
 		e.Logger().Error(err)

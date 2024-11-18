@@ -175,6 +175,7 @@ func TestBuildAudioInputFiles(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/fakeurl", nil)
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
+			c.Set("pattern", 1)
 
 			audioFile := AudioFile{}
 			err := audioFile.BuildAudioInputFiles(

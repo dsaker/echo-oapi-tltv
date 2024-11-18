@@ -30,11 +30,10 @@ func TestAudioFromTitle(t *testing.T) {
 	phraseIDs := []int64{translate1.PhraseID, translate2.PhraseID}
 
 	//create a base path for storing mp3 audio files
-	// TODO delete in cleanup
 	tmpAudioBasePath := test.AudioBasePath + strconv.Itoa(int(title.ID)) + "/"
 	err := os.MkdirAll(tmpAudioBasePath, 0777)
 	require.NoError(t, err)
-
+	defer os.RemoveAll(tmpAudioBasePath)
 	filename := tmpAudioBasePath + "TestAudioFromTitle.txt"
 
 	silenceBasePath := test.AudioBasePath + "silence/4SecSilence.mp3"
@@ -106,6 +105,7 @@ func TestAudioFromTitle(t *testing.T) {
 				file, err := os.Create(filename)
 				require.NoError(t, err)
 				defer file.Close()
+				silenceBasePath = test.AudioBasePath + "silence/3SecSilence.mp3"
 				stubs.MockQuerier.EXPECT().
 					SelectTitleById(gomock.Any(), title.ID).
 					Return(title, nil)
@@ -228,7 +228,7 @@ func TestAudioFromTitle(t *testing.T) {
 }
 
 func TestAudioFromFile(t *testing.T) {
-
+	// TODO add test for pattern
 	user, _ := randomUser(t)
 	title := test.RandomTitle()
 	translate1 := randomTranslate(test.RandomPhrase(), title.OgLanguageID)
@@ -242,12 +242,7 @@ func TestAudioFromFile(t *testing.T) {
 	//create a base path for storing mp3 audio files
 	tmpAudioBasePath := test.AudioBasePath + strconv.Itoa(int(title.ID)) + "/"
 	// remove directory after tests run
-	defer func(path string) {
-		err := os.RemoveAll(path)
-		if err != nil {
-			require.NoError(t, err)
-		}
-	}(tmpAudioBasePath)
+	defer os.RemoveAll(tmpAudioBasePath)
 	err := os.MkdirAll(tmpAudioBasePath, 0777)
 	require.NoError(t, err)
 
