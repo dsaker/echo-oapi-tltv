@@ -481,18 +481,23 @@ paths:
                   description: choose a descriptive title that includes to and from languages
                 fileLanguageId:
                   type: string
+                  example: "49"
                   description: the original language of the file you are uploading
                 fromVoiceId:
                   type: string
+                  example: "162"
                   description: the language you know
                 toVoiceId:
                   type: string
+                  example: "208"
                   description: the language you want to learn
                 pause:
                   type: string
+                  example: "10"
                   description: the pause in seconds between phrases in the audiofile (default is 4)
                 pattern:
                   type: string
+                  example: "1"
                   description: |
                     pattern is the pattern used to construct the audio files. You have 3 choices: 
                     1 is standard and should be used if you are at a beginner or intermediate level of language learning

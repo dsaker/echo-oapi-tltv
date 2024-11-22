@@ -79,11 +79,17 @@ func (s *Server) AudioFromFile(e echo.Context) error {
 	}
 	zipFile, err := s.createAudioFromTitle(e, *title, audioFromTitleRequest)
 	if err != nil {
-		e.Logger().Error(err)
-		_ = s.queries.DeleteTitleById(e.Request().Context(), title.ID)
+		if errors.Is(err, util.ErrVoiceLangIdNoMatch) {
+			return e.String(http.StatusBadRequest, err.Error())
+		}
+		if errors.Is(err, util.ErrVoiceIdInvalid) {
+			return e.String(http.StatusBadRequest, err.Error())
+		}
+		if errors.Is(err, util.ErrOneFile) {
+			return e.Attachment(zipFile.Name(), title.Title+".mp3")
+		}
 		return e.String(http.StatusInternalServerError, err.Error())
 	}
-
 	return e.Attachment(zipFile.Name(), title.Title+".zip")
 }
 
@@ -193,6 +199,12 @@ func (s *Server) AudioFromTitle(e echo.Context) error {
 		if errors.Is(err, util.ErrVoiceLangIdNoMatch) {
 			return e.String(http.StatusBadRequest, err.Error())
 		}
+		if errors.Is(err, util.ErrVoiceIdInvalid) {
+			return e.String(http.StatusBadRequest, err.Error())
+		}
+		if errors.Is(err, util.ErrOneFile) {
+			return e.Attachment(zipFile.Name(), title.Title+".mp3")
+		}
 		return e.String(http.StatusInternalServerError, err.Error())
 	}
 	return e.Attachment(zipFile.Name(), title.Title+".zip")
@@ -205,12 +217,18 @@ func (s *Server) createAudioFromTitle(e echo.Context, title db.Title, r oapi.Aud
 	fromVoice, err := s.queries.SelectVoiceById(e.Request().Context(), r.FromVoiceId)
 	if err != nil {
 		e.Logger().Error(err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, util.ErrVoiceIdInvalid
+		}
 		return nil, err
 	}
 
 	toVoice, err := s.queries.SelectVoiceById(e.Request().Context(), r.ToVoiceId)
 	if err != nil {
 		e.Logger().Error(err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, util.ErrVoiceIdInvalid
+		}
 		return nil, err
 	}
 
@@ -255,29 +273,16 @@ func (s *Server) createAudioFromTitle(e echo.Context, title db.Title, r oapi.Aud
 	}
 	fullPausePath := s.config.TTSBasePath + pausePath
 
-	tmpDirPath := fmt.Sprintf("%s/%s-%s/", s.config.TTSBasePath, title.Title, test.RandomString(4))
+	tmpDirPath := fmt.Sprintf("%s%s-%s/", s.config.TTSBasePath, title.Title, test.RandomString(4))
 	err = os.MkdirAll(tmpDirPath, 0777)
 	if err != nil {
 		e.Logger().Error(err)
 		return nil, err
 	}
 
-	// remove tmpDirPath when createAudioFromTitle function closes
-	defer func(path string) {
-		err = os.RemoveAll(path)
-		if err != nil {
-			e.Logger().Error(err)
-		}
-	}(tmpDirPath)
-
 	if err = s.af.BuildAudioInputFiles(e, phraseIds, title, fullPausePath, fromAudioBasePath, toAudioBasePath, tmpDirPath); err != nil {
-		e.Logger().Error(err)
 		return nil, err
 	}
 
-	zipFile, err := s.af.CreateMp3Zip(e, title, tmpDirPath)
-	if err != nil {
-		return nil, err
-	}
-	return zipFile, nil
+	return s.af.CreateMp3Zip(e, title, tmpDirPath)
 }

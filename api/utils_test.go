@@ -2,12 +2,21 @@ package api
 
 import (
 	"bytes"
+	"context"
+	"database/sql"
 	"flag"
 	"fmt"
+	"github.com/docker/go-connections/nat"
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
 	"go.uber.org/mock/gomock"
 	"io"
+	"log"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -24,10 +33,14 @@ import (
 	"talkliketv.click/tltv/internal/token"
 	"talkliketv.click/tltv/internal/util"
 	"testing"
+	"time"
 )
 
 var (
-	testCfg config.Config
+	testCfg     TestConfig
+	count       = 0
+	integration = false
+	mappedPort  nat.Port
 )
 
 const (
@@ -39,6 +52,11 @@ const (
 	usersPhrasesBasePath    = "/v1/usersphrases"
 	languagesBasePath       = "/v1/languages"
 	voicesBasePath          = "/v1/voices"
+	templateDb              = "templatedb"
+	dbUser                  = "postgres"
+	dbPass                  = "postgres"
+	dbPort                  = "5432/tcp"
+	pgData                  = "/var/lib/pg/data"
 )
 
 type MockStubs struct {
@@ -47,6 +65,12 @@ type MockStubs struct {
 	TranslateClientX *mockt.MockTranslateClientX
 	TtsClientX       *mockt.MockTTSClientX
 	AudioFileX       *mocka.MockAudioFileX
+}
+
+type TestConfig struct {
+	config.Config
+	conn      *sql.DB
+	container testcontainers.Container
 }
 
 // NewMockStubs creates instantiates new instances of all the mock interfaces for testing
@@ -77,10 +101,22 @@ type testCase struct {
 }
 
 func TestMain(m *testing.M) {
-	_ = config.SetConfigs(&testCfg)
+	_ = config.SetConfigs(&testCfg.Config)
+	flag.BoolVar(&integration, "integration", false, "Run integration tests")
 	flag.Parse()
 	testCfg.TTSBasePath = test.AudioBasePath
-	os.Exit(m.Run())
+	if integration {
+		testCfg.container, testCfg.conn = setupTemplateDb()
+	}
+	// Run the tests
+	exitCode := m.Run()
+	if integration {
+		err := testCfg.container.Terminate(context.Background())
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+	os.Exit(exitCode)
 }
 
 // readBody reads the http response body and returns it as a string
@@ -148,7 +184,7 @@ func setupHandlerTest(t *testing.T, ctrl *gomock.Controller, tc testCase, urlBas
 	tc.buildStubs(stubs)
 
 	e := echo.New()
-	srv := NewServer(e, testCfg, stubs.MockQuerier, stubs.TranslateX, stubs.AudioFileX)
+	srv := NewServer(e, testCfg.Config, stubs.MockQuerier, stubs.TranslateX, stubs.AudioFileX)
 
 	jwsToken, err := srv.fa.CreateJWSWithClaims(tc.permissions, tc.user)
 	require.NoError(t, err)
@@ -171,11 +207,22 @@ func setupServerTest(t *testing.T, ctrl *gomock.Controller, tc testCase) (*httpt
 	tc.buildStubs(stubs)
 
 	e := echo.New()
-	srv := NewServer(e, testCfg, stubs.MockQuerier, stubs.TranslateX, stubs.AudioFileX)
+	srv := NewServer(e, testCfg.Config, stubs.MockQuerier, stubs.TranslateX, stubs.AudioFileX)
 
 	ts := httptest.NewServer(e)
 
 	jwsToken, err := srv.fa.CreateJWSWithClaims(tc.permissions, tc.user)
+	require.NoError(t, err)
+
+	return ts, string(jwsToken)
+}
+
+// setupIntegrationTest
+func setupIntegrationTest(t *testing.T, e *echo.Echo, s *Server, tc testCase) (*httptest.Server, string) {
+
+	ts := httptest.NewServer(e)
+
+	jwsToken, err := s.fa.CreateJWSWithClaims(tc.permissions, tc.user)
 	require.NoError(t, err)
 
 	return ts, string(jwsToken)
@@ -229,4 +276,137 @@ func createMultiPartBody(t *testing.T, data []byte, filename string, m map[strin
 	}
 	require.NoError(t, writer.Close())
 	return body, writer
+}
+
+func setupTemplateDb() (testcontainers.Container, *sql.DB) {
+
+	// setup db container
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	container, conn := createDbContainer()
+
+	// mark testdb as a template so you can copy it
+	query := `update pg_database set datistemplate=true where datname=$1;`
+	_, err := conn.ExecContext(ctx, query, templateDb)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	dbUrl := fmt.Sprintf("postgres://%s:%s@localhost:%s/%s?sslmode=disable", dbUser, dbPass, mappedPort.Port(), templateDb)
+
+	// migrate template database
+	m, err := migrate.New("file://../db/migrations", dbUrl)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer m.Close()
+
+	err = m.Up()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Print("migration done")
+
+	// close connection with template db
+	err = conn.Close()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// create and return connection with postgres database
+	conn = createConnection("postgres")
+	return container, conn
+}
+
+func createDbContainer() (testcontainers.Container, *sql.DB) {
+
+	var env = map[string]string{
+		"POSTGRES_PASSWORD": dbPass,
+		"POSTGRES_USER":     dbUser,
+		"POSTGRES_DB":       templateDb,
+		"PGDATA":            pgData,
+	}
+
+	// create a database in memory for faster copying
+	// https://gajus.com/blog/setting-up-postgre-sql-for-running-integration-tests
+	req := testcontainers.GenericContainerRequest{
+		ContainerRequest: testcontainers.ContainerRequest{
+			Image:        "postgres:14-alpine",
+			ExposedPorts: []string{dbPort},
+			Env:          env,
+			Tmpfs:        map[string]string{pgData: "rw"},
+			WaitingFor:   wait.ForLog("database system is ready to accept connections"),
+		},
+		Started: true,
+	}
+	ctx := context.Background()
+	container, err := testcontainers.GenericContainer(ctx, req)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	mappedPort, err = container.MappedPort(ctx, dbPort)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Println("postgres container ready and running at port: ", mappedPort.Port())
+
+	time.Sleep(time.Second)
+
+	//postgres://postgres:postgres@localhost:5433/tltv_testdb?sslmode=disable
+	conn := createConnection(templateDb)
+	return container, conn
+}
+
+func createTestDb(t *testing.T, m *Server) (*sql.DB, string) {
+	ctx := context.Background()
+
+	query := "create database testdb template templatedb"
+	// increase count so each test db has a different name
+	count++
+	// TODO add lock
+	// lock so you don't have multiple connections to template db
+	m.Lock()
+	defer m.Unlock()
+
+	//newDbName := templateDb + strconv.Itoa(count)
+	_, err := testCfg.conn.ExecContext(ctx, query)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	conn := createConnection("testdb")
+	return conn, "testdb"
+}
+
+func destroyDb(t *testing.T, c *sql.DB, dbName string) {
+	err := c.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	query := `DROP DATABASE testdb`
+	_, err = testCfg.conn.Exec(query)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func createConnection(dbName string) *sql.DB {
+	connString := fmt.Sprintf("postgres://%s:%s@localhost:%s/%s?sslmode=disable", dbUser, dbPass, mappedPort.Port(), dbName)
+	log.Println("created connection string: ", connString)
+	conn, err := sql.Open("postgres", connString)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), testCfg.Config.CtxTimeout)
+	defer cancel()
+	err = conn.PingContext(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return conn
 }

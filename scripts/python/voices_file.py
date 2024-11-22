@@ -7,6 +7,7 @@ This script loads a file from local and calls insert_voices to insert them into
 the database,
 """
 
+
 def main():
     # Load JSON data
     with open('../../internal/util/voices.json', 'r') as file:

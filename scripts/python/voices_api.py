@@ -21,6 +21,7 @@ export API_KEY=<api key>
 db schema is at db/migrations/voices
 """
 
+
 def main():
     # Set up the API endpoint
     url = f'https://texttospeech.googleapis.com/v1/voices?key={api_key}'

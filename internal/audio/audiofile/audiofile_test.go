@@ -329,7 +329,7 @@ func TestCreatePhrasesZip(t *testing.T) {
 			stringsSlice: stringsSlice,
 		},
 		{
-			name: "No files",
+			name: "No One File",
 			createTitle: func(t *testing.T) (db.Title, string) {
 				title := test.RandomTitle()
 				tmpDir := test.AudioBasePath + "TestCreatePhrasesZip/" + title.Title + "/"

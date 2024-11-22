@@ -13,4 +13,5 @@ var (
 	}
 	ErrTooManyPhrases = errors.New("too many phrases")
 	ErrIntConversion  = errors.New("conversion failed: The interface does not hold an int")
+	ErrVoiceIdInvalid = errors.New("voice id invalid")
 )
