@@ -77,7 +77,7 @@ type RealCmdRunner struct{}
 // can be interfaced for testing (ffmpeg will not have to be installed on machine
 // for unit testing)
 func (r *RealCmdRunner) CombinedOutput(cmd *exec.Cmd) ([]byte, error) {
-	return cmd.Output()
+	return cmd.CombinedOutput()
 }
 
 // GetLines determines if the uploaded file is an srt, in paragraph form, or one phrase per
@@ -372,7 +372,7 @@ func (a *AudioFile) CreateMp3Zip(e echo.Context, t db.Title, tmpDir string) (*os
 		output, err := a.cmdX.CombinedOutput(cmd)
 		if err != nil {
 			e.Logger().Error(err)
-			e.Logger().Error(string(output))
+			e.Logger().Error("combined output: " + string(output))
 			return nil, err
 		}
 	}
@@ -459,7 +459,8 @@ func (a *AudioFile) BuildAudioInputFiles(e echo.Context, ids []int64, t db.Title
 			phraseId := pMap[audioStruct.Id]
 			if phraseId == maxP {
 				last = true
-			} else if phraseId == 0 && audioStruct.Id > 0 {
+			}
+			if phraseId == 0 && audioStruct.Id > 0 {
 				continue
 			} else if audioStruct.Native == true {
 				_, err = f.WriteString(fmt.Sprintf("file '%s%d'\n", from, phraseId))
@@ -524,6 +525,7 @@ func (a *AudioFile) CreatePhrasesZip(e echo.Context, chunkedPhrases iter.Seq[[]s
 // filename which is the name that you want the zipped files to have as their base name
 // and outDirPath which is where the zip file will be stored and zips up the files
 func createZipFile(e echo.Context, tmpDir, filename, outDirPath string) (*os.File, error) {
+	// TODO add txt file of the phrases
 	zipFile, err := os.Create(tmpDir + "/" + filename + ".zip")
 	if err != nil {
 		e.Logger().Error(err)
@@ -536,9 +538,11 @@ func createZipFile(e echo.Context, tmpDir, filename, outDirPath string) (*os.Fil
 
 	// get a list of files from the output directory
 	files, err := os.ReadDir(outDirPath)
-	if len(files) == 1 {
-		return nil, util.ErrOneFile
+	if err != nil {
+		e.Logger().Error(err)
+		return nil, err
 	}
+
 	for _, file := range files {
 		if !strings.HasSuffix(file.Name(), ".zip") {
 			err = addFileToZip(e, zipWriter, outDirPath+"/"+file.Name())

@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	"io"
@@ -316,9 +317,7 @@ func TestAudioFromFile(t *testing.T) {
 			},
 			multipartBody: func(t *testing.T) (*bytes.Buffer, *multipart.Writer) {
 				data := []byte("This is the first sentence.\nThis is the second sentence.\n")
-
-				formMap := okFormMap
-				return createMultiPartBody(t, data, filename, formMap)
+				return createMultiPartBody(t, data, filename, okFormMap)
 			},
 			permissions: []string{db.WriteTitlesCode},
 		},
@@ -451,9 +450,7 @@ func TestAudioFromFile(t *testing.T) {
 			user: user,
 			multipartBody: func(t *testing.T) (*bytes.Buffer, *multipart.Writer) {
 				data := []byte("This is the first sentence.\nThis is the second sentence.\n")
-
-				formMap := okFormMap
-				return createMultiPartBody(t, data, filename, formMap)
+				return createMultiPartBody(t, data, filename, okFormMap)
 			},
 			buildStubs: func(stubs MockStubs) {
 				stubs.AudioFileX.EXPECT().
@@ -475,9 +472,7 @@ func TestAudioFromFile(t *testing.T) {
 			user: user,
 			multipartBody: func(t *testing.T) (*bytes.Buffer, *multipart.Writer) {
 				data := []byte("This is the first sentence.\nThis is the second sentence.\n")
-
-				formMap := okFormMap
-				return createMultiPartBody(t, data, filename, formMap)
+				return createMultiPartBody(t, data, filename, okFormMap)
 			},
 			buildStubs: func(stubs MockStubs) {
 			},
@@ -501,6 +496,278 @@ func TestAudioFromFile(t *testing.T) {
 			defer ctrl.Finish()
 
 			ts, jwsToken := setupServerTest(t, ctrl, tc)
+			multiBody, multiWriter := tc.multipartBody(t)
+			req, err := http.NewRequest(http.MethodPost, ts.URL+audioBasePath+"/fromfile", multiBody)
+			require.NoError(t, err)
+
+			req.Header.Set("Authorization", "Bearer "+string(jwsToken))
+
+			req.Header.Set("Content-Type", multiWriter.FormDataContentType())
+			res, err := ts.Client().Do(req)
+			require.NoError(t, err)
+
+			tc.checkResponse(res)
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestAudioFromFileIntegration(t *testing.T) {
+	if !integration {
+		t.Skip("skipping integration test")
+	}
+
+	e := echo.New()
+
+	// create db connection
+	q := db.New(testCfg.conn)
+	tr, af := Depends(e)
+	srv := NewServer(e, testCfg.Config, q, tr, af)
+
+	// TODO add test for pattern
+	user, _ := randomUser(t)
+	title := test.RandomTitle()
+
+	//create a base path for storing mp3 audio files
+	tmpAudioBasePath := test.AudioBasePath + strconv.Itoa(int(title.ID)) + "/"
+	// remove directory after tests run
+	defer os.RemoveAll(tmpAudioBasePath)
+	err := os.MkdirAll(tmpAudioBasePath, 0777)
+	require.NoError(t, err)
+
+	filename := tmpAudioBasePath + "TestAudioFromFile.txt"
+
+	okFormMap := map[string]string{
+		"fileLanguageId": strconv.Itoa(int(title.OgLanguageID)),
+		"titleName":      title.Title,
+		"fromVoiceId":    strconv.Itoa(80),
+		"toVoiceId":      strconv.Itoa(182),
+	}
+
+	testCases := []testCase{
+
+		{
+			name: "OK",
+			user: user,
+			checkResponse: func(res *http.Response) {
+				require.Equal(t, http.StatusOK, res.StatusCode)
+			},
+			multipartBody: func(t *testing.T) (*bytes.Buffer, *multipart.Writer) {
+				data := []byte("This is the first sentence.\nThis is the second sentence.\n")
+
+				formMap := okFormMap
+				return createMultiPartBody(t, data, filename, formMap)
+			},
+			permissions: []string{db.WriteTitlesCode},
+		},
+		{
+			name: "Invalid Voice Id",
+			user: user,
+			checkResponse: func(res *http.Response) {
+				require.Equal(t, http.StatusBadRequest, res.StatusCode)
+				resBody := readBody(t, res)
+				require.Contains(t, resBody, "voice id invalid")
+			},
+			multipartBody: func(t *testing.T) (*bytes.Buffer, *multipart.Writer) {
+				data := []byte("This is the first sentence.\nThis is the second sentence.\n")
+				badFormMap := map[string]string{
+					"fileLanguageId": strconv.Itoa(int(title.OgLanguageID)),
+					"titleName":      title.Title,
+					"fromVoiceId":    strconv.Itoa(80),
+					"toVoiceId":      strconv.Itoa(1000),
+				}
+				return createMultiPartBody(t, data, filename, badFormMap)
+			},
+			permissions: []string{db.WriteTitlesCode},
+		},
+		//{
+		//	name: "OK with pause",
+		//	user: user,
+		//	buildStubs: func(stubs MockStubs) {
+		//		file, err := os.Create(filename)
+		//		require.NoError(t, err)
+		//		defer file.Close()
+		//		silenceBasePath = test.AudioBasePath + "silence/3SecSilence.mp3"
+		//		// GetLines(echo.Context, multipart.File) ([]string, error)
+		//		stubs.AudioFileX.EXPECT().
+		//			GetLines(gomock.Any(), gomock.Any()).
+		//			Return(stringsSlice, nil)
+		//		stubs.MockQuerier.EXPECT().
+		//			InsertTitle(gomock.Any(), insertTitle).
+		//			Times(1).Return(title, nil)
+		//		stubs.TranslateX.EXPECT().
+		//			InsertNewPhrases(gomock.Any(), title, stubs.MockQuerier, stringsSlice).
+		//			Times(1).Return(dbTranslates, nil)
+		//		// SelectVoiceById(ctx context.Context, id int16) (Voice, error)
+		//		stubs.MockQuerier.EXPECT().
+		//			SelectVoiceById(gomock.Any(), fromVoice.ID).
+		//			Return(fromVoice, nil)
+		//		stubs.MockQuerier.EXPECT().
+		//			SelectVoiceById(gomock.Any(), toVoice.ID).
+		//			Return(toVoice, nil)
+		//		stubs.TranslateX.EXPECT().
+		//			CreateTTS(gomock.Any(), stubs.MockQuerier, title, fromVoice.ID, fromAudioBasePath).
+		//			Return(nil)
+		//		stubs.TranslateX.EXPECT().
+		//			CreateTTS(gomock.Any(), stubs.MockQuerier, title, toVoice.ID, toAudioBasePath).
+		//			Return(nil)
+		//		// SelectPhraseIdsByTitleId(ctx context.Context, titleID int64) ([]int64, error)
+		//		stubs.MockQuerier.EXPECT().
+		//			SelectPhraseIdsByTitleId(gomock.Any(), title.ID).
+		//			Return(phraseIDs, nil)
+		//		// BuildAudioInputFiles(echo.Context, []int64, db.Title, string, string, string, string) error
+		//		stubs.AudioFileX.EXPECT().
+		//			BuildAudioInputFiles(gomock.Any(), phraseIDs, title, silenceBasePath, fromAudioBasePath, toAudioBasePath, gomock.Any()).
+		//			Return(nil)
+		//		// CreateMp3Zip(echo.Context, db.Title, string) (*os.File, error)
+		//		stubs.AudioFileX.EXPECT().
+		//			CreateMp3Zip(gomock.Any(), title, gomock.Any()).
+		//			Return(file, nil)
+		//
+		//	},
+		//	checkResponse: func(res *http.Response) {
+		//		require.Equal(t, http.StatusOK, res.StatusCode)
+		//	},
+		//	multipartBody: func(t *testing.T) (*bytes.Buffer, *multipart.Writer) {
+		//		data := []byte("This is the first sentence.\nThis is the second sentence.\n")
+		//
+		//		formMap := map[string]string{
+		//			"fileLanguageId": strconv.Itoa(int(title.OgLanguageID)),
+		//			"titleName":      title.Title,
+		//			"fromVoiceId":    strconv.Itoa(int(fromVoice.ID)),
+		//			"toVoiceId":      strconv.Itoa(int(toVoice.ID)),
+		//			"pause":          "3",
+		//		}
+		//		return createMultiPartBody(t, data, filename, formMap)
+		//	},
+		//	permissions: []string{db.WriteTitlesCode},
+		//},
+		//{
+		//	name: "Bad Request Body",
+		//	user: user,
+		//	multipartBody: func(t *testing.T) (*bytes.Buffer, *multipart.Writer) {
+		//		data := []byte("This is the first sentence.\nThis is the second sentence.\n")
+		//		formMap := map[string]string{
+		//			"fileLanguageId": strconv.Itoa(int(title.OgLanguageID)),
+		//			"toVoiceId":      strconv.Itoa(int(toVoice.ID)),
+		//			"fromVoiceId":    strconv.Itoa(int(fromVoice.ID)),
+		//		}
+		//		return createMultiPartBody(t, data, filename, formMap)
+		//	},
+		//	buildStubs: func(stubs MockStubs) {
+		//	},
+		//	checkResponse: func(res *http.Response) {
+		//		require.Equal(t, http.StatusBadRequest, res.StatusCode)
+		//		resBody := readBody(t, res)
+		//		require.Contains(t, resBody, "{\"message\":\"request body has an error: doesn't match schema: Error at \\\"/titleName\\\": property \\\"titleName\\\" is missing\"}")
+		//	},
+		//	permissions: []string{db.WriteTitlesCode},
+		//},
+		//{
+		//	name: "File Too Big",
+		//	user: user,
+		//	multipartBody: func(t *testing.T) (*bytes.Buffer, *multipart.Writer) {
+		//		tooBigFile := test.AudioBasePath + "tooBigFile.txt"
+		//		file, err := os.Create(tooBigFile)
+		//		require.NoError(t, err)
+		//		defer file.Close()
+		//		writer := bufio.NewWriter(file)
+		//		for i := 0; i < 64100; i++ {
+		//			// Write random characters to the file
+		//			char := byte('a')
+		//			err = writer.WriteByte(char)
+		//			require.NoError(t, err)
+		//		}
+		//		writer.Flush()
+		//
+		//		multiFile, err := os.Open(tooBigFile)
+		//		body := new(bytes.Buffer)
+		//		multiWriter := multipart.NewWriter(body)
+		//		part, err := multiWriter.CreateFormFile("filePath", tooBigFile)
+		//		require.NoError(t, err)
+		//		_, err = io.Copy(part, multiFile)
+		//		require.NoError(t, err)
+		//		fieldMap := okFormMap
+		//		for field, value := range fieldMap {
+		//			err = multiWriter.WriteField(field, value)
+		//			require.NoError(t, err)
+		//		}
+		//		require.NoError(t, multiWriter.Close())
+		//		return body, multiWriter
+		//	},
+		//	buildStubs: func(stubs MockStubs) {
+		//	},
+		//	checkResponse: func(res *http.Response) {
+		//		require.Equal(t, http.StatusBadRequest, res.StatusCode)
+		//		resBody := readBody(t, res)
+		//		require.Contains(t, resBody, "file too large")
+		//	},
+		//	permissions: []string{db.WriteTitlesCode},
+		//},
+		//{
+		//	name: "Db connection closed",
+		//	user: user,
+		//	multipartBody: func(t *testing.T) (*bytes.Buffer, *multipart.Writer) {
+		//		data := []byte("This is the first sentence.\nThis is the second sentence.\n")
+		//
+		//		formMap := okFormMap
+		//		return createMultiPartBody(t, data, filename, formMap)
+		//	},
+		//	buildStubs: func(stubs MockStubs) {
+		//		stubs.AudioFileX.EXPECT().
+		//			GetLines(gomock.Any(), gomock.Any()).
+		//			Return(stringsSlice, nil)
+		//		stubs.MockQuerier.EXPECT().
+		//			InsertTitle(gomock.Any(), insertTitle).
+		//			Times(1).Return(db.Title{}, sql.ErrConnDone)
+		//	},
+		//	checkResponse: func(res *http.Response) {
+		//		require.Equal(t, http.StatusInternalServerError, res.StatusCode)
+		//		resBody := readBody(t, res)
+		//		require.Contains(t, resBody, "sql: connection is already closed")
+		//	},
+		//	permissions: []string{db.WriteTitlesCode},
+		//},
+		//{
+		//	name: "missing permission",
+		//	user: user,
+		//	multipartBody: func(t *testing.T) (*bytes.Buffer, *multipart.Writer) {
+		//		data := []byte("This is the first sentence.\nThis is the second sentence.\n")
+		//
+		//		formMap := okFormMap
+		//		return createMultiPartBody(t, data, filename, formMap)
+		//	},
+		//	buildStubs: func(stubs MockStubs) {
+		//	},
+		//	checkResponse: func(res *http.Response) {
+		//		require.Equal(t, http.StatusForbidden, res.StatusCode)
+		//		resBody := readBody(t, res)
+		//		require.Contains(t, resBody, "security requirements failed: token claims don't match: provided claims do not match expected scopes")
+		//	},
+		//	permissions: []string{db.ReadTitlesCode},
+		//	cleanUp: func(t *testing.T) {
+		//		err = os.Remove(tmpAudioBasePath)
+		//		require.NoError(t, err)
+		//	},
+		//},
+	}
+
+	for _, tc := range testCases {
+
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			// create a new database from in memory template
+			dbConn, dbName := createTestDb(t, srv)
+			// defer deleting this database until test has completed
+			defer destroyDb(t, dbConn, dbName)
+			// create new *Queries with testdb
+			newQ := db.New(dbConn)
+			// set *Server.Queries to the test connection
+			srv.queries = newQ
+
+			ts, jwsToken := setupIntegrationTest(t, e, srv, tc)
 			multiBody, multiWriter := tc.multipartBody(t)
 			req, err := http.NewRequest(http.MethodPost, ts.URL+audioBasePath+"/fromfile", multiBody)
 			require.NoError(t, err)

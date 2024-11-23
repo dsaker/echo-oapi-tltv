@@ -18,6 +18,7 @@ export TLTV_DB_DSN=<postgres connection string>
 db schema is at db/migrations/languages
 """
 
+
 def insert_languages(lang_list):
     # Connect to PostgreSQL database
     try:

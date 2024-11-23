@@ -1,0 +1,1 @@
+DELETE FROM voices where id > 0;

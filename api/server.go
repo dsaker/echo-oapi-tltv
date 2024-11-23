@@ -1,6 +1,9 @@
 package api
 
 import (
+	texttospeech "cloud.google.com/go/texttospeech/apiv1"
+	"cloud.google.com/go/translate"
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/getkin/kin-openapi/openapi3"
@@ -143,4 +146,25 @@ func initSilence(e *echo.Echo, cfg config.Config) {
 			}
 		}
 	}
+}
+
+// Depends creates a new google translate and text-to-speech clients; constructs
+// the translates and audiofile dependencies and returns them
+func Depends(e *echo.Echo) (*translates.Translate, *audiofile.AudioFile) {
+	// create google translate and text-to-speech clients
+	ctx := context.Background()
+	transClient, err := translate.NewClient(ctx)
+	if err != nil {
+		e.Logger.Fatal("Error creating google api translate client\n: %s", err)
+	}
+	ttsClient, err := texttospeech.NewClient(ctx)
+	if err != nil {
+		e.Logger.Fatal("Error creating google api translate client\n: %s", err)
+	}
+	t := translates.New(transClient, ttsClient)
+
+	//initialize audiofile with the real command runner
+	af := audiofile.New(&audiofile.RealCmdRunner{})
+
+	return t, af
 }

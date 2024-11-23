@@ -35,7 +35,6 @@ func (s *Server) FindTitles(ctx echo.Context, params oapi.FindTitlesParams) erro
 func (s *Server) AddTitle(e echo.Context) error {
 
 	// get lang id and title from multipart form
-	//lang := e.FormValue("languageId")
 	titleName := e.FormValue("titleName")
 	fileLangId, err := util.ConvertStringInt16(e.FormValue("languageId"))
 	if err != nil {

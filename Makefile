@@ -28,10 +28,6 @@ expvar:
 generate:
 	go generate ./...
 
-## sqlc generate: generate code from sqlc specs
-sqlc:
-	sqlc generate -f db/sqlc.yaml
-
 # ==================================================================================== #
 # DEVELOPMENT
 # ==================================================================================== #
@@ -61,7 +57,7 @@ db/migrations/down: confirm
 
 ## db/dump: pg_dump current tltv database
 db/dump: confirm
-	pg_dump --dbname=${TLTV_DB_DSN} -F t >> internal/test/testdata/tltv_db_$(shell date +%s).tar
+	pg_dump --dbname=${TLTV_DB_DSN} -F t >> db/testdata/tltv_db_$(shell date +%s).tar
 
 
 # ==================================================================================== #

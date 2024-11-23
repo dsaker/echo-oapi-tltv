@@ -79,11 +79,17 @@ func (s *Server) AudioFromFile(e echo.Context) error {
 	}
 	zipFile, err := s.createAudioFromTitle(e, *title, audioFromTitleRequest)
 	if err != nil {
-		e.Logger().Error(err)
-		_ = s.queries.DeleteTitleById(e.Request().Context(), title.ID)
+		if errors.Is(err, util.ErrVoiceLangIdNoMatch) {
+			return e.String(http.StatusBadRequest, err.Error())
+		}
+		if errors.Is(err, util.ErrVoiceIdInvalid) {
+			return e.String(http.StatusBadRequest, err.Error())
+		}
+		if errors.Is(err, util.ErrOneFile) {
+			return e.Attachment(zipFile.Name(), title.Title+".mp3")
+		}
 		return e.String(http.StatusInternalServerError, err.Error())
 	}
-
 	return e.Attachment(zipFile.Name(), title.Title+".zip")
 }
 
@@ -116,13 +122,6 @@ func (s *Server) processFile(e echo.Context, titleName string, fileLangId int16)
 	if len(stringsSlice) > s.config.MaxNumPhrases {
 		chunkedPhrases := slices.Chunk(stringsSlice, s.config.MaxNumPhrases)
 		phrasesBasePath := s.config.TTSBasePath + titleName + "/"
-		// remove phrasesBasePath after you have sent zipfile
-		defer func(path string) {
-			err = os.RemoveAll(path)
-			if err != nil {
-				e.Logger().Errorf("error removing path %s: %s", path, err.Error())
-			}
-		}(phrasesBasePath)
 		// create zip of phrases files of maxNumPhrases for user to use instead of uploaded file
 		zipFile, err := s.af.CreatePhrasesZip(e, chunkedPhrases, phrasesBasePath, titleName)
 		if err != nil {
@@ -149,7 +148,7 @@ func (s *Server) processFile(e echo.Context, titleName string, fileLangId int16)
 		return nil, nil, err
 	}
 
-	// insert phrases into MockQuerier as translates object of OgLanguage
+	// insert phrases into db as translates object of OgLanguage
 	_, err = s.translates.InsertNewPhrases(e, title, s.queries, stringsSlice)
 	if err != nil {
 		e.Logger().Error(err)
@@ -159,7 +158,7 @@ func (s *Server) processFile(e echo.Context, titleName string, fileLangId int16)
 	return &title, nil, nil
 }
 
-// AudioFromTitle accepts a title id sends a zip file of mp3 audio track for
+// AudioFromTitle accepts a title id and returns a zip file of mp3 audio tracks for
 // learning a language that you choose
 func (s *Server) AudioFromTitle(e echo.Context) error {
 	var audioFromTitleRequest oapi.AudioFromTitleJSONRequestBody
@@ -193,6 +192,12 @@ func (s *Server) AudioFromTitle(e echo.Context) error {
 		if errors.Is(err, util.ErrVoiceLangIdNoMatch) {
 			return e.String(http.StatusBadRequest, err.Error())
 		}
+		if errors.Is(err, util.ErrVoiceIdInvalid) {
+			return e.String(http.StatusBadRequest, err.Error())
+		}
+		if errors.Is(err, util.ErrOneFile) {
+			return e.Attachment(zipFile.Name(), title.Title+".mp3")
+		}
 		return e.String(http.StatusInternalServerError, err.Error())
 	}
 	return e.Attachment(zipFile.Name(), title.Title+".zip")
@@ -205,12 +210,18 @@ func (s *Server) createAudioFromTitle(e echo.Context, title db.Title, r oapi.Aud
 	fromVoice, err := s.queries.SelectVoiceById(e.Request().Context(), r.FromVoiceId)
 	if err != nil {
 		e.Logger().Error(err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, util.ErrVoiceIdInvalid
+		}
 		return nil, err
 	}
 
 	toVoice, err := s.queries.SelectVoiceById(e.Request().Context(), r.ToVoiceId)
 	if err != nil {
 		e.Logger().Error(err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, util.ErrVoiceIdInvalid
+		}
 		return nil, err
 	}
 
@@ -255,29 +266,16 @@ func (s *Server) createAudioFromTitle(e echo.Context, title db.Title, r oapi.Aud
 	}
 	fullPausePath := s.config.TTSBasePath + pausePath
 
-	tmpDirPath := fmt.Sprintf("%s/%s-%s/", s.config.TTSBasePath, title.Title, test.RandomString(4))
+	tmpDirPath := fmt.Sprintf("%s%s-%s/", s.config.TTSBasePath, title.Title, test.RandomString(4))
 	err = os.MkdirAll(tmpDirPath, 0777)
 	if err != nil {
 		e.Logger().Error(err)
 		return nil, err
 	}
 
-	// remove tmpDirPath when createAudioFromTitle function closes
-	defer func(path string) {
-		err = os.RemoveAll(path)
-		if err != nil {
-			e.Logger().Error(err)
-		}
-	}(tmpDirPath)
-
 	if err = s.af.BuildAudioInputFiles(e, phraseIds, title, fullPausePath, fromAudioBasePath, toAudioBasePath, tmpDirPath); err != nil {
-		e.Logger().Error(err)
 		return nil, err
 	}
 
-	zipFile, err := s.af.CreateMp3Zip(e, title, tmpDirPath)
-	if err != nil {
-		return nil, err
-	}
-	return zipFile, nil
+	return s.af.CreateMp3Zip(e, title, tmpDirPath)
 }
