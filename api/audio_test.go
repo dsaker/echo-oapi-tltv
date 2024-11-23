@@ -6,21 +6,21 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/labstack/echo/v4"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
 	"io"
 	"mime/multipart"
 	"net/http"
 	"os"
 	"strconv"
+	"testing"
+
+	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/test"
-	"testing"
 )
 
 func TestAudioFromTitle(t *testing.T) {
-
 	user, _ := randomUser(t)
 	title := test.RandomTitle()
 	translate1 := randomTranslate(test.RandomPhrase(), title.OgLanguageID)
@@ -85,7 +85,6 @@ func TestAudioFromTitle(t *testing.T) {
 				stubs.AudioFileX.EXPECT().
 					CreateMp3Zip(gomock.Any(), title, gomock.Any()).
 					Return(file, nil)
-
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusOK, res.StatusCode)
@@ -136,7 +135,6 @@ func TestAudioFromTitle(t *testing.T) {
 				stubs.AudioFileX.EXPECT().
 					CreateMp3Zip(gomock.Any(), title, gomock.Any()).
 					Return(file, nil)
-
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusOK, res.StatusCode)
@@ -210,7 +208,6 @@ func TestAudioFromTitle(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
@@ -221,6 +218,7 @@ func TestAudioFromTitle(t *testing.T) {
 			req := jsonRequest(t, data, ts, audioBasePath+"/fromtitle", http.MethodPost, jwsToken)
 			res, err := ts.Client().Do(req)
 			require.NoError(t, err)
+			defer res.Body.Close()
 
 			tc.checkResponse(res)
 			require.NoError(t, err)
@@ -310,7 +308,6 @@ func TestAudioFromFile(t *testing.T) {
 				stubs.AudioFileX.EXPECT().
 					CreateMp3Zip(gomock.Any(), title, gomock.Any()).
 					Return(file, nil)
-
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusOK, res.StatusCode)
@@ -364,7 +361,6 @@ func TestAudioFromFile(t *testing.T) {
 				stubs.AudioFileX.EXPECT().
 					CreateMp3Zip(gomock.Any(), title, gomock.Any()).
 					Return(file, nil)
-
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusOK, res.StatusCode)
@@ -422,6 +418,7 @@ func TestAudioFromFile(t *testing.T) {
 				writer.Flush()
 
 				multiFile, err := os.Open(tooBigFile)
+				require.NoError(t, err)
 				body := new(bytes.Buffer)
 				multiWriter := multipart.NewWriter(body)
 				part, err := multiWriter.CreateFormFile("filePath", tooBigFile)
@@ -490,7 +487,6 @@ func TestAudioFromFile(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
@@ -505,6 +501,7 @@ func TestAudioFromFile(t *testing.T) {
 			req.Header.Set("Content-Type", multiWriter.FormDataContentType())
 			res, err := ts.Client().Do(req)
 			require.NoError(t, err)
+			defer res.Body.Close()
 
 			tc.checkResponse(res)
 			require.NoError(t, err)
@@ -753,7 +750,6 @@ func TestAudioFromFileIntegration(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
@@ -777,6 +773,7 @@ func TestAudioFromFileIntegration(t *testing.T) {
 			req.Header.Set("Content-Type", multiWriter.FormDataContentType())
 			res, err := ts.Client().Do(req)
 			require.NoError(t, err)
+			defer res.Body.Close()
 
 			tc.checkResponse(res)
 			require.NoError(t, err)

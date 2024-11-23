@@ -1,15 +1,15 @@
 package api
 
 import (
-	"github.com/labstack/echo/v4"
 	"net/http"
+
+	"github.com/labstack/echo/v4"
 	"talkliketv.click/tltv/internal/oapi"
 )
 
 // GetVoices returns a list of all the available voices for the
 // text-to-speech functions
 func (s *Server) GetVoices(e echo.Context, params oapi.GetVoicesParams) error {
-
 	if params.LanguageId == nil {
 		voices, err := s.queries.ListVoices(e.Request().Context())
 		if err != nil {

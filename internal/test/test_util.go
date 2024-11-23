@@ -2,7 +2,6 @@ package test
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/require"
 	"math"
 	"math/rand"
 	"path/filepath"
@@ -10,9 +9,11 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"testing"
+
+	"github.com/stretchr/testify/require"
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/oapi"
-	"testing"
 )
 
 var (
@@ -25,7 +26,6 @@ func GetProjectRoot() string {
 }
 
 func RequireMatchAnyExcept(t *testing.T, model any, response any, skip []string, except string, shouldEqual any) {
-
 	v := reflect.ValueOf(response)
 	u := reflect.ValueOf(model)
 
@@ -61,17 +61,17 @@ const (
 
 // RandomInt64 generates a random integer between min and max
 func RandomInt64() int64 {
-	return rand.Int63n(math.MaxInt64 - 1)
+	return rand.Int63n(math.MaxInt64 - 1) //nolint:gosec
 }
 
 // RandomInt32 generates a random integer between min and max
 func RandomInt32() int32 {
-	return rand.Int31n(math.MaxInt32 - 1)
+	return rand.Int31n(math.MaxInt32 - 1) //nolint:gosec
 }
 
 // RandomInt16 generates a random integer between min and max
 func RandomInt16() int16 {
-	return int16(rand.Int())
+	return int16(rand.Int()) //nolint:gosec
 }
 
 // RandomString generates a random string of length n
@@ -80,7 +80,7 @@ func RandomString(n int) string {
 	k := len(alphabet)
 
 	for i := 0; i < n; i++ {
-		c := alphabet[rand.Intn(k)]
+		c := alphabet[rand.Intn(k)] //nolint:gosec
 		sb.WriteByte(c)
 	}
 
@@ -112,7 +112,6 @@ func RandomVoice() (voice db.Voice) {
 }
 
 func RandomTitle() (title db.Title) {
-
 	return db.Title{
 		ID:           RandomInt64(),
 		Title:        RandomString(8),

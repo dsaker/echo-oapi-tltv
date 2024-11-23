@@ -4,12 +4,13 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/labstack/echo/v4"
 	"net/http"
 	"os"
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/labstack/echo/v4"
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/audio/audiofile"
 	"talkliketv.click/tltv/internal/oapi"
@@ -206,7 +207,6 @@ func (s *Server) AudioFromTitle(e echo.Context) error {
 // createAudioFromTitle is a helper function that performs the tasks shared by
 // AudioFromFile and AudioFromTitle
 func (s *Server) createAudioFromTitle(e echo.Context, title db.Title, r oapi.AudioFromTitleJSONRequestBody) (*os.File, error) {
-
 	fromVoice, err := s.queries.SelectVoiceById(e.Request().Context(), r.FromVoiceId)
 	if err != nil {
 		e.Logger().Error(err)

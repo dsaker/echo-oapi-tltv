@@ -31,18 +31,6 @@ docker run -d -P -p 127.0.0.1:5433:5432 -e POSTGRES_PASSWORD="password" --name t
 echo "export TLTV_DB_DSN=postgresql://postgres:password@localhost:5433/postgres?sslmode=disable" >> .envrc
 make db/migrations/up
 ```
-- [Create an api key](https://cloud.google.com/docs/authentication/api-keys) to load the voices in the database
-```
-cd scripts/python
-pip install virtualenv
-python3 -m venv <myenvname>
-source env/bin/activate
-pip install -r requirements.txt
-export API_KEY=<your api key>
-export TLTV_DB_DSN=postgresql://postgres:password@localhost:5433/postgres?sslmode=disable
-python supported_languages.py
-python voices_api.py
-```
 - start the application
 ```
 cd ../..
@@ -61,3 +49,24 @@ insert into users_permissions values (<id from above>,2); # this adds titles:w p
 - click on Authorize and add decoded value
 - click on POST /audio/fromfile and click on "Try it out"
 - *on Linux you will have to change srt file ending to txt
+
+### To update voices or languages when google makes changes
+- [Create an api key](https://cloud.google.com/docs/authentication/api-keys) to load the voices in the database
+```
+cd scripts/python
+pip install virtualenv
+python3 -m venv <myenvname>
+source env/bin/activate
+pip install -r requirements.txt
+export API_KEY=<your api key>
+export TLTV_DB_DSN=postgresql://postgres:password@localhost:5433/postgres?sslmode=disable
+python create_sql.py
+```
+- create new migration files
+```
+make db/migrations/new name=<insert new voices or languages>
+```
+- add the insert statements from the output above to the new db/migrations files
+```
+make db/migrations/up
+```

@@ -1,24 +1,25 @@
 package translates
 
 import (
-	"cloud.google.com/go/texttospeech/apiv1/texttospeechpb"
-	"cloud.google.com/go/translate"
 	"database/sql"
-	"github.com/labstack/echo/v4"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
-	"golang.org/x/text/language"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"strconv"
+	"testing"
+
+	"cloud.google.com/go/texttospeech/apiv1/texttospeechpb"
+	"cloud.google.com/go/translate"
+	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+	"golang.org/x/text/language"
 	db "talkliketv.click/tltv/db/sqlc"
 	mockdb "talkliketv.click/tltv/internal/mock/db"
 	mockt "talkliketv.click/tltv/internal/mock/translates"
 	"talkliketv.click/tltv/internal/test"
 	"talkliketv.click/tltv/internal/util"
-	"testing"
 )
 
 type translatesTestCase struct {
@@ -86,7 +87,6 @@ func TestInsertNewPhrases(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
@@ -166,7 +166,6 @@ func TestInsertTranslates(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
@@ -244,7 +243,6 @@ func TestTextToSpeech(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
@@ -302,7 +300,6 @@ func TestTranslatePhrases(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()

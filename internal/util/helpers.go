@@ -2,9 +2,10 @@ package util
 
 import (
 	"fmt"
-	"golang.org/x/crypto/bcrypt"
 	"os"
 	"strconv"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 // TranslatesReturn avoiding cycle between mock/translates and translates/translates

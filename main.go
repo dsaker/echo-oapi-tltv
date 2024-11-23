@@ -5,17 +5,17 @@ package main
 import (
 	"database/sql"
 	"flag"
-	"github.com/labstack/echo/v4"
 	"net"
 	"os/exec"
 	"strings"
+
+	"github.com/labstack/echo/v4"
 	"talkliketv.click/tltv/api"
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/config"
 )
 
 func main() {
-
 	e := echo.New()
 	var cfg config.Config
 	err := config.SetConfigs(&cfg)

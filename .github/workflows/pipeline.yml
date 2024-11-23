@@ -1,0 +1,63 @@
+name: CI Checks
+
+env:
+  go_version: '1.23.0'
+  
+on:
+  push:
+    branches:
+      - '**'
+jobs:
+  audit:
+    name: Audit
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-go@v5
+      with:
+        go-version: ${{env.go_version}}
+    - name: Run Audit
+      run: make audit/pipeline
+    - name: Coverage Check
+      run: make coverage
+    - name: Copy Files
+      run: |
+        mkdir  reports
+        cp cover.html reports/.
+    - name: Archive Reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: reports
+        path: reports
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{env.go_version}}
+      - name: Run make ci-lint
+        run: make ci-lint
+  build:
+    name: Build App
+    runs-on: ubuntu-latest
+    needs:
+      - audit
+      - lint
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-go@v5
+      with:
+        go-version: ${{env.go_version}}
+    - name: Build
+      run: make build
+    - name: Copy Files
+      run: |
+           mkdir  artifacts
+           cp bin/linux_amd64/web artifacts/.
+    - name: Archive
+      uses: actions/upload-artifact@v4
+      with:
+          name: tltv
+          path: artifacts

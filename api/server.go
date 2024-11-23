@@ -1,21 +1,21 @@
 package api
 
 import (
-	texttospeech "cloud.google.com/go/texttospeech/apiv1"
-	"cloud.google.com/go/translate"
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
+	"os"
+	"sync"
+
+	texttospeech "cloud.google.com/go/texttospeech/apiv1"
+	"cloud.google.com/go/translate"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
 	ui "github.com/go-openapi/runtime/middleware"
 	"github.com/labstack/echo/v4"
 	v4mw "github.com/labstack/echo/v4/middleware"
 	mw "github.com/oapi-codegen/echo-middleware"
-	"log"
-	"os"
-	"strconv"
-	"sync"
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/audio"
 	"talkliketv.click/tltv/internal/audio/audiofile"
@@ -37,7 +37,6 @@ type Server struct {
 
 // NewServer creates a new HTTP server and sets up routing.
 func NewServer(e *echo.Echo, cfg config.Config, q db.Querier, t translates.TranslateX, af audiofile.AudioFileX) *Server {
-
 	spec, err := oapi.GetSwagger()
 	if err != nil {
 		log.Fatalln("loading spec: %w", err)
@@ -122,8 +121,11 @@ func initSilence(e *echo.Echo, cfg config.Config) {
 	// if it doesn't exist copy it from embedded FS to TTSBasePath
 	if !exists {
 		err = os.MkdirAll(cfg.TTSBasePath+"silence/", 0777)
+		if err != nil {
+			e.Logger.Fatal(err)
+		}
 		for key, value := range audiofile.AudioPauseFilePath {
-			fmt.Printf(strconv.Itoa(key))
+			fmt.Printf("%d", key)
 			pause, err := audio.Silence.ReadFile(value)
 			if err != nil {
 				e.Logger.Fatal(err)

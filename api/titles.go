@@ -4,9 +4,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/labstack/echo/v4"
 	"net/http"
 	"strings"
+
+	"github.com/labstack/echo/v4"
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/oapi"
 	"talkliketv.click/tltv/internal/util"
@@ -14,7 +15,6 @@ import (
 
 // FindTitles returns the number of titles set by the Limit and Similarity params
 func (s *Server) FindTitles(ctx echo.Context, params oapi.FindTitlesParams) error {
-
 	titles, err := s.queries.ListTitles(
 		ctx.Request().Context(),
 		db.ListTitlesParams{
@@ -33,7 +33,6 @@ func (s *Server) FindTitles(ctx echo.Context, params oapi.FindTitlesParams) erro
 // AddTitle takes your uploaded file, filename, and title and adds it to the database,
 // along with adding the phrases in the original language to the translates table
 func (s *Server) AddTitle(e echo.Context) error {
-
 	// get lang id and title from multipart form
 	titleName := e.FormValue("titleName")
 	fileLangId, err := util.ConvertStringInt16(e.FormValue("languageId"))
@@ -56,7 +55,6 @@ func (s *Server) AddTitle(e echo.Context) error {
 }
 
 func (s *Server) FindTitleByID(e echo.Context, id int64) error {
-
 	title, err := s.queries.SelectTitleById(e.Request().Context(), id)
 	if err != nil {
 		e.Logger().Error(err)
@@ -67,7 +65,6 @@ func (s *Server) FindTitleByID(e echo.Context, id int64) error {
 }
 
 func (s *Server) DeleteTitle(e echo.Context, id int64) error {
-
 	err := s.queries.DeleteTitleById(e.Request().Context(), id)
 	if err != nil {
 		return e.String(http.StatusBadRequest, err.Error())
@@ -78,7 +75,6 @@ func (s *Server) DeleteTitle(e echo.Context, id int64) error {
 // TitlesTranslate translates the phrases of a title from the original language
 // of the title to any available language by id and stores them in the translates table
 func (s *Server) TitlesTranslate(e echo.Context) error {
-
 	var newTranslateTitle oapi.TitlesTranslateRequest
 	err := e.Bind(&newTranslateTitle)
 	if err != nil {
@@ -92,6 +88,9 @@ func (s *Server) TitlesTranslate(e echo.Context) error {
 			LanguageID: newTranslateTitle.NewLanguageId,
 			ID:         newTranslateTitle.TitleId,
 		})
+	if err != nil {
+		return e.String(http.StatusInternalServerError, err.Error())
+	}
 	if exists {
 		return e.String(http.StatusBadRequest, "title already exists in that language")
 	}

@@ -1,15 +1,15 @@
 package api
 
 import (
-	"github.com/labstack/echo/v4"
 	"net/http"
+
+	"github.com/labstack/echo/v4"
 	"talkliketv.click/tltv/internal/oapi"
 )
 
 // GetLanguages returns a list of all the available languages for the
 // translate functions
 func (s *Server) GetLanguages(e echo.Context, params oapi.GetLanguagesParams) error {
-
 	similarity := ""
 	if params.Similarity != nil {
 		similarity = *params.Similarity

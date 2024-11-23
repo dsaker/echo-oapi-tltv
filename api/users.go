@@ -5,16 +5,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"time"
+
 	jsonpatch "github.com/evanphx/json-patch/v5"
 	"github.com/labstack/echo/v4"
 	"golang.org/x/crypto/bcrypt"
-	"io"
-	"net/http"
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/oapi"
 	"talkliketv.click/tltv/internal/token"
 	"talkliketv.click/tltv/internal/util"
-	"time"
 )
 
 type userResponse struct {
@@ -116,7 +117,6 @@ func (s *Server) FindUserByID(e echo.Context, id int64) error {
 
 // UpdateUser accepts a Patch request to update the user values
 func (s *Server) UpdateUser(e echo.Context, id int64) error {
-
 	err := token.CheckJWTUserIDFromRequest(e, id)
 	if err != nil {
 		return e.String(http.StatusForbidden, "Invalid user ID")
@@ -191,7 +191,6 @@ func (s *Server) UpdateUser(e echo.Context, id int64) error {
 }
 
 func (s *Server) LoginUser(e echo.Context) error {
-
 	// We expect a NewUser object in the request body.
 	var userLogin oapi.UserLogin
 	err := e.Bind(&userLogin)

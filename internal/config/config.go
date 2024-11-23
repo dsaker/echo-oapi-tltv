@@ -7,12 +7,13 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/gomiddleware/realip"
-	_ "github.com/lib/pq"
-	"golang.org/x/time/rate"
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/gomiddleware/realip"
+	_ "github.com/lib/pq"
+	"golang.org/x/time/rate"
 )
 
 // Config Update the config struct to hold the SMTP server settings.
@@ -40,7 +41,6 @@ type Config struct {
 }
 
 func SetConfigs(config *Config) error {
-
 	// get port and debug from commandline flags... if not present use defaults
 	flag.StringVar(&config.Port, "port", "8080", "API server port")
 
@@ -70,7 +70,6 @@ func SetConfigs(config *Config) error {
 	}
 
 	return nil
-
 }
 
 func isValidPause(port int) bool {

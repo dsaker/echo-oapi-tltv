@@ -4,13 +4,14 @@ import (
 	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
+	"time"
+
 	"github.com/lestrrat-go/jwx/jwa"
 	"github.com/lestrrat-go/jwx/jwk"
 	"github.com/lestrrat-go/jwx/jws"
 	"github.com/lestrrat-go/jwx/jwt"
 	"github.com/oapi-codegen/oapi-codegen/v2/pkg/ecdsafile"
 	db "talkliketv.click/tltv/db/sqlc"
-	"time"
 )
 
 // PrivateKey is an ECDSA private key which was generated with the following
