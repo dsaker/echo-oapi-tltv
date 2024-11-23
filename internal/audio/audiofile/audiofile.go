@@ -525,6 +525,7 @@ func (a *AudioFile) CreatePhrasesZip(e echo.Context, chunkedPhrases iter.Seq[[]s
 // filename which is the name that you want the zipped files to have as their base name
 // and outDirPath which is where the zip file will be stored and zips up the files
 func createZipFile(e echo.Context, tmpDir, filename, outDirPath string) (*os.File, error) {
+	// TODO add txt file of the phrases
 	zipFile, err := os.Create(tmpDir + "/" + filename + ".zip")
 	if err != nil {
 		e.Logger().Error(err)
@@ -542,16 +543,6 @@ func createZipFile(e echo.Context, tmpDir, filename, outDirPath string) (*os.Fil
 		return nil, err
 	}
 
-	// if there is only one output file then send it back as mp3
-	// you can not zip up one file
-	if len(files) == 1 {
-		file, err := os.Open(outDirPath + "/" + files[0].Name())
-		if err != nil {
-			e.Logger().Error(err)
-			return nil, err
-		}
-		return file, util.ErrOneFile
-	}
 	for _, file := range files {
 		if !strings.HasSuffix(file.Name(), ".zip") {
 			err = addFileToZip(e, zipWriter, outDirPath+"/"+file.Name())

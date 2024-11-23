@@ -122,13 +122,6 @@ func (s *Server) processFile(e echo.Context, titleName string, fileLangId int16)
 	if len(stringsSlice) > s.config.MaxNumPhrases {
 		chunkedPhrases := slices.Chunk(stringsSlice, s.config.MaxNumPhrases)
 		phrasesBasePath := s.config.TTSBasePath + titleName + "/"
-		// remove phrasesBasePath after you have sent zipfile
-		defer func(path string) {
-			err = os.RemoveAll(path)
-			if err != nil {
-				e.Logger().Errorf("error removing path %s: %s", path, err.Error())
-			}
-		}(phrasesBasePath)
 		// create zip of phrases files of maxNumPhrases for user to use instead of uploaded file
 		zipFile, err := s.af.CreatePhrasesZip(e, chunkedPhrases, phrasesBasePath, titleName)
 		if err != nil {
@@ -155,7 +148,7 @@ func (s *Server) processFile(e echo.Context, titleName string, fileLangId int16)
 		return nil, nil, err
 	}
 
-	// insert phrases into MockQuerier as translates object of OgLanguage
+	// insert phrases into db as translates object of OgLanguage
 	_, err = s.translates.InsertNewPhrases(e, title, s.queries, stringsSlice)
 	if err != nil {
 		e.Logger().Error(err)
@@ -165,7 +158,7 @@ func (s *Server) processFile(e echo.Context, titleName string, fileLangId int16)
 	return &title, nil, nil
 }
 
-// AudioFromTitle accepts a title id sends a zip file of mp3 audio track for
+// AudioFromTitle accepts a title id and returns a zip file of mp3 audio tracks for
 // learning a language that you choose
 func (s *Server) AudioFromTitle(e echo.Context) error {
 	var audioFromTitleRequest oapi.AudioFromTitleJSONRequestBody
