@@ -72,7 +72,7 @@ func SetConfigs(config *Config) error {
 	// PrivateKey is an ECDSA private key which was generated with the following
 	// command:
 	//	openssl ecparam -name prime256v1 -genkey -noout -out ecprivatekey.pem
-	flag.StringVar(&config.PrivateKeyPath, "private-key-path", "/Users/dustysaker/go/src/github.com/dsaker/echo-oapi-tltv/internal/token/ecprivatekey.pem", "EcdsaPrivateKey for jws authenticator")
+	flag.StringVar(&config.PrivateKeyPath, "private-key-path", "./ecprivatekey.pem", "EcdsaPrivateKey for jws authenticator")
 
 	return nil
 }

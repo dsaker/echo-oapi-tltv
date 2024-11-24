@@ -103,3 +103,27 @@ install-golang-ci:
 
 ci-lint: install-golang-ci
 	golangci-lint run
+
+install-govulncheck:
+	go install golang.org/x/vuln/cmd/govulncheck@latest
+
+vuln: install-govulncheck
+	govulncheck ./*.go
+
+key:
+	openssl ecparam -name prime256v1 -genkey -noout -out ./ecprivatekey.pem
+
+# ==================================================================================== #
+# BUILD
+# ==================================================================================== #
+
+current_time = $(shell date +"%Y-%m-%dT%H:%M:%S%Z")
+git_description = $(shell git describe --always --dirty --tags --long)
+linker_flags = '-s -X main.buildTime=${current_time} -X main.version=${git_description}'
+
+## build: build the cmd/api application
+build:
+	@echo 'Building api...'
+	rm ./ecprivatekey.pem
+	go build -ldflags=${linker_flags} -o=./bin/api ./api
+	GOOS=linux GOARCH=amd64 go build -ldflags=${linker_flags} -o=./bin/linux_amd64/api ./api

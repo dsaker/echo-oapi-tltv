@@ -1,7 +1,7 @@
 name: CI Checks
 
 env:
-  go_version: '1.23.0'
+  go_version: '1.23.3'
   
 on:
   push:
@@ -16,8 +16,12 @@ jobs:
     - uses: actions/setup-go@v5
       with:
         go-version: ${{env.go_version}}
+    - name: Make Key
+      run: make key
     - name: Run Audit
       run: make audit/pipeline
+    - name: Check Vulnerabilities
+      run: make vuln
     - name: Coverage Check
       run: make coverage
     - name: Copy Files

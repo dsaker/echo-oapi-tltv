@@ -1,6 +1,6 @@
 module talkliketv.click/tltv
 
-go 1.23.0
+go 1.23.3
 
 require (
 	cloud.google.com/go/texttospeech v1.8.1
