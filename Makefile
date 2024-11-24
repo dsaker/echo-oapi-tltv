@@ -76,8 +76,7 @@ audit:
 ## audit/pipeline: tidy dependencies and format, vet and test all code (race on)
 audit/pipeline:
 	make audit
-	go test -race -vet=off ./... -coverprofile=coverage.out -private-key-path=/home/runner/work/echo-oapi-tltv/echo-oapi-tltv/ecprivatekey.pem
-
+	go test -race -vet=off ./... -coverprofile=coverage.out
 ## audit/local: tidy dependencies and format, vet and test all code (race off)
 audit/local:
 	make audit
