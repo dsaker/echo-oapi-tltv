@@ -59,7 +59,7 @@ jobs:
     - name: Copy Files
       run: |
            mkdir  artifacts
-           cp bin/linux_amd64/web artifacts/.
+           cp bin/linux_amd64/api artifacts/.
     - name: Archive
       uses: actions/upload-artifact@v4
       with:
