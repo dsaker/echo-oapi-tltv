@@ -76,6 +76,7 @@ audit:
 ## audit/pipeline: tidy dependencies and format, vet and test all code (race on)
 audit/pipeline:
 	make audit
+	openssl ecparam -name prime256v1 -genkey -noout -out ecprivatekey.pem
 	go test -race -vet=off ./... -coverprofile=coverage.out
 
 ## audit/local: tidy dependencies and format, vet and test all code (race off)
@@ -111,7 +112,7 @@ vuln: install-govulncheck
 	govulncheck ./*.go
 
 key:
-	openssl ecparam -name prime256v1 -genkey -noout -out ./ecprivatekey.pem
+	openssl ecparam -name prime256v1 -genkey -noout -out ecprivatekey.pem
 
 # ==================================================================================== #
 # BUILD
