@@ -4,28 +4,15 @@ import (
 	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
+	"time"
+
 	"github.com/lestrrat-go/jwx/jwa"
 	"github.com/lestrrat-go/jwx/jwk"
 	"github.com/lestrrat-go/jwx/jws"
 	"github.com/lestrrat-go/jwx/jwt"
 	"github.com/oapi-codegen/oapi-codegen/v2/pkg/ecdsafile"
 	db "talkliketv.click/tltv/db/sqlc"
-	"time"
 )
-
-// PrivateKey is an ECDSA private key which was generated with the following
-// command:
-//
-//	openssl ecparam -name prime256v1 -genkey -noout -out ecprivatekey.pem
-//
-// We are using a hard coded key here in this example, but in real applications,
-// you would never do this. Your JWT signing key must never be in your application,
-// only the public key.
-const PrivateKey = `-----BEGIN EC PRIVATE KEY-----
-MHcCAQEEIN2dALnjdcZaIZg4QuA6Dw+kxiSW502kJfmBN3priIhPoAoGCCqGSM49
-AwEHoUQDQgAE4pPyvrB9ghqkT1Llk0A42lixkugFd/TBdOp6wf69O9Nndnp4+HcR
-s9SlG/8hjB2Hz42v4p3haKWv3uS1C6ahCQ==
------END EC PRIVATE KEY-----`
 
 const (
 	KeyID            = "fake-key-id"
@@ -49,8 +36,8 @@ var _ JWSValidator = (*FakeAuthenticator)(nil)
 
 // NewFakeAuthenticator creates an authenticator example which uses a hard coded
 // ECDSA key to validate JWT's that it has signed itself.
-func NewFakeAuthenticator(d *time.Duration) (*FakeAuthenticator, error) {
-	privKey, err := ecdsafile.LoadEcdsaPrivateKey([]byte(PrivateKey))
+func NewFakeAuthenticator(d *time.Duration, k []byte) (*FakeAuthenticator, error) {
+	privKey, err := ecdsafile.LoadEcdsaPrivateKey(k)
 	if err != nil {
 		return nil, fmt.Errorf("loading PEM private key: %w", err)
 	}

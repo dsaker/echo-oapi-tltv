@@ -1,24 +1,25 @@
 package translates
 
 import (
-	"cloud.google.com/go/texttospeech/apiv1/texttospeechpb"
-	"cloud.google.com/go/translate"
 	"database/sql"
-	"github.com/labstack/echo/v4"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
-	"golang.org/x/text/language"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"strconv"
+	"testing"
+
+	"cloud.google.com/go/texttospeech/apiv1/texttospeechpb"
+	"cloud.google.com/go/translate"
+	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+	"golang.org/x/text/language"
 	db "talkliketv.click/tltv/db/sqlc"
 	mockdb "talkliketv.click/tltv/internal/mock/db"
 	mockt "talkliketv.click/tltv/internal/mock/translates"
 	"talkliketv.click/tltv/internal/test"
 	"talkliketv.click/tltv/internal/util"
-	"testing"
 )
 
 type translatesTestCase struct {
@@ -86,7 +87,6 @@ func TestInsertNewPhrases(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
@@ -113,7 +113,7 @@ func TestInsertNewPhrases(t *testing.T) {
 func TestInsertTranslates(t *testing.T) {
 	title := test.RandomTitle()
 	title.OgLanguageID = 27
-	newLanguageId := 109
+	var newLanguageId int16 = 109
 	randomPhrase1 := test.RandomPhrase()
 	text1 := "This is sentence one."
 	hintString1 := makeHintString(text1)
@@ -166,7 +166,6 @@ func TestInsertTranslates(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
@@ -183,7 +182,8 @@ func TestInsertTranslates(t *testing.T) {
 			c := e.NewContext(req, rec)
 
 			translate2 := Translate{}
-			dbTranslates, err := translate2.InsertTranslates(c, store, int16(newLanguageId), []util.TranslatesReturn{translatesReturn})
+
+			dbTranslates, err := translate2.InsertTranslates(c, store, newLanguageId, []util.TranslatesReturn{translatesReturn})
 			tc.checkTranslate(dbTranslates, err)
 		})
 	}
@@ -244,7 +244,6 @@ func TestTextToSpeech(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
@@ -302,7 +301,6 @@ func TestTranslatePhrases(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()

@@ -6,6 +6,17 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
+	"io"
+	"log"
+	"mime/multipart"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"strconv"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/docker/go-connections/nat"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -15,14 +26,6 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"go.uber.org/mock/gomock"
-	"io"
-	"log"
-	"mime/multipart"
-	"net/http"
-	"net/http/httptest"
-	"os"
-	"strconv"
-	"strings"
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/config"
 	mocka "talkliketv.click/tltv/internal/mock/audiofile"
@@ -32,8 +35,6 @@ import (
 	"talkliketv.click/tltv/internal/test"
 	"talkliketv.click/tltv/internal/token"
 	"talkliketv.click/tltv/internal/util"
-	"testing"
-	"time"
 )
 
 var (
@@ -158,7 +159,6 @@ func randomUser(t *testing.T) (user db.User, password string) {
 
 // randomTranslate create a random db Translate for testing
 func randomTranslate(phrase oapi.Phrase, languageId int16) db.Translate {
-
 	return db.Translate{
 		PhraseID:   phrase.Id,
 		LanguageID: languageId,
@@ -202,7 +202,6 @@ func setupHandlerTest(t *testing.T, ctrl *gomock.Controller, tc testCase, urlBas
 
 // setupServerTest sets up testCase that will include the middleware not included in handler tests
 func setupServerTest(t *testing.T, ctrl *gomock.Controller, tc testCase) (*httptest.Server, string) {
-
 	stubs := NewMockStubs(ctrl)
 	tc.buildStubs(stubs)
 
@@ -219,7 +218,6 @@ func setupServerTest(t *testing.T, ctrl *gomock.Controller, tc testCase) (*httpt
 
 // setupIntegrationTest
 func setupIntegrationTest(t *testing.T, e *echo.Echo, s *Server, tc testCase) (*httptest.Server, string) {
-
 	ts := httptest.NewServer(e)
 
 	jwsToken, err := s.fa.CreateJWSWithClaims(tc.permissions, tc.user)
@@ -244,7 +242,6 @@ func handlerRequest(json string, urlPath, method, authToken string) *http.Reques
 // jsonRequest creates a new request which has json as the body and sets the Header content type to
 // application/json
 func jsonRequest(t *testing.T, json []byte, ts *httptest.Server, urlPath, method, authToken string) *http.Request {
-
 	req, err := http.NewRequest(method, ts.URL+urlPath, bytes.NewBuffer(json))
 	require.NoError(t, err)
 
@@ -261,8 +258,10 @@ func jsonRequest(t *testing.T, json []byte, ts *httptest.Server, urlPath, method
 // data is the data you want to write to the file.
 // m is the map[string][string] of the fields, values you want to write to the multipart body
 func createMultiPartBody(t *testing.T, data []byte, filename string, m map[string]string) (*bytes.Buffer, *multipart.Writer) {
-	err := os.WriteFile(filename, data, 0777)
+	err := os.WriteFile(filename, data, 0600)
+	require.NoError(t, err)
 	file, err := os.Open(filename)
+	require.NoError(t, err)
 	fmt.Println(file.Name())
 	body := new(bytes.Buffer)
 	writer := multipart.NewWriter(body)
@@ -279,7 +278,6 @@ func createMultiPartBody(t *testing.T, data []byte, filename string, m map[strin
 }
 
 func setupTemplateDb() (testcontainers.Container, *sql.DB) {
-
 	// setup db container
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
@@ -320,7 +318,6 @@ func setupTemplateDb() (testcontainers.Container, *sql.DB) {
 }
 
 func createDbContainer() (testcontainers.Container, *sql.DB) {
-
 	var env = map[string]string{
 		"POSTGRES_PASSWORD": dbPass,
 		"POSTGRES_USER":     dbUser,
@@ -366,7 +363,6 @@ func createTestDb(t *testing.T, m *Server) (*sql.DB, string) {
 	query := "create database testdb template templatedb"
 	// increase count so each test db has a different name
 	count++
-	// TODO add lock
 	// lock so you don't have multiple connections to template db
 	m.Lock()
 	defer m.Unlock()

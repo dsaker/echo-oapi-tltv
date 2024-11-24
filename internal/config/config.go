@@ -7,12 +7,13 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/gomiddleware/realip"
-	_ "github.com/lib/pq"
-	"golang.org/x/time/rate"
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/gomiddleware/realip"
+	_ "github.com/lib/pq"
+	"golang.org/x/time/rate"
 )
 
 // Config Update the config struct to hold the SMTP server settings.
@@ -25,6 +26,7 @@ type Config struct {
 	AudioPattern    int
 	MaxNumPhrases   int
 	TTSBasePath     string
+	PrivateKeyPath  string
 	FileUploadLimit int64
 	Db              struct {
 		Dsn          string
@@ -40,7 +42,6 @@ type Config struct {
 }
 
 func SetConfigs(config *Config) error {
-
 	// get port and debug from commandline flags... if not present use defaults
 	flag.StringVar(&config.Port, "port", "8080", "API server port")
 
@@ -63,14 +64,17 @@ func SetConfigs(config *Config) error {
 	flag.Int64Var(&config.FileUploadLimit, "upload-size-limit", 8*8000, "File upload size limit in KB (default is 8)")
 	flag.IntVar(&config.PhrasePause, "phrase-pause", 4, "Pause in seconds between phrases (must be between 3 and 10)'")
 	flag.IntVar(&config.MaxNumPhrases, "maximum-number-phrases", 50, "Maximum number of phrases to be turned into audio files")
-	flag.IntVar(&config.AudioPattern, "audio-pattern", 1, "Audio pattern to be used in constructing mp3's {1: standard, 2: advanced, 3: review}")
+	flag.IntVar(&config.AudioPattern, "audio-pattern", 2, "Audio pattern to be used in constructing mp3's {1: standard, 2: advanced, 3: review}")
 
 	if !isValidPause(config.PhrasePause) {
 		return errors.New("invalid pause value (must be between 3 and 10)")
 	}
+	// PrivateKey is an ECDSA private key which was generated with the following
+	// command:
+	//	openssl ecparam -name prime256v1 -genkey -noout -out ecprivatekey.pem
+	flag.StringVar(&config.PrivateKeyPath, "private-key-path", "../ecprivatekey.pem", "EcdsaPrivateKey for jws authenticator")
 
 	return nil
-
 }
 
 func isValidPause(port int) bool {

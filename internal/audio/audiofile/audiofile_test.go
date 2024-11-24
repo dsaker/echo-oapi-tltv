@@ -3,19 +3,20 @@ package audiofile
 import (
 	"archive/zip"
 	"fmt"
-	"github.com/labstack/echo/v4"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"slices"
+	"testing"
+
+	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 	db "talkliketv.click/tltv/db/sqlc"
 	mocka "talkliketv.click/tltv/internal/mock/audiofile"
 	"talkliketv.click/tltv/internal/test"
 	"talkliketv.click/tltv/internal/util"
-	"testing"
 )
 
 type audioFileTestCase struct {
@@ -30,7 +31,6 @@ type audioFileTestCase struct {
 }
 
 func TestGetLines(t *testing.T) {
-
 	testCases := []audioFileTestCase{
 		{
 			name: "No error",
@@ -125,7 +125,6 @@ func TestGetLines(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
@@ -166,7 +165,6 @@ func TestBuildAudioInputFiles(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
@@ -196,7 +194,6 @@ func TestBuildAudioInputFiles(t *testing.T) {
 }
 
 func TestCreateMp3Zip(t *testing.T) {
-
 	testCases := []audioFileTestCase{
 		{
 			name: "No error",
@@ -240,7 +237,6 @@ func TestCreateMp3Zip(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			cmdX := mocka.NewMockcmdRunnerX(ctrl)
@@ -261,7 +257,6 @@ func TestCreateMp3Zip(t *testing.T) {
 }
 
 func TestCreatePhrasesZip(t *testing.T) {
-
 	stringsSlice := []string{
 		"Absolutely! Here's a zany paragraph packed with punctuation:",
 		"Wow! Did you see that?! A purple penguin — yes, a purple penguin! —",
@@ -293,7 +288,7 @@ func TestCreatePhrasesZip(t *testing.T) {
 				reader, err := zip.OpenReader(zipFilePath)
 				require.NoError(t, err)
 				count := 0
-				for _, _ = range reader.File {
+				for range reader.File {
 					count++
 				}
 				require.Equal(t, 3, count)
@@ -320,7 +315,7 @@ func TestCreatePhrasesZip(t *testing.T) {
 				reader, err := zip.OpenReader(zipFilePath)
 				require.NoError(t, err)
 				count := 0
-				for _, _ = range reader.File {
+				for range reader.File {
 					count++
 				}
 				require.Equal(t, 5, count)
@@ -363,7 +358,6 @@ func TestCreatePhrasesZip(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			cmdX := mocka.NewMockcmdRunnerX(ctrl)
@@ -390,7 +384,6 @@ func TestCreatePhrasesZip(t *testing.T) {
 }
 
 func TestSplitBigPhrases(t *testing.T) {
-
 	type testCase struct {
 		line string
 		want []string

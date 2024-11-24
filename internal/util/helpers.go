@@ -2,9 +2,11 @@ package util
 
 import (
 	"fmt"
-	"golang.org/x/crypto/bcrypt"
+	"math"
 	"os"
 	"strconv"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 // TranslatesReturn avoiding cycle between mock/translates and translates/translates
@@ -45,4 +47,11 @@ func ConvertStringInt16(s string) (int16, error) {
 		return -1, err
 	}
 	return int16(i), nil
+}
+
+func SafeCastToInt16(value int) (int16, error) {
+	if value < math.MinInt16 || value > math.MaxInt16 {
+		return 0, fmt.Errorf("value %d is out of range for int16", value)
+	}
+	return int16(value), nil
 }

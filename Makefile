@@ -59,7 +59,6 @@ db/migrations/down: confirm
 db/dump: confirm
 	pg_dump --dbname=${TLTV_DB_DSN} -F t >> db/testdata/tltv_db_$(shell date +%s).tar
 
-
 # ==================================================================================== #
 # QUALITY CONTROL
 # ==================================================================================== #
@@ -74,6 +73,10 @@ audit:
 	go vet ./...
 	@echo 'Running tests...'
 
+## audit/pipeline: tidy dependencies and format, vet and test all code (race on)
+audit/pipeline:
+	make audit
+	go test -race -vet=off ./... -coverprofile=coverage.out
 ## audit/local: tidy dependencies and format, vet and test all code (race off)
 audit/local:
 	make audit
@@ -84,10 +87,30 @@ audit/local:
 staticcheck:
 	staticcheck ./...
 
-## lint: go linters aggregator
-lint:
-	 golangci-lint run ./...
+## coverage
+coverage:
+	go tool cover -func coverage.out \
+	| grep "total:" | awk '{print ((int($$3) > 80) != 1) }'
 
+## coverage report
+report:
+	go test -vet=off ./... -coverprofile=coverage.out
+	go tool cover -html=coverage.out -o cover.html
+
+install-golang-ci:
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
+ci-lint: install-golang-ci
+	golangci-lint run
+
+install-govulncheck:
+	go install golang.org/x/vuln/cmd/govulncheck@latest
+
+vuln: install-govulncheck
+	govulncheck ./*.go
+
+key:
+	openssl ecparam -name prime256v1 -genkey -noout -out ecprivatekey.pem
 
 # ==================================================================================== #
 # BUILD
@@ -97,51 +120,8 @@ current_time = $(shell date +"%Y-%m-%dT%H:%M:%S%Z")
 git_description = $(shell git describe --always --dirty --tags --long)
 linker_flags = '-s -X main.buildTime=${current_time} -X main.version=${git_description}'
 
-## build/api: build the cmd/api application
-build/api:
-	@echo 'Building cmd/api...'
-	go build -ldflags=${linker_flags} -o=./bin/api ./cmd/api
-	GOOS=linux GOARCH=amd64 go build -ldflags=${linker_flags} -o=./bin/linux_amd64/api ./api
-
-
-## build/docker: build the tltv container
-build/docker:
-	@echo 'Building container...'
-	docker build --build-arg LINKER_FLAGS=${linker_flags} --build-arg DB_DSN=${DOCKER_DB_DSN} --tag tltv:$(shell date +%s) .
-
-
-# ==================================================================================== #
-# CLOUD
-# ==================================================================================== #
-
-## connect: connect to the cloud server
-connect:
-	ssh ${CLOUD_HOST_USERNAME}@${CLOUD_HOST_IP}
-
-## cloud/deploy/api: deploy the web application to cloud
-cloud/deploy/api:
-	rsync -rP --delete ./bin/linux_amd64/api ./migrations ${CLOUD_HOST_USERNAME}@${CLOUD_HOST_IP}:~
-	ssh -t ${CLOUD_HOST_USERNAME}@${CLOUD_HOST_IP} 'migrate -path ~/migrations -database $TLTV_DB_DSN up'
-
-## cloud/configure/api.service: configure the cloud systemd api.service file
-cloud/configure/api.service:
-	rsync -P ./remote/cloud/api.service ${CLOUD_HOST_USERNAME}@${CLOUD_HOST_IP}:~
-	ssh -t ${CLOUD_HOST_USERNAME}@${CLOUD_HOST_IP} '\
-		sudo mv ~/api.service /etc/systemd/system/ \
-		&& sudo systemctl enable api \
-		&& sudo systemctl restart api \'
-
-## cloud/configure/caddyfile: configure the cloud Caddyfile
-cloud/configure/caddyfile:
-	rsync -P ./remote/cloud/Caddyfile ${CLOUD_HOST_USERNAME}@${CLOUD_HOST_IP}:~
-	ssh -t ${CLOUD_HOST_USERNAME}@${CLOUD_HOST_IP} '\
-		sudo mv ~/Caddyfile /etc/caddy/ \
-		&& sudo systemctl reload caddy \'
-
-
-## cloud/redeploy/api: builds and redeploys api to cloud
-cloud/redeploy/api:
-	GOOS=linux GOARCH=amd64 go build -ldflags=${linker_flags} -o=./bin/linux_amd64/api ./cmd/api
-	rsync -rP --delete ./bin/linux_amd64/api ${CLOUD_HOST_USERNAME}@${CLOUD_HOST_IP}:~
-	ssh -t ${CLOUD_HOST_USERNAME}@${CLOUD_HOST_IP} '\
-		sudo systemctl restart api'
+## build: build the cmd/api application
+build:
+	@echo 'Building api...'
+	go build -ldflags=${linker_flags} -o=./bin/tltv ./api
+	GOOS=linux GOARCH=amd64 go build -ldflags=${linker_flags} -o=./bin/linux_amd64/tltv ./api

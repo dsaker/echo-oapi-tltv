@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"strconv"
+	"strings"
+
 	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/labstack/echo/v4"
 	"github.com/lestrrat-go/jwx/jwt"
 	mw "github.com/oapi-codegen/echo-middleware"
-	"net/http"
-	"strconv"
-	"strings"
 	db "talkliketv.click/tltv/db/sqlc"
 )
 
@@ -155,7 +156,7 @@ func CheckTokenClaims(expectedClaims []string, t jwt.Token) error {
 func GetValueFromContext(eCtx echo.Context, key string) (string, error) {
 	value := eCtx.Get(key)
 	if value == nil {
-		return "", errors.New(fmt.Sprintf("GetValueFromContext: %s not found in context: Please login again", key))
+		return "", fmt.Errorf("GetValueFromContext: %s not found in context: Please login again", key)
 	}
 
 	return value.(string), nil

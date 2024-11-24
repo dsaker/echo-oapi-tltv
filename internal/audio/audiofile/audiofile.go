@@ -5,7 +5,6 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"github.com/labstack/echo/v4"
 	"io"
 	"iter"
 	"mime/multipart"
@@ -15,10 +14,12 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"unicode"
+
+	"github.com/labstack/echo/v4"
 	db "talkliketv.click/tltv/db/sqlc"
 	audio "talkliketv.click/tltv/internal/audio/pattern"
 	"talkliketv.click/tltv/internal/util"
-	"unicode"
 )
 
 // AudioPauseFilePath is a map to the silence mp3's of the embedded FS in
@@ -43,7 +44,7 @@ var (
 		'?': true,
 	}
 	// Use a regular expression to match punctuation characters
-	punctuationRe = regexp.MustCompile(`[.,!?;:'"]`)
+	reAlpha = regexp.MustCompile(`[a-zA-Z]`)
 )
 
 const (
@@ -84,7 +85,6 @@ func (r *RealCmdRunner) CombinedOutput(cmd *exec.Cmd) ([]byte, error) {
 // line and then parses the file accordingly, returning a string slice containing the
 // phrases to be translated
 func (a *AudioFile) GetLines(e echo.Context, f multipart.File) ([]string, error) {
-
 	// get file type, options are srt, single line text or paragraph
 	fileType := ""
 	scanner := bufio.NewScanner(f)
@@ -108,12 +108,7 @@ func (a *AudioFile) GetLines(e echo.Context, f multipart.File) ([]string, error)
 			if strings.Contains(line, "<font") {
 				fileType = "srt"
 			} else {
-				containsAlpha, err := regexp.MatchString("[a-zA-Z]", line)
-				if err != nil {
-					e.Logger().Error(err)
-					return nil, err
-				}
-				if !containsAlpha {
+				if !reAlpha.MatchString(line) {
 					fileType = "srt"
 				}
 			}
@@ -195,16 +190,13 @@ func parseSrt(f multipart.File) []string {
 		}
 
 		phrases := splitBigPhrases(line)
-		for _, phrase := range phrases {
-			stringsSlice = append(stringsSlice, phrase)
-		}
+		stringsSlice = append(stringsSlice, phrases...)
 	}
 
 	return stringsSlice
 }
 
 func splitBigPhrases(line string) []string {
-
 	var splitString []string
 
 	words := strings.Fields(line)
@@ -229,7 +221,7 @@ func splitBigPhrases(line string) []string {
 		}
 		// if last word does not end in punctuation add that string
 		if last < len(words) {
-			splitString = append(splitString, strings.Join(words[last:len(words)], " "))
+			splitString = append(splitString, strings.Join(words[last:], " "))
 		}
 		// if long phrase has punctuation split on punctuation
 		if len(splitString) > 1 {
@@ -298,9 +290,7 @@ func parseParagraph(f multipart.File) []string {
 				sentence := strings.TrimSpace(line[last : i+1])
 				last = i + 1
 				phrases := splitBigPhrases(sentence)
-				for _, phrase := range phrases {
-					stringsSlice = append(stringsSlice, phrase)
-				}
+				stringsSlice = append(stringsSlice, phrases...)
 			}
 		}
 	}
@@ -316,9 +306,7 @@ func parseSingle(f multipart.File) []string {
 	for scanner.Scan() {
 		line := scanner.Text()
 		phrases := splitBigPhrases(line)
-		for _, phrase := range phrases {
-			stringsSlice = append(stringsSlice, phrase)
-		}
+		stringsSlice = append(stringsSlice, phrases...)
 	}
 
 	return stringsSlice
@@ -328,9 +316,9 @@ func parseSingle(f multipart.File) []string {
 // of the phrase like descriptions or tags
 func replaceFmt(line string) string {
 	// remove any characters between brackets and brackets [...] or {...} or <...>
-	re := regexp.MustCompile("\\[.*?]")
+	re := regexp.MustCompile("\\[.*?]") //nolint:gosimple
 	line = re.ReplaceAllString(line, "")
-	re = regexp.MustCompile("\\{.*?}")
+	re = regexp.MustCompile("\\{.*?}") //nolint:gosimple
 	line = re.ReplaceAllString(line, "")
 	re = regexp.MustCompile("<.*?>")
 	line = re.ReplaceAllString(line, "")
@@ -366,7 +354,7 @@ func (a *AudioFile) CreateMp3Zip(e echo.Context, t db.Title, tmpDir string) (*os
 	for i, f := range files {
 		// ffmpeg -f concat -safe 0 -i ffmpeg_input.txt -c copy output.mp3
 		outputString := fmt.Sprintf("%s/%s-%d.mp3", outDirPath, t.Title, i)
-		cmd := exec.Command("ffmpeg", "-f", "concat", "-safe", "0", "-i", tmpDir+f.Name(), "-c", "copy", outputString)
+		cmd := exec.Command("ffmpeg", "-f", "concat", "-safe", "0", "-i", tmpDir+f.Name(), "-c", "copy", outputString) //nolint:gosec
 
 		//Execute the command and get the output
 		output, err := a.cmdX.CombinedOutput(cmd)
@@ -419,7 +407,6 @@ func addFileToZip(e echo.Context, zipWriter *zip.Writer, filename string) error 
 // BuildAudioInputFiles creates a file with the filepaths of the mp3's used to construct
 // the output files with ffmpeg in CreateMp3Zip
 func (a *AudioFile) BuildAudioInputFiles(e echo.Context, ids []int64, t db.Title, pause, from, to, tmpDir string) error {
-
 	// map phrase ids to zero through len(phrase ids) to map correctly to pattern.Pattern
 	pMap := make(map[int]int64)
 	for i, pid := range ids {
@@ -452,6 +439,11 @@ func (a *AudioFile) BuildAudioInputFiles(e echo.Context, ids []int64, t db.Title
 		defer f.Close()
 
 		for _, audioStruct := range chunk {
+			_, err = f.WriteString(fmt.Sprintf("file '%s'\n", pause))
+			if err != nil {
+				e.Logger().Error(err)
+				return err
+			}
 			// if: we have reached the highest phrase id then this will be the last audio block
 			// else if: skip if phraseId does not exist (is greater than maxP)
 			// else if: native language then we add filepath for from audio mp3
@@ -462,8 +454,12 @@ func (a *AudioFile) BuildAudioInputFiles(e echo.Context, ids []int64, t db.Title
 			}
 			if phraseId == 0 && audioStruct.Id > 0 {
 				continue
-			} else if audioStruct.Native == true {
+			} else if audioStruct.Native {
 				_, err = f.WriteString(fmt.Sprintf("file '%s%d'\n", from, phraseId))
+				if err != nil {
+					e.Logger().Error(err)
+					return err
+				}
 				_, err = f.WriteString(fmt.Sprintf("file '%s'\n", pause))
 				if err != nil {
 					e.Logger().Error(err)
@@ -471,12 +467,21 @@ func (a *AudioFile) BuildAudioInputFiles(e echo.Context, ids []int64, t db.Title
 				}
 			} else {
 				_, err = f.WriteString(fmt.Sprintf("file '%s%d'\n", to, phraseId))
+				if err != nil {
+					e.Logger().Error(err)
+					return err
+				}
 				_, err = f.WriteString(fmt.Sprintf("file '%s'\n", pause))
 				if err != nil {
 					e.Logger().Error(err)
 					return err
 				}
 			}
+		}
+		_, err = f.WriteString(fmt.Sprintf("file '%s'\n", pause))
+		if err != nil {
+			e.Logger().Error(err)
+			return err
 		}
 		if last {
 			break
@@ -491,7 +496,6 @@ func (a *AudioFile) BuildAudioInputFiles(e echo.Context, ids []int64, t db.Title
 // to files, each chunk containing config.MaxNumPhrases and than zips them up. Sending them back to the
 // user
 func (a *AudioFile) CreatePhrasesZip(e echo.Context, chunkedPhrases iter.Seq[[]string], tmpPath, filename string) (*os.File, error) {
-
 	// create outputs folder to hold all the txt files to zip
 	err := os.MkdirAll(tmpPath, 0777)
 	if err != nil {
@@ -515,7 +519,6 @@ func (a *AudioFile) CreatePhrasesZip(e echo.Context, chunkedPhrases iter.Seq[[]s
 				return nil, err
 			}
 		}
-
 	}
 
 	return createZipFile(e, tmpPath, filename, tmpPath)

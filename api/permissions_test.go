@@ -3,12 +3,13 @@ package api
 import (
 	"database/sql"
 	"encoding/json"
+	"net/http"
+	"testing"
+
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
-	"net/http"
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/test"
-	"testing"
 )
 
 func TestAddUserPermission(t *testing.T) {
@@ -19,7 +20,7 @@ func TestAddUserPermission(t *testing.T) {
 		UserID:       user.ID,
 	}
 
-	insertUsersPermission := db.InsertUserPermissionParams{
+	insertUsersPermission := db.InsertUserPermissionParams{ //nolint:gosimple
 		UserID:       userPermission.UserID,
 		PermissionID: userPermission.PermissionID,
 	}
@@ -123,7 +124,6 @@ func TestAddUserPermission(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
@@ -135,6 +135,7 @@ func TestAddUserPermission(t *testing.T) {
 			req := jsonRequest(t, data, ts, usersPermissionBasePath, http.MethodPost, jwsToken)
 			res, err := ts.Client().Do(req)
 			require.NoError(t, err)
+			defer res.Body.Close()
 
 			tc.checkResponse(res)
 		})

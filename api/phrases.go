@@ -3,10 +3,11 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	jsonpatch "github.com/evanphx/json-patch/v5"
-	"github.com/labstack/echo/v4"
 	"io"
 	"net/http"
+
+	jsonpatch "github.com/evanphx/json-patch/v5"
+	"github.com/labstack/echo/v4"
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/oapi"
 	"talkliketv.click/tltv/internal/token"
@@ -16,7 +17,6 @@ import (
 // sorted by ascending correctness (correctness is how many times a user has guessed a phrase
 // correctly)
 func (s *Server) GetPhrases(e echo.Context, params oapi.GetPhrasesParams) error {
-
 	if params.Limit == nil {
 		params.Limit = new(int32)
 		*params.Limit = 10

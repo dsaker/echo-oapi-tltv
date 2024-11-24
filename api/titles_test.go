@@ -6,17 +6,18 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
 	"io"
 	"mime/multipart"
 	"net/http"
 	"os"
 	"strconv"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/test"
 	"talkliketv.click/tltv/internal/util"
-	"testing"
 )
 
 func TestFindTitles(t *testing.T) {
@@ -87,7 +88,6 @@ func TestFindTitles(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
@@ -106,6 +106,7 @@ func TestFindTitles(t *testing.T) {
 
 			res, err := ts.Client().Do(req)
 			require.NoError(t, err)
+			defer res.Body.Close()
 
 			tc.checkResponse(res)
 		})
@@ -113,7 +114,6 @@ func TestFindTitles(t *testing.T) {
 }
 
 func TestAddTitle(t *testing.T) {
-
 	user, _ := randomUser(t)
 	title := test.RandomTitle()
 	translate1 := randomTranslate(test.RandomPhrase(), title.OgLanguageID)
@@ -208,6 +208,7 @@ func TestAddTitle(t *testing.T) {
 				writer.Flush()
 
 				multiFile, err := os.Open(tooBigFile)
+				require.NoError(t, err)
 				body := new(bytes.Buffer)
 				multiWriter := multipart.NewWriter(body)
 				part, err := multiWriter.CreateFormFile("filePath", tooBigFile)
@@ -215,7 +216,9 @@ func TestAddTitle(t *testing.T) {
 				_, err = io.Copy(part, multiFile)
 				require.NoError(t, err)
 				err = multiWriter.WriteField("titleName", title.Title)
+				require.NoError(t, err)
 				err = multiWriter.WriteField("languageId", strconv.Itoa(int(title.OgLanguageID)))
+				require.NoError(t, err)
 				require.NoError(t, multiWriter.Close())
 				return body, multiWriter
 			},
@@ -277,7 +280,6 @@ func TestAddTitle(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
@@ -292,6 +294,7 @@ func TestAddTitle(t *testing.T) {
 			req.Header.Set("Content-Type", multiWriter.FormDataContentType())
 			res, err := ts.Client().Do(req)
 			require.NoError(t, err)
+			defer res.Body.Close()
 
 			tc.checkResponse(res)
 		})
@@ -341,7 +344,6 @@ func TestFindTitleById(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
@@ -352,6 +354,7 @@ func TestFindTitleById(t *testing.T) {
 			req := jsonRequest(t, []byte(""), ts, urlPath, http.MethodGet, jwsToken)
 			res, err := ts.Client().Do(req)
 			require.NoError(t, err)
+			defer res.Body.Close()
 
 			tc.checkResponse(res)
 		})
@@ -395,7 +398,6 @@ func TestDeleteTitleById(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
@@ -405,6 +407,7 @@ func TestDeleteTitleById(t *testing.T) {
 			req := jsonRequest(t, []byte(""), ts, urlPath, http.MethodDelete, jwsToken)
 			res, err := ts.Client().Do(req)
 			require.NoError(t, err)
+			defer res.Body.Close()
 
 			tc.checkResponse(res)
 		})
@@ -472,7 +475,6 @@ func TestTitlesTranslate(t *testing.T) {
 				stubs.TranslateX.EXPECT().
 					InsertTranslates(gomock.Any(), stubs.MockQuerier, lang.ID, translatesReturn).
 					Return(translates, nil)
-
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusCreated, res.StatusCode)
@@ -513,7 +515,6 @@ func TestTitlesTranslate(t *testing.T) {
 							TitleID:    title.ID,
 						}).
 					Return(nil)
-
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusInternalServerError, res.StatusCode)
@@ -545,7 +546,6 @@ func TestTitlesTranslate(t *testing.T) {
 				stubs.TranslateX.EXPECT().
 					TranslatePhrases(gomock.Any(), translates, lang).
 					Return([]util.TranslatesReturn{}, nil)
-
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusInternalServerError, res.StatusCode)
@@ -577,7 +577,6 @@ func TestTitlesTranslate(t *testing.T) {
 				stubs.TranslateX.EXPECT().
 					TranslatePhrases(gomock.Any(), translates, lang).
 					Return([]util.TranslatesReturn{}, errors.New("new error for testing"))
-
 			},
 			checkResponse: func(res *http.Response) {
 				require.Equal(t, http.StatusInternalServerError, res.StatusCode)
@@ -662,7 +661,6 @@ func TestTitlesTranslate(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
@@ -675,6 +673,7 @@ func TestTitlesTranslate(t *testing.T) {
 			req := jsonRequest(t, data, ts, urlPath, http.MethodPost, jwsToken)
 			res, err := ts.Client().Do(req)
 			require.NoError(t, err)
+			defer res.Body.Close()
 
 			tc.checkResponse(res)
 		})

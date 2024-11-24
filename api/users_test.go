@@ -4,16 +4,17 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
 	"strconv"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/test"
 	"talkliketv.click/tltv/internal/util"
-	"testing"
 )
 
 type eqCreateUserParamsMatcher struct {
@@ -62,7 +63,7 @@ func TestGetUser(t *testing.T) {
 			checkRecorder: func(rec *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusOK, rec.Code)
 				var gotUser db.User
-				err := json.Unmarshal([]byte(rec.Body.String()), &gotUser)
+				err := json.Unmarshal(rec.Body.Bytes(), &gotUser)
 				require.NoError(t, err)
 				test.RequireMatchAnyExcept(t, user1, gotUser, []string{"HashedPassword", "ID"}, "", "")
 			},
@@ -96,7 +97,6 @@ func TestGetUser(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
@@ -162,7 +162,6 @@ func TestDeleteUser(t *testing.T) {
 		},
 	}
 	for _, tc := range testCases {
-
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
@@ -211,7 +210,7 @@ func TestCreateUser(t *testing.T) {
 				require.Equal(t, http.StatusOK, rec.Code)
 
 				var gotUser db.User
-				err := json.Unmarshal([]byte(rec.Body.String()), &gotUser)
+				err := json.Unmarshal(rec.Body.Bytes(), &gotUser)
 				require.NoError(t, err)
 				test.RequireMatchAnyExcept(t, user, gotUser, []string{"HashedPassword", "ID"}, "", "")
 			},
@@ -261,7 +260,6 @@ func TestCreateUser(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
@@ -321,7 +319,7 @@ func TestUpdateUser(t *testing.T) {
 			checkRecorder: func(rec *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusOK, rec.Code)
 				var gotUser db.User
-				err := json.Unmarshal([]byte(rec.Body.String()), &gotUser)
+				err := json.Unmarshal(rec.Body.Bytes(), &gotUser)
 				require.NoError(t, err)
 				test.RequireMatchAnyExcept(t, user1, gotUser, []string{"HashedPassword", "ID"}, "Email", "newemail2@email.com")
 			},
@@ -387,7 +385,6 @@ func TestUpdateUser(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
@@ -479,7 +476,6 @@ func TestLoginUser(t *testing.T) {
 		},
 	}
 	for _, tc := range testCases {
-
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
@@ -539,7 +535,6 @@ func TestCreateUserMiddleware(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
@@ -552,6 +547,7 @@ func TestCreateUserMiddleware(t *testing.T) {
 
 			res, err := ts.Client().Do(req)
 			require.NoError(t, err)
+			defer res.Body.Close()
 
 			tc.checkResponse(res)
 		})

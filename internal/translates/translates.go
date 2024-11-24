@@ -1,22 +1,23 @@
 package translates
 
 import (
-	"cloud.google.com/go/texttospeech/apiv1/texttospeechpb"
-	"cloud.google.com/go/translate"
 	"context"
 	"errors"
 	"fmt"
-	"github.com/googleapis/gax-go/v2"
-	"github.com/labstack/echo/v4"
-	"golang.org/x/text/language"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
-	db "talkliketv.click/tltv/db/sqlc"
-	"talkliketv.click/tltv/internal/util"
 	"time"
 	"unicode"
+
+	"cloud.google.com/go/texttospeech/apiv1/texttospeechpb"
+	"cloud.google.com/go/translate"
+	"github.com/googleapis/gax-go/v2"
+	"github.com/labstack/echo/v4"
+	"golang.org/x/text/language"
+	db "talkliketv.click/tltv/db/sqlc"
+	"talkliketv.click/tltv/internal/util"
 )
 
 // TranslateClientX creates an interface for google translate.Translate so it can
@@ -55,7 +56,6 @@ func New(trc TranslateClientX, ttsc TTSClientX) *Translate {
 // TranslatePhrases takes a slice of db.Translate{} and a db.Language and returns a slice
 // of util.TranslatesReturn to be inserted into the db
 func (t *Translate) TranslatePhrases(e echo.Context, ts []db.Translate, dbLang db.Language) ([]util.TranslatesReturn, error) {
-
 	// get language tag to translate to
 	langTag, err := language.Parse(dbLang.Tag)
 	if err != nil {
@@ -102,7 +102,6 @@ func (t *Translate) GetTranslate(e echo.Context,
 	responses []util.TranslatesReturn,
 	i int,
 ) {
-
 	defer wg.Done()
 	select {
 	case <-ctx.Done():
@@ -137,7 +136,6 @@ func (t *Translate) GetTranslate(e echo.Context,
 // CreateTTS is called from api.createAudioFromTitle.
 // It checks if the mp3 audio files exist and if not it creates them.
 func (t *Translate) CreateTTS(e echo.Context, q db.Querier, title db.Title, voiceId int16, basePath string) error {
-
 	voice, err := q.SelectVoiceById(e.Request().Context(), voiceId)
 	if err != nil {
 		e.Logger().Error(err)
@@ -182,7 +180,6 @@ func (t *Translate) CreateTTS(e echo.Context, q db.Querier, title db.Title, voic
 // TextToSpeech takes a slice of db.Translate and get the speech mp3's adding them
 // to the machines local file system
 func (t *Translate) TextToSpeech(e echo.Context, ts []db.Translate, voice db.Voice, bp string) error {
-
 	// set the texttospeec params from the db voice sent in the request
 	voiceSelectionParams := &texttospeechpb.VoiceSelectionParams{
 		LanguageCode: voice.LanguageCodes[0],
@@ -258,7 +255,7 @@ func (t *Translate) GetSpeech(
 
 		// The resp AudioContent is binary.
 		filename := basePath + strconv.FormatInt(translate.PhraseID, 10)
-		err = os.WriteFile(filename, resp.AudioContent, 0644)
+		err = os.WriteFile(filename, resp.AudioContent, 0600)
 		if err != nil {
 			e.Logger().Error(fmt.Errorf("error creating translate client: %s", err))
 			cancel()
@@ -277,7 +274,10 @@ func (t *Translate) GetOrCreateTranslates(e echo.Context, q db.Querier, title db
 			LanguageID: lang.ID,
 			ID:         title.ID,
 		})
-
+	if err != nil {
+		e.Logger().Error(err)
+		return nil, err
+	}
 	// if exists get translates for language
 	if exists {
 		params := db.SelectTranslatesByTitleIdLangIdParams{
@@ -323,7 +323,6 @@ func (t *Translate) GetOrCreateTranslates(e echo.Context, q db.Querier, title db
 func (t *Translate) InsertNewPhrases(e echo.Context, title db.Title, q db.Querier, stringsSlice []string) ([]db.Translate, error) {
 	dbTranslates := make([]db.Translate, len(stringsSlice))
 	for i, str := range stringsSlice {
-
 		phrase, err := q.InsertPhrases(e.Request().Context(), title.ID)
 		if err != nil {
 			return nil, err
@@ -351,7 +350,6 @@ func (t *Translate) InsertNewPhrases(e echo.Context, title db.Title, q db.Querie
 func (t *Translate) InsertTranslates(e echo.Context, q db.Querier, langId int16, trr []util.TranslatesReturn) ([]db.Translate, error) {
 	dbTranslates := make([]db.Translate, len(trr))
 	for i, row := range trr {
-
 		// apostrophe's are replaced with &#39; in the response from google translate
 		replacedText := strings.ReplaceAll(row.Text, "&#39;", "'")
 		insertTranslate, err := q.InsertTranslates(

@@ -1,10 +1,11 @@
 module talkliketv.click/tltv
 
-go 1.23.0
+go 1.23.3
 
 require (
 	cloud.google.com/go/texttospeech v1.8.1
 	cloud.google.com/go/translate v1.12.1
+	github.com/docker/go-connections v0.5.0
 	github.com/evanphx/json-patch/v5 v5.9.0
 	github.com/getkin/kin-openapi v0.127.0
 	github.com/go-openapi/runtime v0.28.0
@@ -51,7 +52,6 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.3.0 // indirect
 	github.com/distribution/reference v0.6.0 // indirect
 	github.com/docker/docker v27.2.0+incompatible // indirect
-	github.com/docker/go-connections v0.5.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect

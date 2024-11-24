@@ -4,12 +4,13 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/labstack/echo/v4"
 	"net/http"
 	"os"
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/labstack/echo/v4"
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/audio/audiofile"
 	"talkliketv.click/tltv/internal/oapi"
@@ -135,12 +136,16 @@ func (s *Server) processFile(e echo.Context, titleName string, fileLangId int16)
 	s.Lock()
 	defer s.Unlock()
 
+	numSubs, err := util.SafeCastToInt16(len(stringsSlice))
+	if err != nil {
+		return nil, nil, util.ErrTooManyPhrases
+	}
 	// insert title into the database
 	title, err := s.queries.InsertTitle(
 		e.Request().Context(),
 		db.InsertTitleParams{
 			Title:        titleName,
-			NumSubs:      int16(len(stringsSlice)),
+			NumSubs:      numSubs,
 			OgLanguageID: fileLangId,
 		})
 	if err != nil {
@@ -206,7 +211,6 @@ func (s *Server) AudioFromTitle(e echo.Context) error {
 // createAudioFromTitle is a helper function that performs the tasks shared by
 // AudioFromFile and AudioFromTitle
 func (s *Server) createAudioFromTitle(e echo.Context, title db.Title, r oapi.AudioFromTitleJSONRequestBody) (*os.File, error) {
-
 	fromVoice, err := s.queries.SelectVoiceById(e.Request().Context(), r.FromVoiceId)
 	if err != nil {
 		e.Logger().Error(err)

@@ -3,14 +3,15 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
 	"net/http"
 	"strconv"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/oapi"
 	"talkliketv.click/tltv/internal/test"
-	"testing"
 )
 
 func TestGetPhrases(t *testing.T) {
@@ -81,7 +82,6 @@ func TestGetPhrases(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
@@ -98,6 +98,7 @@ func TestGetPhrases(t *testing.T) {
 
 			res, err := ts.Client().Do(req)
 			require.NoError(t, err)
+			defer res.Body.Close()
 
 			tc.checkResponse(res)
 		})
@@ -188,7 +189,6 @@ func TestUpdateUsersPhrases(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
@@ -201,6 +201,7 @@ func TestUpdateUsersPhrases(t *testing.T) {
 			req.Header.Set("Content-Type", "application/json-patch+json")
 			res, err := ts.Client().Do(req)
 			require.NoError(t, err)
+			defer res.Body.Close()
 
 			tc.checkResponse(res)
 		})

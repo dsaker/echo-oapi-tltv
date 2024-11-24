@@ -3,12 +3,13 @@ package api
 import (
 	"database/sql"
 	"encoding/json"
+	"net/http"
+	"testing"
+
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
-	"net/http"
 	db "talkliketv.click/tltv/db/sqlc"
 	"talkliketv.click/tltv/internal/test"
-	"testing"
 )
 
 func TestListVoices(t *testing.T) {
@@ -77,7 +78,6 @@ func TestListVoices(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
@@ -92,6 +92,7 @@ func TestListVoices(t *testing.T) {
 
 			res, err := ts.Client().Do(req)
 			require.NoError(t, err)
+			defer res.Body.Close()
 
 			tc.checkResponse(res)
 		})
