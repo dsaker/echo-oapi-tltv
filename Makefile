@@ -77,7 +77,11 @@ audit:
 audit/pipeline:
 	make audit
 	openssl ecparam -name prime256v1 -genkey -noout -out ecprivatekey.pem
-	go test -race -vet=off ./... -coverprofile=coverage.out
+	ls -la
+	ls -la /home/runner/work/echo-oapi-tltv/echo-oapi-tltv/
+	go test -race -vet=off ./... -coverprofile=coverage.out -private-key-path=/home/runner/work/echo-oapi-tltv/echo-oapi-tltv/ecprivatekey.pem
+	ls -la
+	ls -la /home/runner/work/echo-oapi-tltv/echo-oapi-tltv/
 
 ## audit/local: tidy dependencies and format, vet and test all code (race off)
 audit/local:
