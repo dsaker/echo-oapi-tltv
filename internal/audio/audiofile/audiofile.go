@@ -439,6 +439,11 @@ func (a *AudioFile) BuildAudioInputFiles(e echo.Context, ids []int64, t db.Title
 		defer f.Close()
 
 		for _, audioStruct := range chunk {
+			_, err = f.WriteString(fmt.Sprintf("file '%s'\n", pause))
+			if err != nil {
+				e.Logger().Error(err)
+				return err
+			}
 			// if: we have reached the highest phrase id then this will be the last audio block
 			// else if: skip if phraseId does not exist (is greater than maxP)
 			// else if: native language then we add filepath for from audio mp3
@@ -472,6 +477,11 @@ func (a *AudioFile) BuildAudioInputFiles(e echo.Context, ids []int64, t db.Title
 					return err
 				}
 			}
+		}
+		_, err = f.WriteString(fmt.Sprintf("file '%s'\n", pause))
+		if err != nil {
+			e.Logger().Error(err)
+			return err
 		}
 		if last {
 			break

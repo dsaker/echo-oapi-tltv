@@ -6,7 +6,7 @@ env:
 on:
   push:
     branches:
-      - '**'
+      - 'main'
 jobs:
   audit:
     name: Audit
@@ -59,7 +59,7 @@ jobs:
     - name: Copy Files
       run: |
            mkdir  artifacts
-           cp bin/linux_amd64/api artifacts/.
+           cp bin/linux_amd64/tltv artifacts/.
     - name: Archive
       uses: actions/upload-artifact@v4
       with:

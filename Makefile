@@ -123,5 +123,5 @@ linker_flags = '-s -X main.buildTime=${current_time} -X main.version=${git_descr
 ## build: build the cmd/api application
 build:
 	@echo 'Building api...'
-	go build -ldflags=${linker_flags} -o=./bin/api ./api
-	GOOS=linux GOARCH=amd64 go build -ldflags=${linker_flags} -o=./bin/linux_amd64/api ./api
+	go build -ldflags=${linker_flags} -o=./bin/tltv ./api
+	GOOS=linux GOARCH=amd64 go build -ldflags=${linker_flags} -o=./bin/linux_amd64/tltv ./api
