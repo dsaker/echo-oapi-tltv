@@ -255,7 +255,7 @@ func (t *Translate) GetSpeech(
 
 		// The resp AudioContent is binary.
 		filename := basePath + strconv.FormatInt(translate.PhraseID, 10)
-		err = os.WriteFile(filename, resp.AudioContent, 0644)
+		err = os.WriteFile(filename, resp.AudioContent, 0600)
 		if err != nil {
 			e.Logger().Error(fmt.Errorf("error creating translate client: %s", err))
 			cancel()

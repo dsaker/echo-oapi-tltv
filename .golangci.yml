@@ -10,12 +10,13 @@ linters:
     - bodyclose
     - exhaustive
     - gocheckcompilerdirectives
-    - godox
     - gofmt
     - goimports
     - gosec
     - whitespace
     - usestdlibvars
+  disable:
+    - godox
 linters-settings:
   staticcheck:
     checks: ["all"]

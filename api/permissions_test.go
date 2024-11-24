@@ -20,7 +20,7 @@ func TestAddUserPermission(t *testing.T) {
 		UserID:       user.ID,
 	}
 
-	insertUsersPermission := db.UsersPermission{
+	insertUsersPermission := db.InsertUserPermissionParams{ //nolint:gosimple
 		UserID:       userPermission.UserID,
 		PermissionID: userPermission.PermissionID,
 	}

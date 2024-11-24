@@ -136,12 +136,16 @@ func (s *Server) processFile(e echo.Context, titleName string, fileLangId int16)
 	s.Lock()
 	defer s.Unlock()
 
+	numSubs, err := util.SafeCastToInt16(len(stringsSlice))
+	if err != nil {
+		return nil, nil, util.ErrTooManyPhrases
+	}
 	// insert title into the database
 	title, err := s.queries.InsertTitle(
 		e.Request().Context(),
 		db.InsertTitleParams{
 			Title:        titleName,
-			NumSubs:      int16(len(stringsSlice)),
+			NumSubs:      numSubs,
 			OgLanguageID: fileLangId,
 		})
 	if err != nil {

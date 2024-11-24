@@ -113,7 +113,7 @@ func TestInsertNewPhrases(t *testing.T) {
 func TestInsertTranslates(t *testing.T) {
 	title := test.RandomTitle()
 	title.OgLanguageID = 27
-	newLanguageId := 109
+	var newLanguageId int16 = 109
 	randomPhrase1 := test.RandomPhrase()
 	text1 := "This is sentence one."
 	hintString1 := makeHintString(text1)
@@ -182,7 +182,8 @@ func TestInsertTranslates(t *testing.T) {
 			c := e.NewContext(req, rec)
 
 			translate2 := Translate{}
-			dbTranslates, err := translate2.InsertTranslates(c, store, int16(newLanguageId), []util.TranslatesReturn{translatesReturn})
+
+			dbTranslates, err := translate2.InsertTranslates(c, store, newLanguageId, []util.TranslatesReturn{translatesReturn})
 			tc.checkTranslate(dbTranslates, err)
 		})
 	}

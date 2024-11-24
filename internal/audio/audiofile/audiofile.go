@@ -316,11 +316,11 @@ func parseSingle(f multipart.File) []string {
 // of the phrase like descriptions or tags
 func replaceFmt(line string) string {
 	// remove any characters between brackets and brackets [...] or {...} or <...>
-	re := regexp.MustCompile(`[.*?]`)
+	re := regexp.MustCompile("\\[.*?]") //nolint:gosimple
 	line = re.ReplaceAllString(line, "")
-	re = regexp.MustCompile(`{.*?}`)
+	re = regexp.MustCompile("\\{.*?}") //nolint:gosimple
 	line = re.ReplaceAllString(line, "")
-	re = regexp.MustCompile(`<.*?>`)
+	re = regexp.MustCompile("<.*?>")
 	line = re.ReplaceAllString(line, "")
 	line = strings.ReplaceAll(line, "-", "")
 	line = strings.ReplaceAll(line, "\"", "")

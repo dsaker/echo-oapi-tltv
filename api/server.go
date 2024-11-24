@@ -60,7 +60,12 @@ func NewServer(e *echo.Echo, cfg config.Config, q db.Querier, t translates.Trans
 
 	// Create a fake authenticator. This allows us to issue tokens, and also
 	// implements a validator to check their validity.
-	fa, err := token.NewFakeAuthenticator(&cfg.JWTDuration)
+	keyData, err := os.ReadFile(cfg.PrivateKeyPath) // Replace "private.key" with your key file name
+	if err != nil {
+		log.Fatal("Error reading key file:", err)
+	}
+
+	fa, err := token.NewFakeAuthenticator(&cfg.JWTDuration, keyData)
 	if err != nil {
 		log.Fatalln("error creating authenticator:", err)
 	}

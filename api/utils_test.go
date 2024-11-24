@@ -258,7 +258,8 @@ func jsonRequest(t *testing.T, json []byte, ts *httptest.Server, urlPath, method
 // data is the data you want to write to the file.
 // m is the map[string][string] of the fields, values you want to write to the multipart body
 func createMultiPartBody(t *testing.T, data []byte, filename string, m map[string]string) (*bytes.Buffer, *multipart.Writer) {
-	err := os.WriteFile(filename, data, 0777)
+	err := os.WriteFile(filename, data, 0600)
+	require.NoError(t, err)
 	file, err := os.Open(filename)
 	require.NoError(t, err)
 	fmt.Println(file.Name())

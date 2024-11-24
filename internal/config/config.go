@@ -26,6 +26,7 @@ type Config struct {
 	AudioPattern    int
 	MaxNumPhrases   int
 	TTSBasePath     string
+	PrivateKeyPath  string
 	FileUploadLimit int64
 	Db              struct {
 		Dsn          string
@@ -68,6 +69,10 @@ func SetConfigs(config *Config) error {
 	if !isValidPause(config.PhrasePause) {
 		return errors.New("invalid pause value (must be between 3 and 10)")
 	}
+	// PrivateKey is an ECDSA private key which was generated with the following
+	// command:
+	//	openssl ecparam -name prime256v1 -genkey -noout -out ecprivatekey.pem
+	flag.StringVar(&config.PrivateKeyPath, "private-key-path", "/Users/dustysaker/go/src/github.com/dsaker/echo-oapi-tltv/internal/token/ecprivatekey.pem", "EcdsaPrivateKey for jws authenticator")
 
 	return nil
 }
