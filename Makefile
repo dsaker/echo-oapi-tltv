@@ -76,12 +76,7 @@ audit:
 ## audit/pipeline: tidy dependencies and format, vet and test all code (race on)
 audit/pipeline:
 	make audit
-	openssl ecparam -name prime256v1 -genkey -noout -out ecprivatekey.pem
-	ls -la
-	ls -la /home/runner/work/echo-oapi-tltv/echo-oapi-tltv/
 	go test -race -vet=off ./... -coverprofile=coverage.out -private-key-path=/home/runner/work/echo-oapi-tltv/echo-oapi-tltv/ecprivatekey.pem
-	ls -la
-	ls -la /home/runner/work/echo-oapi-tltv/echo-oapi-tltv/
 
 ## audit/local: tidy dependencies and format, vet and test all code (race off)
 audit/local:
@@ -129,6 +124,6 @@ linker_flags = '-s -X main.buildTime=${current_time} -X main.version=${git_descr
 ## build: build the cmd/api application
 build:
 	@echo 'Building api...'
-	rm ./ecprivatekey.pem
+	rm ecprivatekey.pem
 	go build -ldflags=${linker_flags} -o=./bin/api ./api
 	GOOS=linux GOARCH=amd64 go build -ldflags=${linker_flags} -o=./bin/linux_amd64/api ./api
