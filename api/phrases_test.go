@@ -15,6 +15,8 @@ import (
 )
 
 func TestGetPhrases(t *testing.T) {
+	t.Parallel()
+
 	user, _ := randomUser(t)
 	phrase := test.RandomPhrase()
 	ogTranslate := randomTranslate(phrase, user.OgLanguageID)
@@ -106,6 +108,8 @@ func TestGetPhrases(t *testing.T) {
 }
 
 func TestUpdateUsersPhrases(t *testing.T) {
+	t.Parallel()
+
 	user1, _ := randomUser(t)
 	phrase := test.RandomPhrase()
 	usersPhrase := randomUsersPhrase(user1, phrase)

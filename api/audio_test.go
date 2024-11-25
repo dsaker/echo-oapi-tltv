@@ -21,6 +21,8 @@ import (
 )
 
 func TestAudioFromTitle(t *testing.T) {
+	t.Parallel()
+
 	user, _ := randomUser(t)
 	title := test.RandomTitle()
 	translate1 := randomTranslate(test.RandomPhrase(), title.OgLanguageID)
@@ -227,6 +229,8 @@ func TestAudioFromTitle(t *testing.T) {
 }
 
 func TestAudioFromFile(t *testing.T) {
+	t.Parallel()
+
 	// TODO add test for pattern
 	user, _ := randomUser(t)
 	title := test.RandomTitle()
@@ -514,6 +518,7 @@ func TestAudioFromFileIntegration(t *testing.T) {
 		t.Skip("skipping integration test")
 	}
 
+	t.Parallel()
 	e := echo.New()
 
 	// create db connection

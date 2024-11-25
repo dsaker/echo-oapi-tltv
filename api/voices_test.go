@@ -13,6 +13,8 @@ import (
 )
 
 func TestListVoices(t *testing.T) {
+	t.Parallel()
+
 	user, _ := randomUser(t)
 
 	voice1 := test.RandomVoice()

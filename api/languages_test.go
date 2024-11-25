@@ -12,6 +12,8 @@ import (
 )
 
 func TestListLanguages(t *testing.T) {
+	t.Parallel()
+
 	user, _ := randomUser(t)
 
 	language1 := randomLanguage()

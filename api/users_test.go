@@ -46,6 +46,8 @@ func EqCreateUserParams(arg db.InsertUserParams, password string) gomock.Matcher
 }
 
 func TestGetUser(t *testing.T) {
+	t.Parallel()
+
 	user1, _ := randomUser(t)
 	user2, _ := randomUser(t)
 
@@ -116,6 +118,8 @@ func TestGetUser(t *testing.T) {
 }
 
 func TestDeleteUser(t *testing.T) {
+	t.Parallel()
+
 	user1, _ := randomUser(t)
 	user2, _ := randomUser(t)
 
@@ -181,6 +185,8 @@ func TestDeleteUser(t *testing.T) {
 }
 
 func TestCreateUser(t *testing.T) {
+	t.Parallel()
+
 	user, password := randomUser(t)
 	testCases := []testCase{
 		{
@@ -278,6 +284,8 @@ func TestCreateUser(t *testing.T) {
 }
 
 func TestUpdateUser(t *testing.T) {
+	t.Parallel()
+
 	user1, _ := randomUser(t)
 	user2, _ := randomUser(t)
 
@@ -399,6 +407,8 @@ func TestUpdateUser(t *testing.T) {
 }
 
 func TestLoginUser(t *testing.T) {
+	t.Parallel()
+
 	user, password := randomUser(t)
 	permissions := []string{db.ReadTitlesCode}
 
@@ -494,6 +504,8 @@ func TestLoginUser(t *testing.T) {
 }
 
 func TestCreateUserMiddleware(t *testing.T) {
+	t.Parallel()
+
 	user, password := randomUser(t)
 	testCases := []testCase{
 		{

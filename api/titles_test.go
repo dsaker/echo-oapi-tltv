@@ -21,6 +21,8 @@ import (
 )
 
 func TestFindTitles(t *testing.T) {
+	t.Parallel()
+
 	user, _ := randomUser(t)
 	title := test.RandomTitle()
 	listTitleParams := db.ListTitlesParams{
@@ -302,6 +304,8 @@ func TestAddTitle(t *testing.T) {
 }
 
 func TestFindTitleById(t *testing.T) {
+	t.Parallel()
+
 	user, _ := randomUser(t)
 	title := test.RandomTitle()
 
@@ -362,6 +366,8 @@ func TestFindTitleById(t *testing.T) {
 }
 
 func TestDeleteTitleById(t *testing.T) {
+	t.Parallel()
+
 	user, _ := randomUser(t)
 	title := test.RandomTitle()
 
@@ -415,6 +421,8 @@ func TestDeleteTitleById(t *testing.T) {
 }
 
 func TestTitlesTranslate(t *testing.T) {
+	t.Parallel()
+
 	user, _ := randomUser(t)
 	title := test.RandomTitle()
 	lang := randomLanguage()

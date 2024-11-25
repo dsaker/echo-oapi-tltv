@@ -13,6 +13,8 @@ import (
 )
 
 func TestAddUserPermission(t *testing.T) {
+	t.Parallel()
+
 	user, _ := randomUser(t)
 
 	userPermission := db.UsersPermission{
