@@ -21,6 +21,7 @@ import (
 // AudioFromFile accepts a file in srt, phrase per line, or paragraph form and
 // sends a zip file of mp3 audio tracks for learning a language that you choose
 func (s *Server) AudioFromFile(e echo.Context) error {
+	// TODO add more oapi validation
 	// get values from multipart form
 	titleName := e.FormValue("titleName")
 	// convert strings from multipart form to int16's
@@ -36,31 +37,33 @@ func (s *Server) AudioFromFile(e echo.Context) error {
 	if err != nil {
 		return e.String(http.StatusBadRequest, fmt.Sprintf("error converting fromVoiceId to int16: %s", err.Error()))
 	}
+
+	pause := s.config.PhrasePause
 	// check if user sent 'pause' in the request and update config if they did
-	pause := e.FormValue("pause")
-	if pause != "" {
-		pauseInt, err := strconv.Atoi(pause)
+	pauseForm := e.FormValue("pause")
+	if pauseForm != "" {
+		pauseInt, err := strconv.Atoi(pauseForm)
 		if err != nil {
 			return e.String(http.StatusBadRequest, fmt.Sprintf("error converting fromVoiceId to int: %s", err.Error()))
 		}
 		if pauseInt > 10 || pauseInt < 3 {
 			return e.String(http.StatusBadRequest, fmt.Sprintf("pause must be between 3 and 10: %d", pauseInt))
 		}
-		s.config.PhrasePause = pauseInt
+		pause = pauseInt
 	}
 
-	pattern := e.FormValue("pattern")
-	if pattern != "" {
-		patternInt, err := strconv.Atoi(pattern)
+	e.Set(util.PatternKey, s.config.AudioPattern)
+	patternForm := e.FormValue("pattern")
+	if patternForm != "" {
+		patternInt, err := strconv.Atoi(patternForm)
 		if err != nil {
 			return e.String(http.StatusBadRequest, fmt.Sprintf("error converting pattern to int: %s", err.Error()))
 		}
 		if patternInt > 3 || patternInt < 1 {
 			return e.String(http.StatusBadRequest, fmt.Sprintf("pattern must be between 1 and 3: %d", patternInt))
 		}
-		s.config.AudioPattern = patternInt
+		e.Set(util.PatternKey, patternInt)
 	}
-	e.Set("pattern", s.config.AudioPattern)
 
 	title, phraseZipFile, err := s.processFile(e, titleName, fileLangId)
 	if err != nil {
@@ -77,6 +80,7 @@ func (s *Server) AudioFromFile(e echo.Context) error {
 		TitleId:     title.ID,
 		ToVoiceId:   toVoiceId,
 		FromVoiceId: fromVoiceId,
+		Pause:       &pause,
 	}
 	zipFile, err := s.createAudioFromTitle(e, *title, audioFromTitleRequest)
 	if err != nil {
@@ -172,15 +176,13 @@ func (s *Server) AudioFromTitle(e echo.Context) error {
 		return e.String(http.StatusBadRequest, err.Error())
 	}
 
-	if audioFromTitleRequest.Pattern != nil {
-		s.config.AudioPattern = *audioFromTitleRequest.Pattern
+	if audioFromTitleRequest.Pattern == nil {
+		audioFromTitleRequest.Pattern = &s.config.AudioPattern
 	}
-	e.Set("pattern", s.config.AudioPattern)
 
-	if audioFromTitleRequest.Pause != nil {
-		s.config.PhrasePause = *audioFromTitleRequest.Pause
+	if audioFromTitleRequest.Pause == nil {
+		audioFromTitleRequest.Pause = &s.config.PhrasePause
 	}
-	e.Set("pause", audioFromTitleRequest.Pause)
 
 	// get title to translate from
 	title, err := s.queries.SelectTitleById(e.Request().Context(), audioFromTitleRequest.TitleId)
@@ -263,7 +265,7 @@ func (s *Server) createAudioFromTitle(e echo.Context, title db.Title, r oapi.Aud
 		return nil, err
 	}
 
-	pausePath, ok := audiofile.AudioPauseFilePath[s.config.PhrasePause]
+	pausePath, ok := audiofile.AudioPauseFilePath[*r.Pause]
 	if !ok {
 		e.Logger().Error(errors.New("audio pause file not found"))
 		return nil, err
@@ -281,5 +283,12 @@ func (s *Server) createAudioFromTitle(e echo.Context, title db.Title, r oapi.Aud
 		return nil, err
 	}
 
-	return s.af.CreateMp3Zip(e, title, tmpDirPath)
+	// get translates for language to learn to add to zip file
+	translates, err := s.queries.SelectTranslatesByTitleIdLangId(
+		e.Request().Context(),
+		db.SelectTranslatesByTitleIdLangIdParams{
+			LanguageID: toVoice.LanguageID,
+			ID:         title.ID,
+		})
+	return s.af.CreateMp3Zip(e, translates, title, tmpDirPath)
 }

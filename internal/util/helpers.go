@@ -9,6 +9,10 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+var (
+	Integration = false
+)
+
 // TranslatesReturn avoiding cycle between mock/translates and translates/translates
 type TranslatesReturn struct {
 	PhraseId int64

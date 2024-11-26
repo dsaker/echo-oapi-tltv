@@ -31,17 +31,16 @@ import (
 	mocka "talkliketv.click/tltv/internal/mock/audiofile"
 	mockdb "talkliketv.click/tltv/internal/mock/db"
 	mockt "talkliketv.click/tltv/internal/mock/translates"
-	"talkliketv.click/tltv/internal/oapi"
 	"talkliketv.click/tltv/internal/test"
 	"talkliketv.click/tltv/internal/token"
 	"talkliketv.click/tltv/internal/util"
 )
 
 var (
-	testCfg     TestConfig
-	count       = 0
-	integration = false
-	mappedPort  nat.Port
+	testCfg    TestConfig
+	count      = 0
+	mappedPort nat.Port
+	//integration = false
 )
 
 const (
@@ -103,15 +102,15 @@ type testCase struct {
 
 func TestMain(m *testing.M) {
 	_ = config.SetConfigs(&testCfg.Config)
-	flag.BoolVar(&integration, "integration", false, "Run integration tests")
+	flag.BoolVar(&util.Integration, "integration", false, "Run integration tests")
 	flag.Parse()
 	testCfg.TTSBasePath = test.AudioBasePath
-	if integration {
+	if util.Integration {
 		testCfg.container, testCfg.conn = setupTemplateDb()
 	}
 	// Run the tests
 	exitCode := m.Run()
-	if integration {
+	if util.Integration {
 		err := testCfg.container.Terminate(context.Background())
 		if err != nil {
 			log.Fatal(err)
@@ -155,16 +154,6 @@ func randomUser(t *testing.T) (user db.User, password string) {
 		HashedPassword: hashedPassword,
 	}
 	return
-}
-
-// randomTranslate create a random db Translate for testing
-func randomTranslate(phrase oapi.Phrase, languageId int16) db.Translate {
-	return db.Translate{
-		PhraseID:   phrase.Id,
-		LanguageID: languageId,
-		Phrase:     test.RandomString(8),
-		PhraseHint: test.RandomString(8),
-	}
 }
 
 // randomLanguage creates a random db Language for testing
