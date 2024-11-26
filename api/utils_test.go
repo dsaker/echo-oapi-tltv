@@ -40,7 +40,6 @@ var (
 	testCfg    TestConfig
 	count      = 0
 	mappedPort nat.Port
-	//integration = false
 )
 
 const (

@@ -11,8 +11,9 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"talkliketv.click/tltv/internal/util"
 	"testing"
+
+	"talkliketv.click/tltv/internal/util"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"

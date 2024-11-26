@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"talkliketv.click/tltv/internal/util"
 	"testing"
+
+	"talkliketv.click/tltv/internal/util"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"

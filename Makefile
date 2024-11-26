@@ -34,7 +34,7 @@ generate:
 
 ## run: run the api application
 run:
-	go run . -db-dsn=${TLTV_DB_DSN}
+	go run . -db-dsn=${TLTV_DB_DSN} -private-key-path=${PRIVATE_KEY_PATH}
 
 ## db/psql: connect to the database using psql
 db/psql:

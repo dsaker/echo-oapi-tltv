@@ -176,8 +176,9 @@ func (s *Server) AudioFromTitle(e echo.Context) error {
 		return e.String(http.StatusBadRequest, err.Error())
 	}
 
+	e.Set(util.PatternKey, s.config.AudioPattern)
 	if audioFromTitleRequest.Pattern == nil {
-		audioFromTitleRequest.Pattern = &s.config.AudioPattern
+		e.Set(util.PatternKey, audioFromTitleRequest.Pattern)
 	}
 
 	if audioFromTitleRequest.Pause == nil {
@@ -290,5 +291,9 @@ func (s *Server) createAudioFromTitle(e echo.Context, title db.Title, r oapi.Aud
 			LanguageID: toVoice.LanguageID,
 			ID:         title.ID,
 		})
+	if err != nil {
+		e.Logger().Error(err)
+		return nil, err
+	}
 	return s.af.CreateMp3Zip(e, translates, title, tmpDirPath)
 }

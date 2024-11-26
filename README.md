@@ -31,6 +31,11 @@ docker run -d -P -p 127.0.0.1:5433:5432 -e POSTGRES_PASSWORD="password" --name t
 echo "export TLTV_DB_DSN=postgresql://postgres:password@localhost:5433/postgres?sslmode=disable" >> .envrc
 make db/migrations/up
 ```
+- create private ecdsa key to sign json web tokens
+```
+openssl ecparam -name prime256v1 -genkey -noout -out /tmp/ecprivatekey.pem
+echo "export PRIVATE_KEY_PATH=/tmp/ecprivatekey.pem >> .envrc
+```
 - start the application
 ```
 cd ../..
@@ -42,9 +47,9 @@ make run
 ```
 make db/psql # creates a connection to the local database
 select * from users; # get id for you user
-insert into users_permissions values (<id from above>,2); # this adds titles:w permission need to create audio files
+insert into users_permissions values (<id from above>,2); # this adds 'titles:w' permission needed to create audio files
 ```
-- click POST /users/login 
+- click POST /users/login and login
 - copy response body and decode it at https://www.base64decode.org/
 - click on Authorize and add decoded value
 - click on POST /audio/fromfile and click on "Try it out"

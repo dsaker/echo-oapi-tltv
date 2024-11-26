@@ -5,8 +5,9 @@ import (
 	"flag"
 	"log"
 	"os"
-	"talkliketv.click/tltv/internal/util"
 	"testing"
+
+	"talkliketv.click/tltv/internal/util"
 
 	_ "github.com/lib/pq"
 )

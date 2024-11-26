@@ -374,7 +374,7 @@ func (a *AudioFile) CreateMp3Zip(e echo.Context, tr []db.Translate, t db.Title, 
 		}
 		defer f.Close()
 		for _, text := range tr {
-			_, err = f.WriteString(text.Phrase)
+			_, err = f.WriteString(text.Phrase + "\n")
 			if err != nil {
 				e.Logger().Error(err)
 				return nil, err
@@ -436,10 +436,12 @@ func (a *AudioFile) BuildAudioInputFiles(e echo.Context, ids []int64, t db.Title
 	// TODO add type check
 	value, ok := e.Get(util.PatternKey).(int)
 	if !ok {
+		e.Logger().Error("error getting pattern from context")
 		return util.ErrIntConversion
 	}
 	pattern := audio.GetPattern(value)
 	if pattern == nil {
+		e.Logger().Error("error getting pattern from audio file")
 		return errors.New("no pattern")
 	}
 	// create chunks of []Audio pattern to split up audio files into ~15 minute lengths

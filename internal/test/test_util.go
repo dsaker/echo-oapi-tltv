@@ -17,8 +17,7 @@ import (
 )
 
 var (
-	AudioBasePath = GetProjectRoot() + "./../tmp/test/audio/"
-	//Integration   = false
+	AudioBasePath = GetProjectRoot() + "/tmp/test/audio/"
 )
 
 func GetProjectRoot() string {
