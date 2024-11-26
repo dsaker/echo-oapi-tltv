@@ -46,7 +46,7 @@ func EqCreateUserParams(arg db.InsertUserParams, password string) gomock.Matcher
 }
 
 func TestGetUser(t *testing.T) {
-	if integration {
+	if util.Integration {
 		t.Skip("skipping unit test")
 	}
 
@@ -122,7 +122,7 @@ func TestGetUser(t *testing.T) {
 }
 
 func TestDeleteUser(t *testing.T) {
-	if integration {
+	if util.Integration {
 		t.Skip("skipping unit test")
 	}
 
@@ -193,7 +193,7 @@ func TestDeleteUser(t *testing.T) {
 }
 
 func TestCreateUser(t *testing.T) {
-	if integration {
+	if util.Integration {
 		t.Skip("skipping unit test")
 	}
 
@@ -296,7 +296,7 @@ func TestCreateUser(t *testing.T) {
 }
 
 func TestUpdateUser(t *testing.T) {
-	if integration {
+	if util.Integration {
 		t.Skip("skipping unit test")
 	}
 
@@ -423,7 +423,7 @@ func TestUpdateUser(t *testing.T) {
 }
 
 func TestLoginUser(t *testing.T) {
-	if integration {
+	if util.Integration {
 		t.Skip("skipping unit test")
 	}
 
@@ -524,7 +524,7 @@ func TestLoginUser(t *testing.T) {
 }
 
 func TestCreateUserMiddleware(t *testing.T) {
-	if integration {
+	if util.Integration {
 		t.Skip("skipping unit test")
 	}
 

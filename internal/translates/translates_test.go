@@ -2,6 +2,7 @@ package translates
 
 import (
 	"database/sql"
+	"flag"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -30,6 +31,11 @@ type translatesTestCase struct {
 }
 
 func TestInsertNewPhrases(t *testing.T) {
+	if util.Integration {
+		t.Skip("skipping unit test")
+	}
+	t.Parallel()
+
 	title := test.RandomTitle()
 	title.OgLanguageID = 27
 	randomPhrase1 := test.RandomPhrase()
@@ -111,6 +117,11 @@ func TestInsertNewPhrases(t *testing.T) {
 }
 
 func TestInsertTranslates(t *testing.T) {
+	if util.Integration {
+		t.Skip("skipping unit test")
+	}
+	t.Parallel()
+
 	title := test.RandomTitle()
 	title.OgLanguageID = 27
 	var newLanguageId int16 = 109
@@ -190,6 +201,11 @@ func TestInsertTranslates(t *testing.T) {
 }
 
 func TestTextToSpeech(t *testing.T) {
+	if util.Integration {
+		t.Skip("skipping unit test")
+	}
+	t.Parallel()
+
 	title := test.RandomTitle()
 	title.OgLanguageID = 27
 
@@ -268,6 +284,11 @@ func TestTextToSpeech(t *testing.T) {
 }
 
 func TestTranslatePhrases(t *testing.T) {
+	if util.Integration {
+		t.Skip("skipping unit test")
+	}
+	t.Parallel()
+
 	title := test.RandomTitle()
 	title.OgLanguageID = 27
 
@@ -336,4 +357,10 @@ func IsDirectoryEmpty(dirPath string) (bool, error) {
 		return true, nil // Directory is empty
 	}
 	return false, nil // Directory is not empty
+}
+
+func TestMain(m *testing.M) {
+	flag.BoolVar(&util.Integration, "integration", false, "Run integration tests")
+	flag.Parse()
+	os.Exit(m.Run())
 }

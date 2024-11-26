@@ -2,6 +2,7 @@ package audiofile
 
 import (
 	"archive/zip"
+	"flag"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -31,7 +32,10 @@ type audioFileTestCase struct {
 }
 
 func TestGetLines(t *testing.T) {
-
+	if util.Integration {
+		t.Skip("skipping unit test")
+	}
+	t.Parallel()
 	testCases := []audioFileTestCase{
 		{
 			name: "No error",
@@ -144,7 +148,10 @@ func TestGetLines(t *testing.T) {
 }
 
 func TestBuildAudioInputFiles(t *testing.T) {
-	// BuildAudioInputFiles(e echo.Context, ids []int64, t db.Title, pause, from, to, tmpDir string)
+	if util.Integration {
+		t.Skip("skipping unit test")
+	}
+	t.Parallel()
 
 	title := test.RandomTitle()
 	pause := test.RandomString(4)
@@ -195,6 +202,11 @@ func TestBuildAudioInputFiles(t *testing.T) {
 }
 
 func TestCreateMp3Zip(t *testing.T) {
+	if util.Integration {
+		t.Skip("skipping unit test")
+	}
+	t.Parallel()
+
 	translate1 := test.RandomTranslate(test.RandomPhrase(), test.ValidOgLanguageId)
 	translate2 := test.RandomTranslate(test.RandomPhrase(), test.ValidOgLanguageId)
 	dbTranslates := []db.Translate{translate1, translate2}
@@ -261,6 +273,11 @@ func TestCreateMp3Zip(t *testing.T) {
 }
 
 func TestCreatePhrasesZip(t *testing.T) {
+	if util.Integration {
+		t.Skip("skipping unit test")
+	}
+	t.Parallel()
+
 	stringsSlice := []string{
 		"Absolutely! Here's a zany paragraph packed with punctuation:",
 		"Wow! Did you see that?! A purple penguin — yes, a purple penguin! —",
@@ -388,6 +405,11 @@ func TestCreatePhrasesZip(t *testing.T) {
 }
 
 func TestSplitBigPhrases(t *testing.T) {
+	if util.Integration {
+		t.Skip("skipping unit test")
+	}
+	t.Parallel()
+
 	type testCase struct {
 		line string
 		want []string
@@ -487,4 +509,12 @@ func createFile(t *testing.T, filename, fileString string) *os.File {
 	require.NoError(t, err)
 
 	return file
+}
+
+func TestMain(m *testing.M) {
+	flag.BoolVar(&util.Integration, "integration", false, "Run integration tests")
+	flag.Parse()
+	// Run the tests
+	exitCode := m.Run()
+	os.Exit(exitCode)
 }

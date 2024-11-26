@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"talkliketv.click/tltv/internal/util"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -12,7 +13,7 @@ import (
 )
 
 func TestListLanguages(t *testing.T) {
-	if integration {
+	if util.Integration {
 		t.Skip("skipping unit test")
 	}
 

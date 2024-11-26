@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"talkliketv.click/tltv/internal/util"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -15,7 +16,7 @@ import (
 )
 
 func TestGetPhrases(t *testing.T) {
-	if integration {
+	if util.Integration {
 		t.Skip("skipping unit test")
 	}
 
@@ -112,7 +113,7 @@ func TestGetPhrases(t *testing.T) {
 }
 
 func TestUpdateUsersPhrases(t *testing.T) {
-	if integration {
+	if util.Integration {
 		t.Skip("skipping unit test")
 	}
 

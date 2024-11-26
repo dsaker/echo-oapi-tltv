@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"talkliketv.click/tltv/internal/util"
 	"testing"
 
 	"github.com/labstack/echo/v4"
@@ -21,7 +22,7 @@ import (
 )
 
 func TestAudioFromTitle(t *testing.T) {
-	if integration {
+	if util.Integration {
 		t.Skip("skipping unit test")
 	}
 
@@ -310,7 +311,7 @@ func TestAudioFromTitle(t *testing.T) {
 }
 
 func TestAudioFromFile(t *testing.T) {
-	if integration {
+	if util.Integration {
 		t.Skip("skipping unit test")
 	}
 
@@ -634,7 +635,7 @@ func TestAudioFromFile(t *testing.T) {
 }
 
 func TestAudioFromFileIntegration(t *testing.T) {
-	if !integration {
+	if !util.Integration {
 		t.Skip("skipping integration test")
 	}
 

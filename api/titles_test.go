@@ -21,7 +21,7 @@ import (
 )
 
 func TestFindTitles(t *testing.T) {
-	if integration {
+	if util.Integration {
 		t.Skip("skipping unit test")
 	}
 
@@ -120,7 +120,7 @@ func TestFindTitles(t *testing.T) {
 }
 
 func TestAddTitle(t *testing.T) {
-	if integration {
+	if util.Integration {
 		t.Skip("skipping unit test")
 	}
 
@@ -312,7 +312,7 @@ func TestAddTitle(t *testing.T) {
 }
 
 func TestFindTitleById(t *testing.T) {
-	if integration {
+	if util.Integration {
 		t.Skip("skipping unit test")
 	}
 
@@ -378,7 +378,7 @@ func TestFindTitleById(t *testing.T) {
 }
 
 func TestDeleteTitleById(t *testing.T) {
-	if integration {
+	if util.Integration {
 		t.Skip("skipping unit test")
 	}
 
@@ -437,7 +437,7 @@ func TestDeleteTitleById(t *testing.T) {
 }
 
 func TestTitlesTranslate(t *testing.T) {
-	if integration {
+	if util.Integration {
 		t.Skip("skipping unit test")
 	}
 

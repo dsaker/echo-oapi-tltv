@@ -37,10 +37,10 @@ import (
 )
 
 var (
-	testCfg     TestConfig
-	count       = 0
-	mappedPort  nat.Port
-	integration = false
+	testCfg    TestConfig
+	count      = 0
+	mappedPort nat.Port
+	//integration = false
 )
 
 const (
@@ -102,15 +102,15 @@ type testCase struct {
 
 func TestMain(m *testing.M) {
 	_ = config.SetConfigs(&testCfg.Config)
-	flag.BoolVar(&integration, "integration", false, "Run integration tests")
+	flag.BoolVar(&util.Integration, "integration", false, "Run integration tests")
 	flag.Parse()
 	testCfg.TTSBasePath = test.AudioBasePath
-	if integration {
+	if util.Integration {
 		testCfg.container, testCfg.conn = setupTemplateDb()
 	}
 	// Run the tests
 	exitCode := m.Run()
-	if integration {
+	if util.Integration {
 		err := testCfg.container.Terminate(context.Background())
 		if err != nil {
 			log.Fatal(err)

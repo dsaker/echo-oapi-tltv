@@ -2,8 +2,10 @@ package db
 
 import (
 	"database/sql"
+	"flag"
 	"log"
 	"os"
+	"talkliketv.click/tltv/internal/util"
 	"testing"
 
 	_ "github.com/lib/pq"
@@ -23,6 +25,7 @@ func TestMain(m *testing.M) {
 	}
 
 	testQueries = New(conn)
-
+	flag.BoolVar(&util.Integration, "integration", false, "Run integration tests")
+	flag.Parse()
 	os.Exit(m.Run())
 }
