@@ -31,7 +31,6 @@ import (
 	mocka "talkliketv.click/tltv/internal/mock/audiofile"
 	mockdb "talkliketv.click/tltv/internal/mock/db"
 	mockt "talkliketv.click/tltv/internal/mock/translates"
-	"talkliketv.click/tltv/internal/oapi"
 	"talkliketv.click/tltv/internal/test"
 	"talkliketv.click/tltv/internal/token"
 	"talkliketv.click/tltv/internal/util"
@@ -40,8 +39,8 @@ import (
 var (
 	testCfg     TestConfig
 	count       = 0
-	integration = false
 	mappedPort  nat.Port
+	integration = false
 )
 
 const (
@@ -155,16 +154,6 @@ func randomUser(t *testing.T) (user db.User, password string) {
 		HashedPassword: hashedPassword,
 	}
 	return
-}
-
-// randomTranslate create a random db Translate for testing
-func randomTranslate(phrase oapi.Phrase, languageId int16) db.Translate {
-	return db.Translate{
-		PhraseID:   phrase.Id,
-		LanguageID: languageId,
-		Phrase:     test.RandomString(8),
-		PhraseHint: test.RandomString(8),
-	}
 }
 
 // randomLanguage creates a random db Language for testing

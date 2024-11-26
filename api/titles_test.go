@@ -21,6 +21,10 @@ import (
 )
 
 func TestFindTitles(t *testing.T) {
+	if integration {
+		t.Skip("skipping unit test")
+	}
+
 	t.Parallel()
 
 	user, _ := randomUser(t)
@@ -116,10 +120,14 @@ func TestFindTitles(t *testing.T) {
 }
 
 func TestAddTitle(t *testing.T) {
+	if integration {
+		t.Skip("skipping unit test")
+	}
+
 	user, _ := randomUser(t)
 	title := test.RandomTitle()
-	translate1 := randomTranslate(test.RandomPhrase(), title.OgLanguageID)
-	translate2 := randomTranslate(test.RandomPhrase(), title.OgLanguageID)
+	translate1 := test.RandomTranslate(test.RandomPhrase(), title.OgLanguageID)
+	translate2 := test.RandomTranslate(test.RandomPhrase(), title.OgLanguageID)
 
 	dbTranslates := []db.Translate{translate1, translate2}
 	// remove directory after tests run
@@ -304,6 +312,10 @@ func TestAddTitle(t *testing.T) {
 }
 
 func TestFindTitleById(t *testing.T) {
+	if integration {
+		t.Skip("skipping unit test")
+	}
+
 	t.Parallel()
 
 	user, _ := randomUser(t)
@@ -366,6 +378,10 @@ func TestFindTitleById(t *testing.T) {
 }
 
 func TestDeleteTitleById(t *testing.T) {
+	if integration {
+		t.Skip("skipping unit test")
+	}
+
 	t.Parallel()
 
 	user, _ := randomUser(t)
@@ -421,6 +437,10 @@ func TestDeleteTitleById(t *testing.T) {
 }
 
 func TestTitlesTranslate(t *testing.T) {
+	if integration {
+		t.Skip("skipping unit test")
+	}
+
 	t.Parallel()
 
 	user, _ := randomUser(t)

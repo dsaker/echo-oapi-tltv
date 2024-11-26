@@ -13,6 +13,10 @@ import (
 )
 
 func TestAddUserPermission(t *testing.T) {
+	if integration {
+		t.Skip("skipping unit test")
+	}
+
 	t.Parallel()
 
 	user, _ := randomUser(t)

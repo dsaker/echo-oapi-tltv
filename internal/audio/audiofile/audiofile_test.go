@@ -31,6 +31,7 @@ type audioFileTestCase struct {
 }
 
 func TestGetLines(t *testing.T) {
+
 	testCases := []audioFileTestCase{
 		{
 			name: "No error",
@@ -173,7 +174,7 @@ func TestBuildAudioInputFiles(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/fakeurl", nil)
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
-			c.Set("pattern", 1)
+			c.Set(util.PatternKey, 1)
 
 			audioFile := AudioFile{}
 			err := audioFile.BuildAudioInputFiles(
@@ -194,6 +195,9 @@ func TestBuildAudioInputFiles(t *testing.T) {
 }
 
 func TestCreateMp3Zip(t *testing.T) {
+	translate1 := test.RandomTranslate(test.RandomPhrase(), test.ValidOgLanguageId)
+	translate2 := test.RandomTranslate(test.RandomPhrase(), test.ValidOgLanguageId)
+	dbTranslates := []db.Translate{translate1, translate2}
 	testCases := []audioFileTestCase{
 		{
 			name: "No error",
@@ -250,7 +254,7 @@ func TestCreateMp3Zip(t *testing.T) {
 
 			audioFile := New(cmdX)
 			title, tmpDir := tc.createTitle(t)
-			osFile, err := audioFile.CreateMp3Zip(c, title, tmpDir)
+			osFile, err := audioFile.CreateMp3Zip(c, dbTranslates, title, tmpDir)
 			tc.checkReturn(t, osFile, err)
 		})
 	}

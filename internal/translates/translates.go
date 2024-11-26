@@ -157,7 +157,7 @@ func (t *Translate) CreateTTS(e echo.Context, q db.Querier, title db.Title, voic
 
 	// if they do not exist, then request them
 	if !skip {
-		fromTranslates, err := t.GetOrCreateTranslates(e, q, title, lang)
+		translates, err := t.GetOrCreateTranslates(e, q, title, lang)
 		if err != nil {
 			return err
 		}
@@ -168,7 +168,7 @@ func (t *Translate) CreateTTS(e echo.Context, q db.Querier, title db.Title, voic
 			return err
 		}
 
-		if err = t.TextToSpeech(e, fromTranslates, voice, basePath); err != nil {
+		if err = t.TextToSpeech(e, translates, voice, basePath); err != nil {
 			e.Logger().Error(err)
 			return err
 		}

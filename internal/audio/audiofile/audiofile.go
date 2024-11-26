@@ -54,7 +54,7 @@ const (
 
 type AudioFileX interface {
 	GetLines(echo.Context, multipart.File) ([]string, error)
-	CreateMp3Zip(echo.Context, db.Title, string) (*os.File, error)
+	CreateMp3Zip(echo.Context, []db.Translate, db.Title, string) (*os.File, error)
 	BuildAudioInputFiles(echo.Context, []int64, db.Title, string, string, string, string) error
 	CreatePhrasesZip(echo.Context, iter.Seq[[]string], string, string) (*os.File, error)
 }
@@ -334,7 +334,7 @@ func replaceFmt(line string) string {
 // CreateMp3Zip takes the input txt files created with BuildAudioInputFiles and uses ffmpeg
 // to build an output mp3's file and the zips them into a single file to be returned to the
 // requester
-func (a *AudioFile) CreateMp3Zip(e echo.Context, t db.Title, tmpDir string) (*os.File, error) {
+func (a *AudioFile) CreateMp3Zip(e echo.Context, tr []db.Translate, t db.Title, tmpDir string) (*os.File, error) {
 	// get a list of files from the temp directory
 	files, err := os.ReadDir(tmpDir)
 	if err != nil {
@@ -362,6 +362,23 @@ func (a *AudioFile) CreateMp3Zip(e echo.Context, t db.Title, tmpDir string) (*os
 			e.Logger().Error(err)
 			e.Logger().Error("combined output: " + string(output))
 			return nil, err
+		}
+	}
+
+	if tr != nil {
+		// Create file to write all the translated phrases to
+		f, err := os.Create(outDirPath + "/" + t.Title + "-translates.txt")
+		if err != nil {
+			e.Logger().Error(err)
+			return nil, err
+		}
+		defer f.Close()
+		for _, text := range tr {
+			_, err = f.WriteString(text.Phrase)
+			if err != nil {
+				e.Logger().Error(err)
+				return nil, err
+			}
 		}
 	}
 
@@ -416,7 +433,8 @@ func (a *AudioFile) BuildAudioInputFiles(e echo.Context, ids []int64, t db.Title
 	maxP := slices.Max(ids)
 
 	// get the pattern represented as an int from the context
-	value, ok := e.Get("pattern").(int)
+	// TODO add type check
+	value, ok := e.Get(util.PatternKey).(int)
 	if !ok {
 		return util.ErrIntConversion
 	}

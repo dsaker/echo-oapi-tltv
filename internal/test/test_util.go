@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	AudioBasePath = GetProjectRoot() + "/../tmp/test/audio/"
+	AudioBasePath = GetProjectRoot() + "./../tmp/test/audio/"
 )
 
 func GetProjectRoot() string {
@@ -117,5 +117,15 @@ func RandomTitle() (title db.Title) {
 		Title:        RandomString(8),
 		NumSubs:      RandomInt16(),
 		OgLanguageID: ValidOgLanguageId,
+	}
+}
+
+// RandomTranslate create a random db Translate for testing
+func RandomTranslate(phrase oapi.Phrase, languageId int16) db.Translate {
+	return db.Translate{
+		PhraseID:   phrase.Id,
+		LanguageID: languageId,
+		Phrase:     RandomString(8) + " " + RandomString(8),
+		PhraseHint: RandomString(8) + " " + RandomString(8),
 	}
 }

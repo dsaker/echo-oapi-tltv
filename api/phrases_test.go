@@ -15,12 +15,16 @@ import (
 )
 
 func TestGetPhrases(t *testing.T) {
+	if integration {
+		t.Skip("skipping unit test")
+	}
+
 	t.Parallel()
 
 	user, _ := randomUser(t)
 	phrase := test.RandomPhrase()
-	ogTranslate := randomTranslate(phrase, user.OgLanguageID)
-	newTranslate := randomTranslate(phrase, user.NewLanguageID)
+	ogTranslate := test.RandomTranslate(phrase, user.OgLanguageID)
+	newTranslate := test.RandomTranslate(phrase, user.NewLanguageID)
 
 	selectPhrasesFromTranslatesParams := db.SelectTranslatesWithCorrectParams{
 		LanguageID:   user.OgLanguageID,
@@ -108,6 +112,10 @@ func TestGetPhrases(t *testing.T) {
 }
 
 func TestUpdateUsersPhrases(t *testing.T) {
+	if integration {
+		t.Skip("skipping unit test")
+	}
+
 	t.Parallel()
 
 	user1, _ := randomUser(t)

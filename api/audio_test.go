@@ -21,12 +21,16 @@ import (
 )
 
 func TestAudioFromTitle(t *testing.T) {
+	if integration {
+		t.Skip("skipping unit test")
+	}
+
 	t.Parallel()
 
 	user, _ := randomUser(t)
 	title := test.RandomTitle()
-	translate1 := randomTranslate(test.RandomPhrase(), title.OgLanguageID)
-	translate2 := randomTranslate(test.RandomPhrase(), title.OgLanguageID)
+	translate1 := test.RandomTranslate(test.RandomPhrase(), title.OgLanguageID)
+	translate2 := test.RandomTranslate(test.RandomPhrase(), title.OgLanguageID)
 	toVoice := test.RandomVoice()
 	fromVoice := test.RandomVoice()
 
@@ -48,6 +52,13 @@ func TestAudioFromTitle(t *testing.T) {
 		"toVoiceId":   toVoice.ID,
 		"fromVoiceId": fromVoice.ID,
 	}
+
+	selectTranslatesByTitleIdLangIdParams := db.SelectTranslatesByTitleIdLangIdParams{
+		LanguageID: toVoice.LanguageID,
+		ID:         title.ID,
+	}
+
+	dbTranslates := []db.Translate{translate1, translate2}
 
 	testCases := []testCase{
 		{
@@ -83,9 +94,59 @@ func TestAudioFromTitle(t *testing.T) {
 				stubs.AudioFileX.EXPECT().
 					BuildAudioInputFiles(gomock.Any(), phraseIDs, title, silenceBasePath, fromAudioBasePath, toAudioBasePath, gomock.Any()).
 					Return(nil)
+				// SelectTranslatesByTitleIdLangId(ctx context.Context, arg SelectTranslatesByTitleIdLangIdParams) ([]Translate, error)
+				stubs.MockQuerier.EXPECT().
+					SelectTranslatesByTitleIdLangId(gomock.Any(), selectTranslatesByTitleIdLangIdParams).
+					Return(dbTranslates, nil)
 				// CreateMp3Zip(echo.Context, db.Title, string) (*os.File, error)
 				stubs.AudioFileX.EXPECT().
-					CreateMp3Zip(gomock.Any(), title, gomock.Any()).
+					CreateMp3Zip(gomock.Any(), dbTranslates, title, gomock.Any()).
+					Return(file, nil)
+			},
+			checkResponse: func(res *http.Response) {
+				require.Equal(t, http.StatusOK, res.StatusCode)
+			},
+			permissions: []string{db.WriteTitlesCode},
+		},
+		{
+			name: "OK with translates",
+			body: okBody,
+			user: user,
+			buildStubs: func(stubs MockStubs) {
+				file, err := os.Create(filename)
+				require.NoError(t, err)
+				defer file.Close()
+				stubs.MockQuerier.EXPECT().
+					SelectTitleById(gomock.Any(), title.ID).
+					Return(title, nil)
+				// SelectVoiceById(ctx context.Context, id int16) (Voice, error)
+				stubs.MockQuerier.EXPECT().
+					SelectVoiceById(gomock.Any(), fromVoice.ID).
+					Return(fromVoice, nil)
+				stubs.MockQuerier.EXPECT().
+					SelectVoiceById(gomock.Any(), toVoice.ID).
+					Return(toVoice, nil)
+				// CreateTTSForLang(echo.Context, db.Querier, db.Language, db.Title, string) error
+				stubs.TranslateX.EXPECT().
+					CreateTTS(gomock.Any(), stubs.MockQuerier, title, fromVoice.ID, fromAudioBasePath).
+					Return(nil)
+				stubs.TranslateX.EXPECT().
+					CreateTTS(gomock.Any(), stubs.MockQuerier, title, toVoice.ID, toAudioBasePath).
+					Return(nil)
+				// SelectPhraseIdsByTitleId(ctx context.Context, titleID int64) ([]int64, error)
+				stubs.MockQuerier.EXPECT().
+					SelectPhraseIdsByTitleId(gomock.Any(), title.ID).
+					Return(phraseIDs, nil)
+				// BuildAudioInputFiles(echo.Context, []int64, db.Title, string, string, string, string) error
+				stubs.AudioFileX.EXPECT().
+					BuildAudioInputFiles(gomock.Any(), phraseIDs, title, silenceBasePath, fromAudioBasePath, toAudioBasePath, gomock.Any()).
+					Return(nil)
+				stubs.MockQuerier.EXPECT().
+					SelectTranslatesByTitleIdLangId(gomock.Any(), selectTranslatesByTitleIdLangIdParams).
+					Return(dbTranslates, nil)
+				// CreateMp3Zip(echo.Context, db.Title, string) (*os.File, error)
+				stubs.AudioFileX.EXPECT().
+					CreateMp3Zip(gomock.Any(), dbTranslates, title, gomock.Any()).
 					Return(file, nil)
 			},
 			checkResponse: func(res *http.Response) {
@@ -133,9 +194,11 @@ func TestAudioFromTitle(t *testing.T) {
 				stubs.AudioFileX.EXPECT().
 					BuildAudioInputFiles(gomock.Any(), phraseIDs, title, silenceBasePath, fromAudioBasePath, toAudioBasePath, gomock.Any()).
 					Return(nil)
-				// CreateMp3Zip(echo.Context, db.Title, string) (*os.File, error)
+				stubs.MockQuerier.EXPECT().
+					SelectTranslatesByTitleIdLangId(gomock.Any(), selectTranslatesByTitleIdLangIdParams).
+					Return(dbTranslates, nil)
 				stubs.AudioFileX.EXPECT().
-					CreateMp3Zip(gomock.Any(), title, gomock.Any()).
+					CreateMp3Zip(gomock.Any(), dbTranslates, title, gomock.Any()).
 					Return(file, nil)
 			},
 			checkResponse: func(res *http.Response) {
@@ -171,6 +234,24 @@ func TestAudioFromTitle(t *testing.T) {
 				require.Equal(t, http.StatusBadRequest, res.StatusCode)
 				resBody := readBody(t, res)
 				require.Contains(t, resBody, "{\"message\":\"request body has an error: doesn't match schema #/components/schemas/AudioFromTitle: Error at \\\"/toVoiceId\\\"")
+			},
+			permissions: []string{db.WriteTitlesCode},
+		},
+		{
+			name: "Pause out of range",
+			body: map[string]any{
+				"titleId":     user.ID,
+				"toVoiceId":   toVoice.ID,
+				"fromVoiceId": fromVoice.ID,
+				"pause":       11,
+			},
+			user: user,
+			buildStubs: func(stubs MockStubs) {
+			},
+			checkResponse: func(res *http.Response) {
+				require.Equal(t, http.StatusBadRequest, res.StatusCode)
+				resBody := readBody(t, res)
+				require.Contains(t, resBody, "request body has an error: doesn't match schema #/components/schemas/AudioFromTitle: Error at \\\"/pause\\\": number must be at most 10\"")
 			},
 			permissions: []string{db.WriteTitlesCode},
 		},
@@ -229,18 +310,27 @@ func TestAudioFromTitle(t *testing.T) {
 }
 
 func TestAudioFromFile(t *testing.T) {
+	if integration {
+		t.Skip("skipping unit test")
+	}
+
 	t.Parallel()
 
 	// TODO add test for pattern
 	user, _ := randomUser(t)
 	title := test.RandomTitle()
-	translate1 := randomTranslate(test.RandomPhrase(), title.OgLanguageID)
-	translate2 := randomTranslate(test.RandomPhrase(), title.OgLanguageID)
+	translate1 := test.RandomTranslate(test.RandomPhrase(), title.OgLanguageID)
+	translate2 := test.RandomTranslate(test.RandomPhrase(), title.OgLanguageID)
 	toVoice := test.RandomVoice()
 	fromVoice := test.RandomVoice()
 
 	phraseIDs := []int64{translate1.PhraseID, translate2.PhraseID}
 	dbTranslates := []db.Translate{translate1, translate2}
+
+	selectTranslatesByTitleIdLangIdParams := db.SelectTranslatesByTitleIdLangIdParams{
+		LanguageID: toVoice.LanguageID,
+		ID:         title.ID,
+	}
 
 	//create a base path for storing mp3 audio files
 	tmpAudioBasePath := test.AudioBasePath + strconv.Itoa(int(title.ID)) + "/"
@@ -308,9 +398,12 @@ func TestAudioFromFile(t *testing.T) {
 				stubs.AudioFileX.EXPECT().
 					BuildAudioInputFiles(gomock.Any(), phraseIDs, title, silenceBasePath, fromAudioBasePath, toAudioBasePath, gomock.Any()).
 					Return(nil)
+				stubs.MockQuerier.EXPECT().
+					SelectTranslatesByTitleIdLangId(gomock.Any(), selectTranslatesByTitleIdLangIdParams).
+					Return(dbTranslates, nil)
 				// CreateMp3Zip(echo.Context, db.Title, string) (*os.File, error)
 				stubs.AudioFileX.EXPECT().
-					CreateMp3Zip(gomock.Any(), title, gomock.Any()).
+					CreateMp3Zip(gomock.Any(), dbTranslates, title, gomock.Any()).
 					Return(file, nil)
 			},
 			checkResponse: func(res *http.Response) {
@@ -361,9 +454,12 @@ func TestAudioFromFile(t *testing.T) {
 				stubs.AudioFileX.EXPECT().
 					BuildAudioInputFiles(gomock.Any(), phraseIDs, title, silenceBasePath, fromAudioBasePath, toAudioBasePath, gomock.Any()).
 					Return(nil)
+				stubs.MockQuerier.EXPECT().
+					SelectTranslatesByTitleIdLangId(gomock.Any(), selectTranslatesByTitleIdLangIdParams).
+					Return(dbTranslates, nil)
 				// CreateMp3Zip(echo.Context, db.Title, string) (*os.File, error)
 				stubs.AudioFileX.EXPECT().
-					CreateMp3Zip(gomock.Any(), title, gomock.Any()).
+					CreateMp3Zip(gomock.Any(), dbTranslates, title, gomock.Any()).
 					Return(file, nil)
 			},
 			checkResponse: func(res *http.Response) {
@@ -380,6 +476,30 @@ func TestAudioFromFile(t *testing.T) {
 					"pause":          "3",
 				}
 				return createMultiPartBody(t, data, filename, formMap)
+			},
+			permissions: []string{db.WriteTitlesCode},
+		},
+		{
+			name: "Pause out of range",
+			multipartBody: func(t *testing.T) (*bytes.Buffer, *multipart.Writer) {
+				data := []byte("This is the first sentence.\nThis is the second sentence.\n")
+
+				formMap := map[string]string{
+					"fileLanguageId": strconv.Itoa(int(title.OgLanguageID)),
+					"titleName":      title.Title,
+					"fromVoiceId":    strconv.Itoa(int(fromVoice.ID)),
+					"toVoiceId":      strconv.Itoa(int(toVoice.ID)),
+					"pause":          "11",
+				}
+				return createMultiPartBody(t, data, filename, formMap)
+			},
+			user: user,
+			buildStubs: func(stubs MockStubs) {
+			},
+			checkResponse: func(res *http.Response) {
+				require.Equal(t, http.StatusBadRequest, res.StatusCode)
+				resBody := readBody(t, res)
+				require.Contains(t, resBody, "pause must be between 3 and 10: 11")
 			},
 			permissions: []string{db.WriteTitlesCode},
 		},
@@ -579,6 +699,26 @@ func TestAudioFromFileIntegration(t *testing.T) {
 					"toVoiceId":      strconv.Itoa(1000),
 				}
 				return createMultiPartBody(t, data, filename, badFormMap)
+			},
+			permissions: []string{db.WriteTitlesCode},
+		},
+		{
+			name: "OK with Pause",
+			user: user,
+			checkResponse: func(res *http.Response) {
+				require.Equal(t, http.StatusOK, res.StatusCode)
+			},
+			multipartBody: func(t *testing.T) (*bytes.Buffer, *multipart.Writer) {
+				data := []byte("This is the first sentence.\nThis is the second sentence.\n")
+
+				pauseFormMap := map[string]string{
+					"fileLanguageId": strconv.Itoa(int(title.OgLanguageID)),
+					"titleName":      title.Title,
+					"fromVoiceId":    strconv.Itoa(80),
+					"toVoiceId":      strconv.Itoa(182),
+					"pause":          "6",
+				}
+				return createMultiPartBody(t, data, filename, pauseFormMap)
 			},
 			permissions: []string{db.WriteTitlesCode},
 		},
