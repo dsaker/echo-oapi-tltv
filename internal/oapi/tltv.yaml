@@ -2,7 +2,7 @@ openapi: "3.0.0"
 info:
   version: 1.0.0
   title: TalkLikeTv
-  description: >
+  description: |
     TalkLikeTV is a language learning application designed to help users overcome the plateau 
     often encountered with other language apps. It offers a personalized learning experience 
     by allowing users to choose the specific phrases they want to focus on. Users can upload 
@@ -11,6 +11,12 @@ info:
     Additionally, a web application is in development, where users will soon be able to log 
     in and enhance their language skills through reading and translating from their native 
     language to the target language.
+    
+    You can either add a title at POST /title or create an audio file straight from the file at 
+    Post /audio/fromfile. If you add a title at either of these endpoints with more phrases than the
+    max set at config.MaxNumPhrases it will return a zipped file of text files split into the max
+    number of phrases. I recommend starting this way so you can check to make sure that your file
+    was parsed correctly.
   contact:
     name: Dusty Saker
     email: dustywayne@comcast.net
@@ -339,7 +345,9 @@ paths:
                 $ref: '#/components/schemas/Error'
     post:
       summary: Creates a new title
-      description: Creates a new title. Duplicates titles are not allowed
+      description: |
+        Creates a new title. Duplicate titles are not allowed. languageId is the original language of the title.
+        You can get a list of language id's from GET /languages
       operationId: addTitle
       security:
         - BearerAuth:
@@ -526,7 +534,11 @@ paths:
                 $ref: '#/components/schemas/Error'
   /audio/fromtitle:
     post:
-      description: create a language learning audio file from title
+      description: |
+        create a language learning audio file from title. fromVoiceId is your native language. 
+        toVoiceId is the language you want to learn. I recommend using the studio voices when they are available.
+        pause is the seconds between phrases in the recording. If you do not delete the generated text-to-speech audio there is no extra costs to create multiple audio's with different spacing.
+        I prefer 10 seconds for learning while I am walking and 4 seconds when I am setting at my computer and can pause between phrases.
       operationId: audioFromTitle
       security:
         - BearerAuth:
