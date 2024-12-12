@@ -3,17 +3,11 @@ package config
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"flag"
-	"fmt"
-	"net/http"
-	"sync"
 	"time"
 
-	"github.com/gomiddleware/realip"
 	_ "github.com/lib/pq"
-	"golang.org/x/time/rate"
 )
 
 // Config Update the config struct to hold the SMTP server settings.
@@ -79,90 +73,6 @@ func SetConfigs(config *Config) error {
 
 func isValidPause(port int) bool {
 	return port >= 3 && port <= 10
-}
-
-func (cfg *Config) RateLimit(next http.Handler) http.Handler {
-	// Define a client struct to hold the rate limiter and last seen time for each
-	// client.
-	type client struct {
-		limiter  *rate.Limiter
-		lastSeen time.Time
-	}
-
-	var (
-		mu sync.Mutex
-		// Update the map so the values are pointers to a client struct.
-		clients = make(map[string]*client)
-	)
-
-	// Launch a background goroutine which removes old entries from the clients map once
-	// every minute.
-	go func() {
-		for {
-			time.Sleep(time.Minute)
-
-			// Lock the mutex to prevent any rate limiter checks from happening while
-			// the cleanup is taking place.
-			mu.Lock()
-
-			// Loop through all clients. If they haven't been seen within the last three
-			// minutes, delete the corresponding entry from the map.
-			for ip, client := range clients {
-				if time.Since(client.lastSeen) > 3*time.Minute {
-					delete(clients, ip)
-				}
-			}
-
-			// Importantly, unlock the mutex when the cleanup is complete.
-			mu.Unlock()
-		}
-	}()
-
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if cfg.Limiter.Enabled {
-			// Use the realip.FromRequest() function to get the client's real IP address.
-			ip := realip.RealIpFromRequest(r)
-
-			mu.Lock()
-
-			if _, found := clients[ip]; !found {
-				clients[ip] = &client{
-					limiter: rate.NewLimiter(rate.Limit(cfg.Limiter.Rps), cfg.Limiter.Burst),
-				}
-			}
-
-			clients[ip].lastSeen = time.Now()
-
-			if !clients[ip].limiter.Allow() {
-				mu.Unlock()
-				rateLimitExceededResponse(w, r)
-				return
-			}
-
-			mu.Unlock()
-		}
-
-		next.ServeHTTP(w, r)
-	})
-}
-
-func rateLimitExceededResponse(w http.ResponseWriter, r *http.Request) {
-	message := "rate limit exceeded"
-	type envelope map[string]interface{}
-	env := envelope{"error": message}
-
-	js, err := json.MarshalIndent(env, "", "\t")
-	if err != nil {
-		fmt.Printf("error in rateLimitExceededResponse: %s, %s, %s", err, r.Method, r.URL.String())
-		w.WriteHeader(http.StatusInternalServerError)
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusTooManyRequests)
-	_, err = w.Write(js)
-	if err != nil {
-		fmt.Printf("error in rateLimitExceededResponse Write: %s, %s, %s", err, r.Method, r.URL.String())
-	}
 }
 
 func (cfg *Config) OpenDB() (*sql.DB, error) {

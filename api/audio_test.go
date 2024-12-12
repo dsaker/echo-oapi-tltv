@@ -645,7 +645,7 @@ func TestAudioFromFileIntegration(t *testing.T) {
 
 	// create db connection
 	q := db.New(testCfg.conn)
-	tr, af := Depends(e)
+	tr, af := CreateDependencies(e)
 	srv := NewServer(e, testCfg.Config, q, tr, af)
 
 	// TODO add test for pattern

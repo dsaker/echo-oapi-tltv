@@ -229,7 +229,7 @@ func TestTextToSpeech(t *testing.T) {
 	testCases := []translatesTestCase{
 		{
 			name: "No error",
-			buildStubs: func(s *mockdb.MockQuerier, t *mockt.MockTranslateX, tc *mockt.MockTranslateClientX, tts *mockt.MockTTSClientX) {
+			buildStubs: func(_ *mockdb.MockQuerier, _ *mockt.MockTranslateX, tc *mockt.MockTranslateClientX, tts *mockt.MockTTSClientX) {
 				req := texttospeechpb.SynthesizeSpeechRequest{
 					// Set the text input to be synthesized.
 					Input: &texttospeechpb.SynthesisInput{

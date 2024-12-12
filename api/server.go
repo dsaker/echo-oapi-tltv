@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"golang.org/x/time/rate"
 	"log"
 	"os"
 	"sync"
@@ -37,6 +38,9 @@ type Server struct {
 
 // NewServer creates a new HTTP server and sets up routing.
 func NewServer(e *echo.Echo, cfg config.Config, q db.Querier, t translates.TranslateX, af audiofile.AudioFileX) *Server {
+	// make sure silence mp3s exist in your base path
+	initSilence(e, cfg)
+
 	spec, err := oapi.GetSwagger()
 	if err != nil {
 		log.Fatalln("loading spec: %w", err)
@@ -72,9 +76,6 @@ func NewServer(e *echo.Echo, cfg config.Config, q db.Querier, t translates.Trans
 
 	spec.Servers = openapi3.Servers{&openapi3.Server{URL: "/v1"}}
 
-	// make sure silence mp3s exist in your base path
-	initSilence(e, cfg)
-
 	// Create middleware for validating tokens.
 	middle, err := createMiddleware(fa, spec)
 	if err != nil {
@@ -84,6 +85,9 @@ func NewServer(e *echo.Echo, cfg config.Config, q db.Querier, t translates.Trans
 	apiGrp.Use(v4mw.Logger())
 	apiGrp.Use(v4mw.Recover())
 	apiGrp.Use(middle...)
+
+	// add rate limiting middleware
+	apiGrp.Use(v4mw.RateLimiter(v4mw.NewRateLimiterMemoryStore(rate.Limit(20))))
 
 	srv := &Server{
 		fa:         *fa,
@@ -155,9 +159,9 @@ func initSilence(e *echo.Echo, cfg config.Config) {
 	}
 }
 
-// Depends creates a new google translate and text-to-speech clients; constructs
+// CreateDependencies creates a new google translate and text-to-speech clients; constructs
 // the translates and audiofile dependencies and returns them
-func Depends(e *echo.Echo) (*translates.Translate, *audiofile.AudioFile) {
+func CreateDependencies(e *echo.Echo) (*translates.Translate, *audiofile.AudioFile) {
 	// create google translate and text-to-speech clients
 	ctx := context.Background()
 	transClient, err := translate.NewClient(ctx)
